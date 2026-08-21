@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:safari": "scripts/build-safari.sh",
+    "run:ios": "scripts/run-ios-sim.sh",
     "test": "scripts/test.sh"
   },
   "devDependencies": {
