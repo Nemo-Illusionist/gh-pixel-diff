@@ -1,0 +1,15 @@
+{
+  "name": "gh-pixel-diff",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Попиксельная разница изображений в diff'е пул-реквеста на GitHub",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:safari": "scripts/build-safari.sh",
+    "test": "scripts/test.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}

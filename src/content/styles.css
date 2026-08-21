@@ -1,0 +1,96 @@
+/* Панель наследует цвета GitHub, чтобы не спорить со светлой и тёмной темой. */
+.ghpd-panel {
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 6px;
+  margin: 8px 12px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--fgColor-default, #1f2328);
+  background: var(--bgColor-default, #ffffff);
+}
+
+.ghpd-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bgColor-muted, #f6f8fa);
+  flex-wrap: wrap;
+}
+
+.ghpd-button,
+.ghpd-tab {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 6px;
+  padding: 4px 12px;
+  color: inherit;
+  background: var(--bgColor-default, #ffffff);
+}
+
+.ghpd-button:hover,
+.ghpd-tab:hover {
+  background: var(--bgColor-muted, #eef1f4);
+}
+
+.ghpd-tab-active,
+.ghpd-tab-active:hover {
+  border-color: var(--borderColor-accent-emphasis, #0969da);
+  color: var(--fgColor-accent, #0969da);
+}
+
+.ghpd-status {
+  color: var(--fgColor-muted, #59636e);
+  font-variant-numeric: tabular-nums;
+}
+
+.ghpd-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.ghpd-hidden { display: none; }
+
+.ghpd-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.ghpd-stage {
+  overflow: auto;
+  max-height: 70vh;
+  background: var(--bgColor-inset, #f6f8fa);
+  border-radius: 4px;
+}
+
+.ghpd-canvas,
+.ghpd-side-img,
+.ghpd-swipe-img { display: block; max-width: 100%; height: auto; }
+
+.ghpd-side { display: flex; gap: 10px; flex-wrap: wrap; }
+.ghpd-side-cell { flex: 1 1 260px; margin: 0; }
+.ghpd-caption { padding-top: 4px; color: var(--fgColor-muted, #59636e); }
+
+.ghpd-swipe { position: relative; user-select: none; touch-action: none; }
+.ghpd-swipe-clip { position: absolute; inset: 0; overflow: hidden; }
+.ghpd-swipe-clip .ghpd-swipe-img { max-width: none; }
+.ghpd-swipe-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--fgColor-accent, #0969da);
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.ghpd-threshold { display: flex; align-items: center; gap: 8px; color: var(--fgColor-muted, #59636e); }
+.ghpd-threshold-value { font-variant-numeric: tabular-nums; }
+
+/* Узкий экран: панель занимает всю ширину, отступы меньше. */
+@media (max-width: 768px) {
+  .ghpd-panel { margin: 8px 0; border-radius: 0; }
+  .ghpd-side-cell { flex-basis: 100%; }
+}
+
+.ghpd-crop { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
