@@ -31,9 +31,14 @@ await rm(dist, { recursive: true, force: true });
 await build('chrome', () => {});
 
 await build('firefox', (manifest) => {
-  // Без явного идентификатора Firefox не подпишет расширение.
+  // Без явного идентификатора Firefox не подпишет расширение, а без
+  // объявления о сборе данных не пропустит проверку: не собираем ничего.
   manifest.browser_specific_settings = {
-    gecko: { id: FIREFOX_ID, strict_min_version: '128.0' },
+    gecko: {
+      id: FIREFOX_ID,
+      strict_min_version: '128.0',
+      data_collection_permissions: { required: ['none'] },
+    },
   };
 });
 
