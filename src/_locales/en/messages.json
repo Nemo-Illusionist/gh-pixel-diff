@@ -28,6 +28,9 @@
       }
     }
   },
+  "emptyImage": {
+    "message": "the image has no size"
+  },
   "pixelsOne": {
     "message": "$count$ pixel",
     "placeholders": {

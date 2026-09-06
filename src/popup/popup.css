@@ -52,9 +52,9 @@ button:hover { background: color-mix(in srgb, canvastext 14%, transparent); }
 
 code { font-size: 11px; word-break: break-all; }
 
-.report { margin: 12px 0 0; }
 
 .report {
+  margin: 12px 0 0;
   color: color-mix(in srgb, canvastext 60%, transparent);
   font-variant-numeric: tabular-nums;
 }

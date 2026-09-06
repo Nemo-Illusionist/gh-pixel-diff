@@ -48,7 +48,7 @@ function svgPair(size) {
 }
 
 /** Ставит подмену сети и подкладывает тексты вместо chrome.i18n. */
-async function openFrame(page, images = null, settings = {}) {
+async function openFrame(page, images = null, settings = {}, options = {}) {
   await page.route('https://viewscreen.githubusercontent.com/**', (route) =>
     route.fulfill({ contentType: 'text/html; charset=utf-8', body: read('fixtures/frame.html') }),
   );
@@ -56,13 +56,16 @@ async function openFrame(page, images = null, settings = {}) {
   // холст стал бы «грязным» и прочитать его было бы нельзя.
   const pngs = [[BEFORE, 'before.png'], [AFTER, 'after.png']];
   for (const [url, name] of pngs) {
-    await page.route(url, (route) =>
-      route.fulfill({
+    await page.route(url, async (route) => {
+      // Задержка нужна, чтобы успеть подёргать панель, пока идёт загрузка.
+      if (options.slow) await new Promise((done) => setTimeout(done, options.slow));
+      if (options.brokenImages) return route.abort();
+      return route.fulfill({
         contentType: 'image/png',
         headers: { 'access-control-allow-origin': '*' },
         body: read(`fixtures/${name}`),
-      }),
-    );
+      });
+    });
   }
   if (images) {
     for (const [url, body] of [[BEFORE_SVG, images.before], [AFTER_SVG, images.after]]) {
@@ -125,6 +128,13 @@ async function openFrame(page, images = null, settings = {}) {
       },
     };
   }, messages);
+
+  // Позже общего маршрута на файлы расширения: побеждает последний.
+  if (options.brokenWorker) {
+    await page.route('**/__ext/content/worker.js', (route) =>
+      route.fulfill({ contentType: 'text/javascript', body: 'throw new Error("boom");' }),
+    );
+  }
 
   await page.goto(images ? FRAME_URL_SVG : FRAME_URL);
 }
@@ -470,6 +480,72 @@ test('переключатель кадров можно выключить в �
   await expect
     .poll(() => page.evaluate(() => document.querySelector('.ghpd-views')?.hidden))
     .toBe(true);
+});
+
+test('движение ползунка во время загрузки не ломает сравнение', async ({ page }) => {
+  // Загрузка идёт заметное время, а панель уже отзывчива: раньше второй вход
+  // заводил второй поток и отдавал ему уже отданные буферы — вместо результата
+  // в подписи появлялось «ArrayBuffer is already detached».
+  await openFrame(page, null, {}, { slow: 1500 });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    const slider = document.querySelector('.ghpd-slider');
+    slider.value = '0.3';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  await waitForResult(page);
+  const meta = await page.textContent('.ghpd-meta');
+
+  expect(meta).not.toMatch(/Failed|detached/);
+  expect(await page.evaluate(() => globalThis.workersStarted)).toBe(1);
+});
+
+test('упавший поток не подвешивает панель', async ({ page }) => {
+  // Поток мог не подняться: неполный набор файлов, чужая политика, что угодно.
+  // Картинки к этому моменту не должны быть отданы — иначе считать нечем.
+  await openFrame(page, null, {}, { brokenWorker: true });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+
+  await waitForResult(page);
+
+  expect(await page.textContent('.ghpd-meta')).toMatch(/^[\d,]+ pixels/);
+  expect(await page.evaluate(() => document.documentElement.dataset.ghpdWorker)).toBe('off');
+});
+
+test('после ошибки загрузки можно попробовать снова', async ({ page }) => {
+  await openFrame(page, null, {}, { brokenImages: true });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+
+  await expect
+    .poll(() => page.textContent('.ghpd-meta'))
+    .toMatch(/Failed: could not load/);
+
+  // Сеть починилась — повторная попытка обязана взяться за дело заново.
+  await page.unroute(BEFORE);
+  await page.unroute(AFTER);
+  for (const [url, name] of [[BEFORE, 'before.png'], [AFTER, 'after.png']]) {
+    await page.route(url, (route) =>
+      route.fulfill({
+        contentType: 'image/png',
+        headers: { 'access-control-allow-origin': '*' },
+        body: read(`fixtures/${name}`),
+      }),
+    );
+  }
+  await page.evaluate(() => {
+    const slider = document.querySelector('.ghpd-slider');
+    slider.value = '0.2';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  await waitForResult(page);
+  expect(await page.textContent('.ghpd-meta')).toMatch(/^[\d,]+ pixels/);
 });
 
 test('подпись на языке интерфейса', async ({ page }) => {

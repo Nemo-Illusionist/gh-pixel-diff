@@ -11,6 +11,11 @@
 
   let prepared = null;
 
+  // Здороваемся сразу: основной поток отдаёт картинки во владение и обратно их
+  // уже не получит, поэтому сначала он должен убедиться, что здесь всё
+  // поднялось. Молчание — сигнал считать в общем потоке.
+  global.postMessage({ type: 'hello' });
+
   global.onmessage = ({ data }) => {
     if (data.type === 'prepare') {
       prepared = {
@@ -22,11 +27,15 @@
         dataBefore: new ImageData(new Uint8ClampedArray(data.before), data.width, data.height),
         dataAfter: new ImageData(new Uint8ClampedArray(data.after), data.width, data.height),
       };
-      global.postMessage({ type: 'ready' });
+      global.postMessage({ type: 'ready', id: data.id });
       return;
     }
 
     if (data.type === 'diff') {
+      if (!prepared) {
+        global.postMessage({ type: 'error', id: data.id, message: 'no images' });
+        return;
+      }
       const result = diffPrepared(prepared, { threshold: data.threshold });
       global.postMessage(
         {

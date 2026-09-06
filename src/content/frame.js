@@ -21,6 +21,8 @@
   const MODE_KEY = 'ghpd:mode';
   /** Настройка из окна расширения: показывать ли переключатель кадров. */
   const SHOW_VIEWS_DEFAULT = true;
+  /** Сколько ждём ответа от потока, прежде чем считать сами. */
+  const WORKER_TIMEOUT = 5000;
 
   /** Репозиторий страницы: GitHub кладёт его во фрейм параметром `nwo`. */
   function repositoryFromUrl() {
@@ -127,17 +129,82 @@
     if (!api?.runtime?.getURL || typeof Worker !== 'function') return null;
     try {
       const sources = await Promise.all(
-        ['vendor/pixelmatch.js', 'content/compare.js', 'content/worker.js'].map((path) =>
-          fetch(api.runtime.getURL(path)).then((response) => response.text()),
-        ),
+        ['vendor/pixelmatch.js', 'content/compare.js', 'content/worker.js'].map(async (path) => {
+          const response = await fetch(api.runtime.getURL(path));
+          // Без этой проверки страница-заглушка вместо файла склеилась бы в
+          // рабочий с виду blob, и провал вылез бы вечным «Считаю…».
+          if (!response.ok) throw new Error(`${path}: ${response.status}`);
+          return response.text();
+        }),
       );
       const url = URL.createObjectURL(new Blob(sources, { type: 'text/javascript' }));
       const worker = new Worker(url);
       URL.revokeObjectURL(url);
+      await greet(worker);
       return worker;
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Ждёт, пока поток отзовётся.
+   *
+   * Отдельный шаг до передачи картинок: буферы уходят во владение и обратно не
+   * возвращаются, поэтому убедиться, что поток жив, нужно раньше. Не отозвался
+   * за отведённое время — считаем в общем потоке, картинки при этом целы.
+   */
+  function greet(worker) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => stop(new Error('worker is silent')), WORKER_TIMEOUT);
+      const hello = ({ data }) => {
+        if (data?.type === 'hello') stop(null);
+      };
+      const failed = (event) => stop(new Error(event.message || 'worker error'));
+      function stop(error) {
+        clearTimeout(timer);
+        worker.removeEventListener('message', hello);
+        worker.removeEventListener('error', failed);
+        if (!error) return resolve();
+        worker.terminate();
+        reject(error);
+      }
+      worker.addEventListener('message', hello);
+      worker.addEventListener('error', failed);
+    });
+  }
+
+  /**
+   * Разговор с потоком: один слушатель на всё время жизни вместо слушателя на
+   * каждый запрос — иначе за сотню движений ползунка их накапливается сотня.
+   */
+  function connect(worker) {
+    const pending = new Map();
+    let counter = 0;
+
+    worker.addEventListener('message', ({ data }) => {
+      const waiting = pending.get(data?.id);
+      if (!waiting) return;
+      pending.delete(data.id);
+      if (data.type === 'error') waiting.reject(new Error(data.message));
+      else waiting.resolve(data);
+    });
+
+    // Поток умер — отвечать некому: отпускаем всех, кто ждёт.
+    worker.addEventListener('error', (event) => {
+      const error = new Error(event.message || 'worker error');
+      for (const waiting of pending.values()) waiting.reject(error);
+      pending.clear();
+    });
+
+    // transfer — то, что уходит во владение: буферы картинок копировать
+    // незачем, ради этого поток и заводился.
+    return (message, transfer = []) =>
+      new Promise((resolve, reject) => {
+        const id = ++counter;
+        pending.set(id, { resolve, reject });
+        worker.postMessage({ ...message, id }, transfer);
+      });
   }
 
   /**
@@ -154,19 +221,19 @@
     }
   }
 
-  function drawCrop(canvas, full, result, cropped, outline, view) {
+  function drawCrop(canvas, full, result, cropped, outline, shownFrame) {
     // Холст с полным кадром один на всю панель: на снимке в несколько
     // мегапикселей заводить его заново на каждую отрисовку — лишние десятки
     // мегабайт при каждом движении ползунка.
     full.width = result.width;
     full.height = result.height;
     const source = full.getContext('2d');
-    if (view === 'diff') {
+    if (shownFrame === 'diff') {
       source.putImageData(result.diff, 0, 0);
     } else {
       // «До» и «после» рисуем в том же размере, что и разницу: у вектора это
       // увеличенный кадр, и переключение не должно менять масштаб.
-      const image = result[view];
+      const image = result[shownFrame];
       source.clearRect(0, 0, result.width, result.height);
       source.drawImage(
         image,
@@ -211,7 +278,7 @@
     return { x, y, width, height };
   }
 
-  function build(pair, modes) {
+  function build(pair) {
     // Родной класс `view` не берём: его CSS прячет всё, кроме активного
     // режима, а видимостью своего контейнера мы управляем сами.
     const view = el('div', 'ghpd-view');
@@ -219,9 +286,11 @@
 
     const shell = el('span', 'shell ghpd-shell');
     const canvas = el('canvas', 'ghpd-canvas');
+    canvas.setAttribute('role', 'img');
     const full = document.createElement('canvas');
 
     const meta = el('p', 'ghpd-meta');
+    meta.setAttribute('aria-live', 'polite');
     const cropToggle = el('button', 'ghpd-crop-toggle');
     cropToggle.type = 'button';
     const outlineToggle = el('button', 'ghpd-outline-toggle');
@@ -231,10 +300,11 @@
     view.append(shell);
 
     let result = null;
-    let prepared = null;
-    let loading = null;
-    let worker = null;
-    let request = 0;
+    // Загрузка картинок и подъём потока — одно неделимое дело: если считать их
+    // порознь, второй вход, случившийся пока идёт загрузка, заводит второй
+    // поток и отдаёт ему уже отданные буферы.
+    let session = null;
+    let starting = null;
     let cropped = true;
     // Какой из трёх кадров показан: разница, «до» или «после».
     let shownFrame = 'diff';
@@ -247,7 +317,8 @@
       const box = drawCrop(canvas, full, result, cropped, outline, shownFrame);
       fitCanvas(canvas);
       const percent = result.ratio * 100;
-      const shown = percent >= 0.01 ? percent.toFixed(2) : '<0.01';
+      // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
+      const shown = result.changed === 0 ? '0' : percent >= 0.01 ? percent.toFixed(2) : '<0.01';
 
       meta.replaceChildren();
       meta.append(
@@ -295,66 +366,65 @@
     // Картинки грузятся и раскладываются по холстам ровно один раз: движение
     // ползунка меняет только порог, и пересчитывать ради него декодирование
     // снимка в несколько мегапикселей незачем.
-    /** Отдаёт обе картинки потоку и там же их оставляет. */
-    const handOver = async (data) => {
-      const started = await createWorker();
-      if (!started) return null;
-      await new Promise((resolve) => {
-        started.addEventListener('message', function ready({ data: message }) {
-          if (message.type !== 'ready') return;
-          started.removeEventListener('message', ready);
-          resolve();
-        });
-        started.postMessage(
-          {
+    /**
+     * Готовит сравнение: грузит картинки и, если получилось, отдаёт их потоку.
+     * Отказ не запоминается — иначе моргнувшая сеть навсегда оставила бы
+     * фрейм с одной и той же ошибкой.
+     */
+    const start = () => {
+      starting ??= (async () => {
+        const prepared = await preparePair(pair, { repository: repositoryFromUrl() });
+        const worker = await createWorker();
+        if (worker) {
+          const ask = connect(worker);
+          await ask({
             type: 'prepare',
-            width: data.width,
-            height: data.height,
-            scale: data.scale,
-            sizeChanged: data.sizeChanged,
-            before: data.dataBefore.data.buffer,
-            after: data.dataAfter.data.buffer,
-          },
-          [data.dataBefore.data.buffer, data.dataAfter.data.buffer],
-        );
+            width: prepared.width,
+            height: prepared.height,
+            scale: prepared.scale,
+            sizeChanged: prepared.sizeChanged,
+            before: prepared.dataBefore.data.buffer,
+            after: prepared.dataAfter.data.buffer,
+          }, [prepared.dataBefore.data.buffer, prepared.dataAfter.data.buffer]);
+          // Видно снаружи: и в тестах, и когда разбираешь чужую жалобу.
+          document.documentElement.dataset.ghpdWorker = 'on';
+          return { prepared, worker, ask };
+        }
+        document.documentElement.dataset.ghpdWorker = 'off';
+        return { prepared, worker: null, ask: null };
+      })().catch((error) => {
+        starting = null;
+        throw error;
       });
-      return started;
+      return starting;
     };
-
-    const askWorker = (threshold) =>
-      new Promise((resolve, reject) => {
-        const id = ++request;
-        worker.addEventListener('message', function answer({ data }) {
-          // Ответы на устаревшие запросы игнорируем: ползунок двигают быстрее,
-          // чем считается снимок.
-          if (data.type !== 'diff' || data.id !== id) return;
-          worker.removeEventListener('message', answer);
-          resolve({
-            ...data,
-            diff: new ImageData(new Uint8ClampedArray(data.diff), data.width, data.height),
-          });
-        });
-        worker.addEventListener('error', (event) => reject(new Error(event.message)), { once: true });
-        worker.postMessage({ type: 'diff', id, threshold });
-      });
 
     const compare = async (threshold) => {
       try {
-        if (!prepared) {
+        if (!session) {
           meta.textContent = t('computing');
-          loading ??= preparePair(pair, { repository: repositoryFromUrl() });
-          prepared = await loading;
-          // Буферы уходят в поток во владение, поэтому в основном остаются
-          // только размеры и сами картинки — для подписи.
-          worker = await handOver(prepared);
-          // Видно снаружи: и в тестах, и когда разбираешь чужую жалобу.
-          document.documentElement.dataset.ghpdWorker = worker ? 'on' : 'off';
+          session = await start();
         }
-        const computed = worker ? await askWorker(threshold) : diffPrepared(prepared, { threshold });
-        result = { ...computed, before: prepared.before, after: prepared.after };
+        const computed = session.ask
+          ? await session.ask({ type: 'diff', threshold })
+          : diffPrepared(session.prepared, { threshold });
+        result = { ...computed, before: session.prepared.before, after: session.prepared.after };
+        // Из потока разница приходит буфером — обратно в картинку её
+        // собирает тот, кто рисует.
+        if (computed.diff instanceof ArrayBuffer) {
+          result.diff = new ImageData(
+            new Uint8ClampedArray(computed.diff),
+            computed.width,
+            computed.height,
+          );
+        }
         render();
       } catch (error) {
-        meta.textContent = t('failed', error.message);
+        // Картинки уже у потока, и если он умер — своих копий не осталось.
+        // Значит начинать надо заново: браузер отдаст их из кэша.
+        session = null;
+        starting = null;
+        meta.textContent = t('failed', error.message) || error.message;
       }
     };
 
@@ -367,9 +437,13 @@
       const button = el('button', 'ghpd-view-button');
       button.type = 'button';
       button.textContent = t(`view${name[0].toUpperCase()}${name.slice(1)}`);
+      button.setAttribute('aria-pressed', String(name === 'diff'));
       button.addEventListener('click', () => {
         shownFrame = name;
-        for (const [key, node] of viewButtons) node.classList.toggle('selected', key === shownFrame);
+        for (const [key, node] of viewButtons) {
+          node.classList.toggle('selected', key === shownFrame);
+          node.setAttribute('aria-pressed', String(key === shownFrame));
+        }
         if (result) render();
       });
       viewButtons.set(name, button);
@@ -406,7 +480,7 @@
     const pair = readImagePair(location.href);
     if (!modes || !pair || document.querySelector('.ghpd-view')) return;
 
-    const panel = build(pair, modes);
+    const panel = build(pair);
     document.body.append(panel.element);
 
     // Настройка из окна расширения: читается асинхронно, поэтому переключатель

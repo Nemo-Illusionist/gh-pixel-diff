@@ -54,12 +54,16 @@ report.href =
 // Переключатель кадров в панели: показывать или нет. По умолчанию да.
 const showViews = document.querySelector('#show-views');
 
-api.storage.sync.get({ showViews: true }).then(({ showViews: value }) => {
-  showViews.checked = value !== false;
-});
+// Отказ хранилища не должен уносить с собой остальное окно: ниже — кнопка
+// выдачи доступа, ради которой окно и существует.
+Promise.resolve(api.storage.sync.get({ showViews: true }))
+  .then(({ showViews: value }) => {
+    showViews.checked = value !== false;
+  })
+  .catch(() => {});
 
 showViews.addEventListener('change', () => {
-  api.storage.sync.set({ showViews: showViews.checked });
+  Promise.resolve(api.storage.sync.set({ showViews: showViews.checked })).catch(() => {});
 });
 
 function show(granted) {
@@ -74,7 +78,11 @@ async function check() {
   try {
     show(await api.permissions.contains(ORIGINS));
   } catch (error) {
+    // Проверить не вышло — но выдать доступ, возможно, всё ещё можно.
+    // Без кнопки пользователю остаётся только текст ошибки и тупик.
+    status.classList.remove('status-checking');
     status.textContent = t('popupCheckFailed', error.message);
+    grant.hidden = false;
   }
 }
 

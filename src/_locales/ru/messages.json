@@ -28,6 +28,9 @@
       }
     }
   },
+  "emptyImage": {
+    "message": "у картинки нулевой размер"
+  },
   "pixelsOne": {
     "message": "$count$ пиксель",
     "placeholders": {

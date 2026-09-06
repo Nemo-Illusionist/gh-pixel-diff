@@ -3,6 +3,9 @@
 (function (global) {
   'use strict';
 
+  const t = (key, ...substitutions) =>
+    global.GhPixelDiffI18n?.t(key, ...substitutions) || '';
+
   /**
    * Во сколько раз растрировать вектор.
    * У SVG собственного размера может не быть вовсе — тогда браузер отдаёт свои
@@ -67,7 +70,7 @@
       img.decoding = 'async';
       img.onload = () => resolve(img);
       // Вне расширения текста для сообщения нет — тогда в ошибку идёт адрес.
-      img.onerror = () => reject(new Error(global.GhPixelDiffI18n?.t('loadFailed', src) || src));
+      img.onerror = () => reject(new Error(t('loadFailed', src) || src));
       img.src = src;
     });
   }
@@ -84,15 +87,28 @@
   }
 
   /**
+   * Холст для чтения пикселей.
+   * OffscreenCanvas появился только в Safari 16.4, а расширение ставится с
+   * 15.4 — там же, где вообще появились расширения третьей версии. Без запаса
+   * на этих версиях сравнение падало бы с ReferenceError.
+   */
+  function createCanvas(width, height) {
+    if (typeof OffscreenCanvas === 'function') return new OffscreenCanvas(width, height);
+    const canvas = global.document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    return canvas;
+  }
+
+  /**
    * Рисует картинку в левом верхнем углу холста заданного размера.
    * Разные размеры — обычное дело: страница стала длиннее, снимок вырос.
    * Масштаб больше единицы бывает только у вектора — растр увеличивать
    * бессмысленно, разницы от этого не прибавится.
    */
   function toImageData(img, width, height, scale = 1) {
-    const canvas = new OffscreenCanvas(width, height);
+    const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.clearRect(0, 0, width, height);
     ctx.drawImage(img, 0, 0, img.naturalWidth * scale, img.naturalHeight * scale);
     return ctx.getImageData(0, 0, width, height);
   }
@@ -159,6 +175,9 @@
 
     const naturalWidth = Math.max(before.naturalWidth, after.naturalWidth);
     const naturalHeight = Math.max(before.naturalHeight, after.naturalHeight);
+    // Вырожденный экспорт — картинка нулевого размера. Без этой проверки
+    // наружу вылезало «The source width is 0» из внутренностей холста.
+    if (!naturalWidth || !naturalHeight) throw new Error(t('emptyImage'));
     const scale = rasterScale(pair, naturalWidth, naturalHeight);
     const width = naturalWidth * scale;
     const height = naturalHeight * scale;
@@ -214,22 +233,13 @@
     };
   }
 
-  /** Загрузка и сравнение одним вызовом. */
-  async function comparePair(pair, options = {}) {
-    return diffPrepared(await preparePair(pair, options), options);
-  }
-
+  // Наружу — только то, чем пользуются панель, поток и тесты.
   global.GhPixelDiff = {
     readImagePair,
-    decodeHexUrl,
-    comparePair,
     preparePair,
     diffPrepared,
-    loadImage,
     rewriteRepository,
     boundsOfChanges,
-    isVector,
     rasterScale,
-    VIEWSCREEN_IMG,
   };
 })(self);
