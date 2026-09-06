@@ -186,10 +186,14 @@ Playwright image and checks the Firefox build with `web-ext lint`. The live test
 is a separate run — weekly and on demand: it breaks because of someone else's
 changes, not ours, and shouldn't block a pull request.
 
-A release is cut by a tag: `npm version 0.2.0` (which updates both
-`package.json` and the manifest), then `git push --follow-tags`. GitHub builds
-the archives, checks the tag against the manifest version and publishes them to
-the releases page.
+`main` is protected: no direct pushes, including from the owner. Everything
+lands through a pull request with both checks green, and history stays linear
+(squash merges only).
+
+A release therefore comes in two steps. `npm run release -- 0.6.0` opens a pull
+request that bumps the version in `package.json` and the manifest; once it is
+merged, tagging `v0.6.0` on `main` builds the archives, checks the tag against
+the manifest version and publishes them to the releases page.
 
 Tests come in four levels. `tests/parse.spec.js` checks URL parsing, the
 repository fallback and the search for the changed area, without touching the
