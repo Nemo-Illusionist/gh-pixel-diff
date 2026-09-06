@@ -191,7 +191,7 @@ A release is cut by a tag: `npm version 0.2.0` (which updates both
 the archives, checks the tag against the manifest version and publishes them to
 the releases page.
 
-Tests come in three levels. `tests/parse.spec.js` checks URL parsing, the
+Tests come in four levels. `tests/parse.spec.js` checks URL parsing, the
 repository fallback and the search for the changed area, without touching the
 DOM. `tests/frame.spec.js` loads the extension into a stub of GitHub's viewer
 frame and checks how it coexists with someone else's markup: that exactly one
@@ -201,6 +201,10 @@ least once and was caught by eye on a screenshot. `tests/live.spec.js` starts a
 real Chromium with the extension loaded, opens the
 [test-bed pull request](https://github.com/Nemo-Illusionist/gh-pixel-diff/pull/1)
 and makes sure the mode joined the native row and counted the difference.
+`tests/locales.spec.js` and `tests/popup.spec.js` stay out of the browser
+entirely: the first checks that every string the code asks for exists in every
+locale, the second that markup inside a translated string is parsed into nodes
+rather than swallowed.
 
 The test bed is an open pull request with a single changed image in this same
 repository; it is deliberately never merged. The test used to point at someone

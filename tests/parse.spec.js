@@ -127,3 +127,61 @@ test('считает изменившиеся пиксели', async ({ page }) 
 
   expect(changed).toBe(4);
 });
+
+test('увеличение вектора ограничено сверху', async ({ page }) => {
+  // Иконке 16×16 без ограничения досталось бы увеличение в 64 раза — холст на
+  // тысячу с лишним пикселей по стороне на ровном месте.
+  const scales = await page.evaluate(() => {
+    const svg = { before: 'https://raw.githubusercontent.com/o/r/a/icon.svg', after: 'https://raw.githubusercontent.com/o/r/b/icon.svg' };
+    const png = { before: 'https://raw.githubusercontent.com/o/r/a/shot.png', after: 'https://raw.githubusercontent.com/o/r/b/shot.png' };
+    return {
+      icon: self.GhPixelDiff.rasterScale(svg, 16, 16),
+      middling: self.GhPixelDiff.rasterScale(svg, 200, 300),
+      large: self.GhPixelDiff.rasterScale(svg, 2000, 1200),
+      raster: self.GhPixelDiff.rasterScale(png, 16, 16),
+    };
+  });
+
+  expect(scales).toEqual({ icon: 8, middling: 3, large: 1, raster: 1 });
+});
+
+test('формы множественного числа берутся по языку интерфейса', async ({ page }) => {
+  // У русского форм три, у английского две. Выбирает их Intl, а ключи в
+  // локалях должны быть ровно те, что он попросит.
+  const forms = await page.evaluate(({ source, locales }) => {
+    const said = {};
+    for (const [language, messages] of Object.entries(locales)) {
+      globalThis.chrome = {
+        i18n: {
+          getUILanguage: () => language,
+          getMessage: (key, subs = []) => {
+            const entry = messages[key];
+            if (!entry) return '';
+            let text = entry.message;
+            for (const [name, placeholder] of Object.entries(entry.placeholders ?? {})) {
+              const index = Number(placeholder.content.slice(1)) - 1;
+              text = text.replaceAll(`$${name}$`, String(subs[index] ?? ''));
+            }
+            return text;
+          },
+        },
+      };
+      // Ссылку на API скрипт берёт при загрузке, поэтому язык меняем вместе с
+      // перезагрузкой скрипта.
+      new Function('self', source)(globalThis);
+      said[language] = [1, 2, 5, 21].map((count) =>
+        globalThis.GhPixelDiffI18n.plural('pixels', count),
+      );
+    }
+    return said;
+  }, {
+    source: readFileSync(fileURLToPath(new URL('../src/content/i18n.js', import.meta.url)), 'utf8'),
+    locales: {
+      ru: JSON.parse(readFileSync(fileURLToPath(new URL('../src/_locales/ru/messages.json', import.meta.url)), 'utf8')),
+      en: JSON.parse(readFileSync(fileURLToPath(new URL('../src/_locales/en/messages.json', import.meta.url)), 'utf8')),
+    },
+  });
+
+  expect(forms.ru).toEqual(['1 пиксель', '2 пикселя', '5 пикселей', '21 пиксель']);
+  expect(forms.en.slice(0, 2)).toEqual(['1 pixel', '2 pixels']);
+});

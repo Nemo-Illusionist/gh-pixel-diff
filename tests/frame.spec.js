@@ -47,8 +47,22 @@ function svgPair(size) {
   return { before: svg('#c9d1d9'), after: svg('#f85149') };
 }
 
-/** Ставит подмену сети и подкладывает тексты вместо chrome.i18n. */
-async function openFrame(page, images = null, settings = {}, options = {}) {
+/** Вектор заданного размера с полоской посередине. */
+function svgSized(width, height) {
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" ` +
+    `width="${width}" height="${height}">` +
+    `<rect width="${width}" height="${height}" fill="#0d1117"/>` +
+    `<rect x="10" y="${Math.round(height / 2)}" width="40" height="8" fill="#c9d1d9"/></svg>`
+  );
+}
+
+/**
+ * Подкладывает то, что расширение получает от браузера: тексты, адреса своих
+ * файлов и хранилище. Хранилище держим на стороне теста — настоящее переживает
+ * перезагрузку страницы, и заглушка должна вести себя так же.
+ */
+async function stubExtension(page, settings = {}) {
   // Хранилище расширения: живёт в тесте, поэтому переживает page.reload().
   const store = {};
   await page.exposeFunction('ghpdStorageGet', (defaults) => ({ ...defaults, ...store }));
@@ -56,46 +70,9 @@ async function openFrame(page, images = null, settings = {}, options = {}) {
     Object.assign(store, values);
   });
 
-  await page.route('https://viewscreen.githubusercontent.com/**', (route) =>
-    route.fulfill({ contentType: 'text/html; charset=utf-8', body: read('fixtures/frame.html') }),
-  );
-  // raw.githubusercontent.com отдаёт картинки с доступом отовсюду — без этого
-  // холст стал бы «грязным» и прочитать его было бы нельзя.
-  const pngs = [[BEFORE, 'before.png'], [AFTER, 'after.png']];
-  for (const [url, name] of pngs) {
-    await page.route(url, async (route) => {
-      // Задержка нужна, чтобы успеть подёргать панель, пока идёт загрузка.
-      if (options.slow) await new Promise((done) => setTimeout(done, options.slow));
-      if (options.brokenImages) return route.abort();
-      return route.fulfill({
-        contentType: 'image/png',
-        headers: { 'access-control-allow-origin': '*' },
-        body: read(`fixtures/${name}`),
-      });
-    });
-  }
-  if (images) {
-    for (const [url, body] of [[BEFORE_SVG, images.before], [AFTER_SVG, images.after]]) {
-      await page.route(url, (route) =>
-        route.fulfill({
-          contentType: 'image/svg+xml',
-          headers: { 'access-control-allow-origin': '*' },
-          body,
-        }),
-      );
-    }
-  }
-
-  // Файлы расширения: расширение читает их через fetch и собирает из них
-  // поток сравнения. Отдаём их с того же адреса, что и фрейм.
-  await page.route('https://viewscreen.githubusercontent.com/__ext/**', (route) => {
-    const path = new URL(route.request().url()).pathname.replace('/__ext/', '');
-    return route.fulfill({ contentType: 'text/javascript', body: read(`../src/${path}`) });
-  });
-
-  await page.addInitScript((settings) => {
-    // @ts-ignore — хранилище расширения: настройка приходит из окна.
-    globalThis.storedSettings = settings;
+  await page.addInitScript((values) => {
+    // @ts-ignore — настройка приходит из окна расширения.
+    globalThis.storedSettings = values;
   }, settings);
 
   await page.addInitScript((locale) => {
@@ -144,6 +121,49 @@ async function openFrame(page, images = null, settings = {}, options = {}) {
       },
     };
   }, messages);
+
+  return store;
+}
+
+/** Открывает заглушку фрейма с подменённой сетью и готовым API расширения. */
+async function openFrame(page, images = null, settings = {}, options = {}) {
+  await page.route('https://viewscreen.githubusercontent.com/**', (route) =>
+    route.fulfill({ contentType: 'text/html; charset=utf-8', body: read('fixtures/frame.html') }),
+  );
+  // raw.githubusercontent.com отдаёт картинки с доступом отовсюду — без этого
+  // холст стал бы «грязным» и прочитать его было бы нельзя.
+  for (const [url, name] of [[BEFORE, 'before.png'], [AFTER, 'after.png']]) {
+    await page.route(url, async (route) => {
+      // Задержка нужна, чтобы успеть подёргать панель, пока идёт загрузка.
+      if (options.slow) await new Promise((done) => setTimeout(done, options.slow));
+      if (options.brokenImages) return route.abort();
+      return route.fulfill({
+        contentType: 'image/png',
+        headers: { 'access-control-allow-origin': '*' },
+        body: read(`fixtures/${name}`),
+      });
+    });
+  }
+  if (images) {
+    for (const [url, body] of [[BEFORE_SVG, images.before], [AFTER_SVG, images.after]]) {
+      await page.route(url, (route) =>
+        route.fulfill({
+          contentType: 'image/svg+xml',
+          headers: { 'access-control-allow-origin': '*' },
+          body,
+        }),
+      );
+    }
+  }
+
+  // Файлы расширения: расширение читает их через fetch и собирает из них
+  // поток сравнения. Отдаём их с того же адреса, что и фрейм.
+  await page.route('https://viewscreen.githubusercontent.com/__ext/**', (route) => {
+    const path = new URL(route.request().url()).pathname.replace('/__ext/', '');
+    return route.fulfill({ contentType: 'text/javascript', body: read(`../src/${path}`) });
+  });
+
+  const store = await stubExtension(page, settings);
 
   // Позже общего маршрута на файлы расширения: побеждает последний.
   if (options.brokenWorker) {
@@ -593,6 +613,77 @@ test('настройки переживают запрет хранилища ф
 
   expect(await page.isChecked('.ghpd-mode-item input')).toBe(true);
   expect(await page.inputValue('.ghpd-slider')).toBe('0.11');
+});
+
+test('берёт картинку из основного репозитория, когда форк удалён', async ({ page }) => {
+  // Форк удалён, а коммит влит: GitHub оставляет в адресе фрейма ссылку на
+  // форк и сам показывает «Invalid image source». Расширение подменяет
+  // владельца на тот, что в параметре nwo.
+  const forked = BEFORE.replace('/owner/repo/', '/gone-fork/repo/');
+  const frameUrl =
+    'https://viewscreen.githubusercontent.com/diff/img' +
+    `?enc_url1=${hex(forked)}&enc_url2=${hex(AFTER)}&nwo=owner/repo&path=shot.png`;
+
+  await page.route('https://viewscreen.githubusercontent.com/**', (route) =>
+    route.fulfill({ contentType: 'text/html; charset=utf-8', body: read('fixtures/frame.html') }),
+  );
+  // Адрес форка мёртв, адрес основного репозитория — жив.
+  await page.route(forked, (route) => route.abort());
+  for (const [url, name] of [[BEFORE, 'before.png'], [AFTER, 'after.png']]) {
+    await page.route(url, (route) =>
+      route.fulfill({
+        contentType: 'image/png',
+        headers: { 'access-control-allow-origin': '*' },
+        body: read(`fixtures/${name}`),
+      }),
+    );
+  }
+  await page.route('https://viewscreen.githubusercontent.com/__ext/**', (route) => {
+    const path = new URL(route.request().url()).pathname.replace('/__ext/', '');
+    return route.fulfill({ contentType: 'text/javascript', body: read(`../src/${path}`) });
+  });
+  await stubExtension(page);
+  await page.goto(frameUrl);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  expect(await page.textContent('.ghpd-meta')).toMatch(/^[\d,]+ pixels/);
+});
+
+test('разные размеры «до» и «после» не ломают сравнение', async ({ page }) => {
+  // Снимок страницы вырос по высоте — самый частый случай в скриншотных
+  // тестах. Кадры выравниваются по левому верхнему углу, а изменение размера
+  // попадает в подпись.
+  const tall = svgSized(200, 300);
+  const taller = svgSized(200, 400);
+  await openFrame(page, { before: tall, after: taller });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const meta = await page.textContent('.ghpd-meta');
+
+  expect(meta).toContain('size changed: 200×300 → 200×400');
+  expect(meta).toMatch(/^[\d,]+ pixels/);
+});
+
+test('картинка нулевого размера — внятное сообщение', async ({ page }) => {
+  const empty = '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0"></svg>';
+  await openFrame(page, { before: empty, after: empty });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+
+  await expect.poll(() => page.textContent('.ghpd-meta')).toBe('Failed: the image has no size');
+});
+
+test('совпадающие картинки — ноль, а не «меньше сотой»', async ({ page }) => {
+  const same = svgSized(80, 80);
+  await openFrame(page, { before: same, after: same });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+
+  await expect.poll(() => page.textContent('.ghpd-meta')).toContain('0 pixels · 0% of the frame');
 });
 
 test('подпись на языке интерфейса', async ({ page }) => {
