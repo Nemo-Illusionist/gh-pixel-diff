@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:safari": "scripts/build-safari.sh",
+    "install:macos": "scripts/install-macos.sh",
     "package": "scripts/package.sh",
     "version": "node scripts/sync-version.mjs && git add src/manifest.json",
     "run:ios": "scripts/run-ios-sim.sh",

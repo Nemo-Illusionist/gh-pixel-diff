@@ -44,6 +44,11 @@ code { font-size: 11px; word-break: break-all; }
 
 .report { margin: 12px 0 0; }
 
+.report {
+  color: color-mix(in srgb, canvastext 60%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
 .report a {
   color: inherit;
   opacity: 0.7;

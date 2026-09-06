@@ -68,9 +68,13 @@ to Xcode (Settings → Accounts) is enough for that.
 2. Open the resulting project and pick your development team in the target
    settings.
 3. Build the "GitHub Pixel Diff (macOS)" scheme and run the container app.
-4. Safari → Settings → Extensions → enable the extension and grant it access to
-   the site.
-5. Click the extension button in Safari's toolbar and choose "Allow access".
+4. Safari → Settings → Extensions → enable the extension.
+5. Click the extension button in Safari's toolbar and choose "Grant access".
+
+From source all of that is done by `npm run install:macos`: it builds, signs
+with the first development certificate it finds, installs the app into
+`/Applications` and unregisters the temporary copy from the build folder —
+otherwise Safari lists the extension twice.
 
 That last step is not a formality. Safari does not extend a site permission to
 cross-origin frames, and the images live exactly in such a frame — so access is
@@ -111,10 +115,10 @@ already there.
 
 ![The extension popup](docs/screenshots/popup.png)
 
-In Safari the same thing can be done without the popup: Settings → Extensions →
-GitHub Pixel Diff → **Edit websites…** → set `viewscreen.githubusercontent.com`
-to "Allow". That pane belongs to Safari, and no extension can put its own button
-there.
+The same window opens from Safari's settings: Settings → Extensions → GitHub
+Pixel Diff → **Settings**. Next to it sits Safari's own **Edit websites…**
+button, which grants access without any window: set
+`viewscreen.githubusercontent.com` to "Allow".
 
 Nothing else is requested. There are no permissions for `github.com` pages at
 all, so the extension cannot see your repositories or your session.

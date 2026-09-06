@@ -41,12 +41,15 @@ const status = document.querySelector('#status');
 const grant = document.querySelector('#grant');
 const report = document.querySelector('#report');
 
+// Версия — здесь: в панели расширений её показывает не всякий браузер, а
+// сравнить установленное с последним релизом хочется всегда.
+const { version } = api.runtime.getManifest();
+document.querySelector('#version').textContent = `v${version}`;
+
 // В теле задачи — версия и браузер: без них первый вопрос всё равно про них.
 report.href =
   `${REPOSITORY}/issues/new?body=` +
-  encodeURIComponent(
-    `\n\n---\n${api.runtime.getManifest().version} · ${navigator.userAgent}`,
-  );
+  encodeURIComponent(`\n\n---\n${version} · ${navigator.userAgent}`);
 
 function show(granted) {
   status.classList.remove('status-checking');
