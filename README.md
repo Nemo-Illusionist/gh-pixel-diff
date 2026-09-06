@@ -27,6 +27,12 @@ fragment where the difference lives.
 - If the pull request came from a fork that was later deleted, the image is
   taken from the upstream repository — GitHub itself shows "Invalid image
   source" in that case.
+- Once you pick Pixel Diff, the next image in the pull request opens in it too —
+  no clicking through twenty files.
+- SVG is rasterized at a sensible size instead of the 300×150 a browser makes up
+  for a vector with no intrinsic size; the caption says what size was compared.
+- The comparison runs in a worker, so the panel stays alive on multi-megapixel
+  screenshots — and the images live there, not in the frame's own memory.
 - The interface speaks English, or Russian when the browser is set to Russian.
 
 ![Full frame](docs/screenshots/frame-full.png)
@@ -152,7 +158,10 @@ Three consequences follow:
 - **The extension never sees github.com pages at all.** Its permissions cover
   only `viewscreen.githubusercontent.com`, where neither your repositories nor
   your session exist.
-- There is no background process — only a content script. That's why the
+- There is no background process — only a content script and a worker it builds
+  itself. An extension cannot start a worker from its own address inside someone
+  else's page, so the sources are read with `fetch` and glued into a blob; if
+  that fails, the comparison falls back to the main thread. That's why the
   manifest barely differs between the three browsers: Firefox adds its own
   identifier, Safari takes the build as is.
 - GitHub changes the viewer markup without warning. Hence the live page test —

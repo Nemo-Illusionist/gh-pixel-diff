@@ -32,6 +32,18 @@
       "all_frames": true
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "vendor/pixelmatch.js",
+        "content/compare.js",
+        "content/worker.js"
+      ],
+      "matches": [
+        "https://viewscreen.githubusercontent.com/*"
+      ]
+    }
+  ],
   "action": {
     "default_title": "__MSG_extName__",
     "default_popup": "popup/popup.html",

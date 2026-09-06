@@ -83,6 +83,17 @@
       }
     }
   },
+  "rasterized": {
+    "message": "vector rendered at $width$×$height$",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
   "thresholdLabel": {
     "message": "Comparison threshold"
   },

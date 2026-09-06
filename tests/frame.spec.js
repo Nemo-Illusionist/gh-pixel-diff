@@ -20,19 +20,42 @@ const AFTER = 'https://raw.githubusercontent.com/owner/repo/bbb/shot.png';
 
 const hex = (text) => [...text].map((c) => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
 
+const BEFORE_SVG = 'https://raw.githubusercontent.com/owner/repo/aaa/logo.svg';
+const AFTER_SVG = 'https://raw.githubusercontent.com/owner/repo/bbb/logo.svg';
+
 const FRAME_URL =
   'https://viewscreen.githubusercontent.com/diff/img' +
   `?enc_url1=${hex(BEFORE)}&enc_url2=${hex(AFTER)}` +
   `&nwo=owner/repo&path=shot.png&preview=${encodeURIComponent(AFTER)}`;
 
+const FRAME_URL_SVG =
+  'https://viewscreen.githubusercontent.com/diff/img' +
+  `?enc_url1=${hex(BEFORE_SVG)}&enc_url2=${hex(AFTER_SVG)}` +
+  `&nwo=owner/repo&path=logo.svg&preview=${encodeURIComponent(AFTER_SVG)}`;
+
+/**
+ * Пара векторных картинок. `size` — с собственным размером или без него:
+ * у второго варианта браузер подставляет свои 300×150, и сравнивать надо
+ * не их.
+ */
+function svgPair(size) {
+  const box = size ? ' width="200" height="300"' : '';
+  const svg = (color) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"${box}>` +
+    '<rect width="200" height="300" fill="#0d1117"/>' +
+    `<rect x="20" y="140" width="90" height="20" fill="${color}"/></svg>`;
+  return { before: svg('#c9d1d9'), after: svg('#f85149') };
+}
+
 /** Ставит подмену сети и подкладывает тексты вместо chrome.i18n. */
-async function openFrame(page) {
+async function openFrame(page, images = null) {
   await page.route('https://viewscreen.githubusercontent.com/**', (route) =>
     route.fulfill({ contentType: 'text/html; charset=utf-8', body: read('fixtures/frame.html') }),
   );
   // raw.githubusercontent.com отдаёт картинки с доступом отовсюду — без этого
   // холст стал бы «грязным» и прочитать его было бы нельзя.
-  for (const [url, name] of [[BEFORE, 'before.png'], [AFTER, 'after.png']]) {
+  const pngs = [[BEFORE, 'before.png'], [AFTER, 'after.png']];
+  for (const [url, name] of pngs) {
     await page.route(url, (route) =>
       route.fulfill({
         contentType: 'image/png',
@@ -41,6 +64,24 @@ async function openFrame(page) {
       }),
     );
   }
+  if (images) {
+    for (const [url, body] of [[BEFORE_SVG, images.before], [AFTER_SVG, images.after]]) {
+      await page.route(url, (route) =>
+        route.fulfill({
+          contentType: 'image/svg+xml',
+          headers: { 'access-control-allow-origin': '*' },
+          body,
+        }),
+      );
+    }
+  }
+
+  // Файлы расширения: расширение читает их через fetch и собирает из них
+  // поток сравнения. Отдаём их с того же адреса, что и фрейм.
+  await page.route('https://viewscreen.githubusercontent.com/__ext/**', (route) => {
+    const path = new URL(route.request().url()).pathname.replace('/__ext/', '');
+    return route.fulfill({ contentType: 'text/javascript', body: read(`../src/${path}`) });
+  });
 
   await page.addInitScript((locale) => {
     const getMessage = (key, substitutions = []) => {
@@ -53,11 +94,27 @@ async function openFrame(page) {
       }
       return text;
     };
+    // Сколько потоков завели — по этому видно, каким путём пошло сравнение.
+    // @ts-ignore
+    globalThis.workersStarted = 0;
+    const Original = Worker;
+    // @ts-ignore
+    globalThis.Worker = class extends Original {
+      constructor(...args) {
+        // @ts-ignore
+        globalThis.workersStarted++;
+        super(...args);
+      }
+    };
+
     // @ts-ignore — заглушка того куска API, которым пользуется расширение.
-    globalThis.chrome = { i18n: { getMessage, getUILanguage: () => 'en' } };
+    globalThis.chrome = {
+      i18n: { getMessage, getUILanguage: () => 'en' },
+      runtime: { getURL: (path) => `${location.origin}/__ext/${path}` },
+    };
   }, messages);
 
-  await page.goto(FRAME_URL);
+  await page.goto(images ? FRAME_URL_SVG : FRAME_URL);
 }
 
 /** Догружает расширение в открытую страницу — как это делает браузер. */
@@ -251,6 +308,29 @@ test('рамку вокруг изменений можно убрать', async
   expect(await redPixels()).toBe(0);
 });
 
+test('помнит выбранный режим на следующей картинке', async ({ page }) => {
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  // Следующий файл в пул-реквесте — это новый фрейм с тем же расширением.
+  await page.reload();
+  await injectExtension(page);
+  await waitForResult(page);
+
+  expect(await page.isChecked('.ghpd-mode-item input')).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.classList.contains('ghpd-active')))
+    .toBe(true);
+
+  // Уход на родной режим отменяет запоминание — дальше решает GitHub.
+  await page.click('.js-view-modes .js-view-mode-item:nth-child(1)');
+  await page.reload();
+  await injectExtension(page);
+
+  expect(await page.isChecked('.ghpd-mode-item input')).toBe(false);
+});
+
 test('ползунок слушается клавиатуры и помнит порог', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);
@@ -268,6 +348,69 @@ test('ползунок слушается клавиатуры и помнит �
   await page.reload();
   await injectExtension(page);
   expect(await page.inputValue('.ghpd-slider')).toBe('0.12');
+});
+
+test('вектор сравнивается в разумном размере', async ({ page }) => {
+  await openFrame(page, svgPair(true));
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const state = await page.evaluate(() => {
+    const canvas = document.querySelector('.ghpd-canvas');
+    return { meta: document.querySelector('.ghpd-meta').textContent, width: canvas.width };
+  });
+
+  // 200×300 при цели в 1024 по длинной стороне — увеличение втрое.
+  expect(state.meta).toContain('vector rendered at 600×900');
+  expect(state.meta).toMatch(/^[\d,]+ pixels/);
+});
+
+test('вектор без собственного размера тоже сравнивается', async ({ page }) => {
+  // Без width и height браузер отдаёт свои 300×150 — сравнение по ним
+  // показывало бы разницу в картинке, которой никто не видел.
+  await openFrame(page, svgPair(false));
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const meta = await page.textContent('.ghpd-meta');
+
+  expect(meta).toContain('vector rendered at');
+  expect(Number(meta.match(/^([\d,]+) pixels/)[1].replace(/,/g, ''))).toBeGreaterThan(100);
+});
+
+test('считает в отдельном потоке', async ({ page }) => {
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  expect(await page.evaluate(() => globalThis.workersStarted)).toBe(1);
+
+  // Смена порога идёт туда же и не заводит второго потока.
+  await page.focus('.ghpd-slider');
+  await page.keyboard.press('ArrowRight');
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector('.ghpd-meta').textContent))
+    .toMatch(/pixels/);
+
+  expect(await page.evaluate(() => globalThis.workersStarted)).toBe(1);
+});
+
+test('без отдельного потока считает сам', async ({ page }) => {
+  // Blob-потоки может запретить политика страницы, а в Safari расширение
+  // порой поднимается без runtime — тогда остаётся общий поток.
+  await openFrame(page);
+  await page.evaluate(() => {
+    delete globalThis.chrome.runtime;
+  });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  expect(await page.evaluate(() => globalThis.workersStarted)).toBe(0);
+  expect(await page.textContent('.ghpd-meta')).toMatch(/^[\d,]+ pixels/);
 });
 
 test('подпись на языке интерфейса', async ({ page }) => {

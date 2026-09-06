@@ -6,6 +6,23 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0]
+
+### Added
+
+- The chosen mode carries over to the next image in the pull request; switching
+  back to a native mode stops that.
+- SVG is rasterized at a sensible size — a vector with no intrinsic size is no
+  longer compared as the 300×150 the browser makes up — and the caption reports
+  the size used.
+
+### Changed
+
+- The comparison runs in a worker: the panel stays responsive on multi-megapixel
+  screenshots, and both images live in the worker instead of the frame's memory.
+- The full-frame canvas is reused between renders instead of being allocated
+  again on every slider move.
+
 ## [0.2.3]
 
 ### Fixed
@@ -65,7 +82,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.0...v0.2.1

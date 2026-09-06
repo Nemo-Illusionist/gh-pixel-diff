@@ -35,6 +35,9 @@ function readState() {
       .filter((v) => getComputedStyle(v).display !== 'none'
         && getComputedStyle(v).visibility !== 'hidden').length,
     slider: !!document.querySelector('.ghpd-controls input.ghpd-slider'),
+    // Сравнение уходит в отдельный поток: на настоящей странице это зависит
+    // от доступа к файлам расширения, а его даёт только манифест.
+    worker: document.documentElement.dataset.ghpdWorker ?? null,
   };
 }
 
@@ -84,6 +87,7 @@ test('добавляет режим к родным и считает разни
       .toMatch(/\d+ (пиксел(ь|я|ей)|pixels?)/);
 
     const done = await state();
+    expect(done.worker).toBe('on');
     expect(done.meta).not.toMatch(/Не вышло|Failed/);
     // По умолчанию показан фрагмент с изменениями, а не весь кадр.
     expect(done.meta).toMatch(/фрагмент|fragment/);

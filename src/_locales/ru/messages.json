@@ -99,6 +99,17 @@
       }
     }
   },
+  "rasterized": {
+    "message": "вектор отрисован в $width$×$height$",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
   "thresholdLabel": {
     "message": "Порог сравнения"
   },

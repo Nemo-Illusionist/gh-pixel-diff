@@ -8,6 +8,7 @@
   'use strict';
 
   const { diffPrepared, preparePair, readImagePair } = global.GhPixelDiff;
+  const api = global.browser ?? global.chrome;
   const { plural, t } = global.GhPixelDiffI18n;
 
   const MODE = 'pixel-diff';
@@ -17,6 +18,7 @@
   const THRESHOLD_DEFAULT = 0.1;
   const THRESHOLD_KEY = 'ghpd:threshold';
   const OUTLINE_KEY = 'ghpd:outline';
+  const MODE_KEY = 'ghpd:mode';
 
   /** Репозиторий страницы: GitHub кладёт его во фрейм параметром `nwo`. */
   function repositoryFromUrl() {
@@ -110,8 +112,36 @@
     canvas.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
   }
 
-  function drawCrop(canvas, result, cropped, outline) {
-    const full = document.createElement('canvas');
+  /**
+   * Заводит поток для сравнения.
+   *
+   * Собираем его из тех же файлов, что и content script: расширение не может
+   * создать Worker прямо со своего адреса — страница другого происхождения, —
+   * поэтому исходники читаются через fetch и склеиваются в blob. Если это не
+   * вышло (нет chrome.runtime, запрещён blob), считаем в общем потоке: медленнее,
+   * но работает.
+   */
+  async function createWorker() {
+    if (!api?.runtime?.getURL || typeof Worker !== 'function') return null;
+    try {
+      const sources = await Promise.all(
+        ['vendor/pixelmatch.js', 'content/compare.js', 'content/worker.js'].map((path) =>
+          fetch(api.runtime.getURL(path)).then((response) => response.text()),
+        ),
+      );
+      const url = URL.createObjectURL(new Blob(sources, { type: 'text/javascript' }));
+      const worker = new Worker(url);
+      URL.revokeObjectURL(url);
+      return worker;
+    } catch {
+      return null;
+    }
+  }
+
+  function drawCrop(canvas, full, result, cropped, outline) {
+    // Холст с полным кадром один на всю панель: на снимке в несколько
+    // мегапикселей заводить его заново на каждую отрисовку — лишние десятки
+    // мегабайт при каждом движении ползунка.
     full.width = result.diff.width;
     full.height = result.diff.height;
     full.getContext('2d').putImageData(result.diff, 0, 0);
@@ -158,6 +188,7 @@
 
     const shell = el('span', 'shell ghpd-shell');
     const canvas = el('canvas', 'ghpd-canvas');
+    const full = document.createElement('canvas');
 
     const meta = el('p', 'ghpd-meta');
     const cropToggle = el('button', 'ghpd-crop-toggle');
@@ -171,6 +202,8 @@
     let result = null;
     let prepared = null;
     let loading = null;
+    let worker = null;
+    let request = 0;
     let cropped = true;
     // Рамка вокруг изменений — по умолчанию да: без неё правку в несколько
     // пикселей на уменьшенном кадре не найти. Но на мелком снимке она сама
@@ -178,7 +211,7 @@
     let outline = readSetting(OUTLINE_KEY) !== 'off';
 
     const render = () => {
-      const box = drawCrop(canvas, result, cropped, outline);
+      const box = drawCrop(canvas, full, result, cropped, outline);
       fitCanvas(canvas);
       const percent = result.ratio * 100;
       const shown = percent >= 0.01 ? percent.toFixed(2) : '<0.01';
@@ -198,6 +231,11 @@
           outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
           meta.append(' · ', outlineToggle);
         }
+      }
+      // У вектора собственного размера может не быть: сказать, в чём считали,
+      // честнее, чем показывать проценты от неизвестно чего.
+      if (result.scale > 1) {
+        meta.append(` · ${t('rasterized', result.width, result.height)}`);
       }
       if (result.sizeChanged) {
         meta.append(
@@ -224,14 +262,63 @@
     // Картинки грузятся и раскладываются по холстам ровно один раз: движение
     // ползунка меняет только порог, и пересчитывать ради него декодирование
     // снимка в несколько мегапикселей незачем.
+    /** Отдаёт обе картинки потоку и там же их оставляет. */
+    const handOver = async (data) => {
+      const started = await createWorker();
+      if (!started) return null;
+      await new Promise((resolve) => {
+        started.addEventListener('message', function ready({ data: message }) {
+          if (message.type !== 'ready') return;
+          started.removeEventListener('message', ready);
+          resolve();
+        });
+        started.postMessage(
+          {
+            type: 'prepare',
+            width: data.width,
+            height: data.height,
+            scale: data.scale,
+            sizeChanged: data.sizeChanged,
+            before: data.dataBefore.data.buffer,
+            after: data.dataAfter.data.buffer,
+          },
+          [data.dataBefore.data.buffer, data.dataAfter.data.buffer],
+        );
+      });
+      return started;
+    };
+
+    const askWorker = (threshold) =>
+      new Promise((resolve, reject) => {
+        const id = ++request;
+        worker.addEventListener('message', function answer({ data }) {
+          // Ответы на устаревшие запросы игнорируем: ползунок двигают быстрее,
+          // чем считается снимок.
+          if (data.type !== 'diff' || data.id !== id) return;
+          worker.removeEventListener('message', answer);
+          resolve({
+            ...data,
+            diff: new ImageData(new Uint8ClampedArray(data.diff), data.width, data.height),
+          });
+        });
+        worker.addEventListener('error', (event) => reject(new Error(event.message)), { once: true });
+        worker.postMessage({ type: 'diff', id, threshold });
+      });
+
     const compare = async (threshold) => {
       try {
         if (!prepared) {
           meta.textContent = t('computing');
           loading ??= preparePair(pair, { repository: repositoryFromUrl() });
           prepared = await loading;
+          // Буферы уходят в поток во владение, поэтому в основном остаются
+          // только размеры и сами картинки — для подписи.
+          worker = await handOver(prepared);
+          // Видно снаружи: и в тестах, и когда разбираешь чужую жалобу.
+          document.documentElement.dataset.ghpdWorker = worker ? 'on' : 'off';
         }
-        result = diffPrepared(prepared, { threshold });
+        const computed = worker ? await askWorker(threshold) : diffPrepared(prepared, { threshold });
+        result = { ...computed, before: prepared.before, after: prepared.after };
         render();
       } catch (error) {
         meta.textContent = t('failed', error.message);
@@ -295,8 +382,18 @@
       else panel.hide();
     };
 
-    modes.addEventListener('change', sync);
-    sync();
+    modes.addEventListener('change', () => {
+      // Запоминаем только свой выбор: на пул-реквесте с десятком картинок
+      // иначе пришлось бы нажимать Pixel Diff в каждом файле заново. Уход на
+      // родной режим — сигнал больше не вмешиваться.
+      saveSetting(MODE_KEY, input.checked ? MODE : '');
+      sync();
+    });
+
+    // Восстанавливаем выбор так же, как это сделал бы человек: щелчком.
+    // Скрипт GitHub слушает то же событие и должен узнать о смене режима.
+    if (readSetting(MODE_KEY) === MODE) input.click();
+    else sync();
   }
 
   if (document.readyState === 'loading') {

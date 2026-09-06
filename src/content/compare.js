@@ -3,6 +3,16 @@
 (function (global) {
   'use strict';
 
+  /**
+   * Во сколько раз растрировать вектор.
+   * У SVG собственного размера может не быть вовсе — тогда браузер отдаёт свои
+   * 300×150, и сравнение считается по картинке, которой никто не видел.
+   * Поэтому длинную сторону доводим до этого размера, но не больше чем ввосьмеро:
+   * незачем разворачивать иконку в полотно.
+   */
+  const RASTER_TARGET = 1024;
+  const RASTER_LIMIT = 8;
+
   /** Хост, на котором GitHub рендерит превью бинарных файлов. */
   const VIEWSCREEN_IMG = /^https:\/\/viewscreen\.githubusercontent\.com\/diff\/img/;
 
@@ -76,13 +86,27 @@
   /**
    * Рисует картинку в левом верхнем углу холста заданного размера.
    * Разные размеры — обычное дело: страница стала длиннее, снимок вырос.
+   * Масштаб больше единицы бывает только у вектора — растр увеличивать
+   * бессмысленно, разницы от этого не прибавится.
    */
-  function toImageData(img, width, height) {
+  function toImageData(img, width, height, scale = 1) {
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, 0, 0, img.naturalWidth * scale, img.naturalHeight * scale);
     return ctx.getImageData(0, 0, width, height);
+  }
+
+  /** Векторную картинку можно нарисовать в любом размере — растровую нет. */
+  function isVector(url) {
+    return /\.svg(?:[?#]|$)/i.test(url);
+  }
+
+  /** Во сколько раз увеличить вектор, чтобы сравнивать его по существу. */
+  function rasterScale(pair, width, height) {
+    if (!isVector(pair.before) && !isVector(pair.after)) return 1;
+    const longest = Math.max(width, height) || 1;
+    return Math.min(RASTER_LIMIT, Math.max(1, Math.round(RASTER_TARGET / longest)));
   }
 
   /**
@@ -133,16 +157,20 @@
       loadImageWithFallback(pair.after, options.repository),
     ]);
 
-    const width = Math.max(before.naturalWidth, after.naturalWidth);
-    const height = Math.max(before.naturalHeight, after.naturalHeight);
+    const naturalWidth = Math.max(before.naturalWidth, after.naturalWidth);
+    const naturalHeight = Math.max(before.naturalHeight, after.naturalHeight);
+    const scale = rasterScale(pair, naturalWidth, naturalHeight);
+    const width = naturalWidth * scale;
+    const height = naturalHeight * scale;
 
     return {
       width,
       height,
+      scale,
       before,
       after,
-      dataBefore: toImageData(before, width, height),
-      dataAfter: toImageData(after, width, height),
+      dataBefore: toImageData(before, width, height, scale),
+      dataAfter: toImageData(after, width, height, scale),
       sizeChanged:
         before.naturalWidth !== after.naturalWidth ||
         before.naturalHeight !== after.naturalHeight,
@@ -175,6 +203,7 @@
     return {
       width,
       height,
+      scale: prepared.scale ?? 1,
       changed,
       ratio: changed / (width * height),
       bounds: boundsOfChanges(diff.data, width, height),
@@ -199,6 +228,8 @@
     loadImage,
     rewriteRepository,
     boundsOfChanges,
+    isVector,
+    rasterScale,
     VIEWSCREEN_IMG,
   };
 })(self);
