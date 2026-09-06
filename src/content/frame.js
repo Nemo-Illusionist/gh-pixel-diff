@@ -19,6 +19,8 @@
   const THRESHOLD_KEY = 'ghpd:threshold';
   const OUTLINE_KEY = 'ghpd:outline';
   const MODE_KEY = 'ghpd:mode';
+  /** Настройка из окна расширения: показывать ли переключатель кадров. */
+  const SHOW_VIEWS_DEFAULT = true;
 
   /** Репозиторий страницы: GitHub кладёт его во фрейм параметром `nwo`. */
   function repositoryFromUrl() {
@@ -138,13 +140,42 @@
     }
   }
 
-  function drawCrop(canvas, full, result, cropped, outline) {
+  /**
+   * Показывать ли переключатель «до / после / разница».
+   * Живёт в хранилище расширения, а не фрейма: ставится в окне расширения,
+   * читается здесь. Нет хранилища — показываем.
+   */
+  async function readShowViews() {
+    try {
+      const stored = await api?.storage?.sync?.get({ showViews: SHOW_VIEWS_DEFAULT });
+      return stored?.showViews ?? SHOW_VIEWS_DEFAULT;
+    } catch {
+      return SHOW_VIEWS_DEFAULT;
+    }
+  }
+
+  function drawCrop(canvas, full, result, cropped, outline, view) {
     // Холст с полным кадром один на всю панель: на снимке в несколько
     // мегапикселей заводить его заново на каждую отрисовку — лишние десятки
     // мегабайт при каждом движении ползунка.
-    full.width = result.diff.width;
-    full.height = result.diff.height;
-    full.getContext('2d').putImageData(result.diff, 0, 0);
+    full.width = result.width;
+    full.height = result.height;
+    const source = full.getContext('2d');
+    if (view === 'diff') {
+      source.putImageData(result.diff, 0, 0);
+    } else {
+      // «До» и «после» рисуем в том же размере, что и разницу: у вектора это
+      // увеличенный кадр, и переключение не должно менять масштаб.
+      const image = result[view];
+      source.clearRect(0, 0, result.width, result.height);
+      source.drawImage(
+        image,
+        0,
+        0,
+        image.naturalWidth * result.scale,
+        image.naturalHeight * result.scale,
+      );
+    }
 
     if (!cropped || !result.bounds) {
       canvas.width = result.width;
@@ -205,13 +236,15 @@
     let worker = null;
     let request = 0;
     let cropped = true;
+    // Какой из трёх кадров показан: разница, «до» или «после».
+    let shownFrame = 'diff';
     // Рамка вокруг изменений — по умолчанию да: без неё правку в несколько
     // пикселей на уменьшенном кадре не найти. Но на мелком снимке она сама
     // закрывает картинку, поэтому её можно убрать, и выбор запоминается.
     let outline = readSetting(OUTLINE_KEY) !== 'off';
 
     const render = () => {
-      const box = drawCrop(canvas, full, result, cropped, outline);
+      const box = drawCrop(canvas, full, result, cropped, outline, shownFrame);
       fitCanvas(canvas);
       const percent = result.ratio * 100;
       const shown = percent >= 0.01 ? percent.toFixed(2) : '<0.01';
@@ -325,15 +358,39 @@
       }
     };
 
+    // Переключатель кадров. Родные 2-up и Swipe показывают то же самое, но
+    // без обрезки по изменениям и без общего масштаба — здесь «до» и «после»
+    // ложатся ровно на то место, где найдена разница.
+    const views = el('div', 'ghpd-views');
+    const viewButtons = new Map();
+    for (const name of ['before', 'after', 'diff']) {
+      const button = el('button', 'ghpd-view-button');
+      button.type = 'button';
+      button.textContent = t(`view${name[0].toUpperCase()}${name.slice(1)}`);
+      button.addEventListener('click', () => {
+        shownFrame = name;
+        for (const [key, node] of viewButtons) node.classList.toggle('selected', key === shownFrame);
+        if (result) render();
+      });
+      viewButtons.set(name, button);
+      views.append(button);
+    }
+    viewButtons.get('diff').classList.add('selected');
+
     let debounce = null;
     const slider = createSlider((value) => {
       clearTimeout(debounce);
       debounce = setTimeout(() => compare(value), 150);
     });
-    view.append(slider.element);
+    view.append(slider.element, views);
 
     return {
       element: view,
+      showViews(visible) {
+        views.hidden = !visible;
+        // Переключатель занимает место под кадром — кадр вписываем с учётом.
+        document.documentElement.style.setProperty('--ghpd-reserve', visible ? '120px' : '90px');
+      },
       show() {
         view.hidden = false;
         if (!result) compare(slider.value);
@@ -351,6 +408,14 @@
 
     const panel = build(pair, modes);
     document.body.append(panel.element);
+
+    // Настройка из окна расширения: читается асинхронно, поэтому переключатель
+    // до ответа спрятан — показать его позже дешевле, чем моргнуть им.
+    panel.showViews(false);
+    readShowViews().then((visible) => panel.showViews(visible));
+    api?.storage?.onChanged?.addListener((changes, area) => {
+      if (area === 'sync' && changes.showViews) panel.showViews(changes.showViews.newValue !== false);
+    });
 
     // Панель режимов остаётся видимой: под неё оставляем место.
     const bar = document.querySelector('.js-render-bar') || modes.parentElement;

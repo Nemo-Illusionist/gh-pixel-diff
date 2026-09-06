@@ -46,7 +46,8 @@
 /* Кадр вписывается целиком: увеличивать его сверх натурального размера незачем.
    Предел считаем от высоты фрейма, а не в процентах от родителя: у того высота
    определяется содержимым, и процент браузер просто не разрешит. Вычет — место
-   под подпись, ползунок, отступы и панель режимов.
+   под подпись, ползунок, отступы и панель режимов; с переключателем кадров
+   его нужно больше, и его размер задаётся при показе.
 
    Рамка — на самом холсте, без обёртки: обёртка мерила бы ширину по
    натуральному размеру картинки, а та ужимается по высоте, и справа от кадра
@@ -59,7 +60,7 @@
   width: auto;
   height: auto;
   max-width: 100%;
-  max-height: calc(100vh - var(--ghpd-bar-height, 40px) - 90px);
+  max-height: calc(100vh - var(--ghpd-bar-height, 40px) - var(--ghpd-reserve, 90px));
   object-fit: contain;
   border: 1px solid var(--borderColor-default, #d0d7de);
   border-radius: 4px;
@@ -157,3 +158,35 @@
 
 .ghpd-mark-small { width: 7px; height: 7px; }
 .ghpd-mark-large { width: 12px; height: 12px; }
+
+/* Переключатель кадров: «до», «после», разница. */
+.ghpd-views {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.ghpd-views[hidden] { display: none; }
+
+.ghpd-view-button {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--fgColor-muted, #59636e);
+  cursor: pointer;
+}
+
+.ghpd-view-button:hover { color: var(--fgColor-default, #1f2328); }
+
+.ghpd-view-button.selected {
+  border-color: var(--borderColor-default, #d0d7de);
+  color: var(--fgColor-default, #1f2328);
+}
+
+.ghpd-view-button:focus-visible {
+  outline: 2px solid var(--fgColor-accent, #0969da);
+  outline-offset: 1px;
+}

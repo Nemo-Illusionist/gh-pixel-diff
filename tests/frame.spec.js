@@ -48,7 +48,7 @@ function svgPair(size) {
 }
 
 /** Ставит подмену сети и подкладывает тексты вместо chrome.i18n. */
-async function openFrame(page, images = null) {
+async function openFrame(page, images = null, settings = {}) {
   await page.route('https://viewscreen.githubusercontent.com/**', (route) =>
     route.fulfill({ contentType: 'text/html; charset=utf-8', body: read('fixtures/frame.html') }),
   );
@@ -83,6 +83,11 @@ async function openFrame(page, images = null) {
     return route.fulfill({ contentType: 'text/javascript', body: read(`../src/${path}`) });
   });
 
+  await page.addInitScript((settings) => {
+    // @ts-ignore — хранилище расширения: настройка приходит из окна.
+    globalThis.storedSettings = settings;
+  }, settings);
+
   await page.addInitScript((locale) => {
     const getMessage = (key, substitutions = []) => {
       const entry = locale[key];
@@ -111,6 +116,13 @@ async function openFrame(page, images = null) {
     globalThis.chrome = {
       i18n: { getMessage, getUILanguage: () => 'en' },
       runtime: { getURL: (path) => `${location.origin}/__ext/${path}` },
+      storage: {
+        sync: {
+          // @ts-ignore
+          get: async (defaults) => ({ ...defaults, ...globalThis.storedSettings }),
+        },
+        onChanged: { addListener: () => {} },
+      },
     };
   }, messages);
 
@@ -198,8 +210,13 @@ test('в высоком фрейме содержимое по центру', as
   const gaps = await page.evaluate(() => {
     const view = document.querySelector('.ghpd-view').getBoundingClientRect();
     const canvas = document.querySelector('.ghpd-canvas').getBoundingClientRect();
-    const controls = document.querySelector('.ghpd-controls').getBoundingClientRect();
-    return { top: canvas.top - view.top, bottom: view.bottom - controls.bottom };
+    // Нижняя граница содержимого — последний видимый элемент панели, а не
+    // ползунок: под ним есть ещё переключатель кадров.
+    const last = [...document.querySelectorAll('.ghpd-view > *')]
+      .filter((node) => !node.hidden)
+      .pop()
+      .getBoundingClientRect();
+    return { top: canvas.top - view.top, bottom: view.bottom - last.bottom };
   });
 
   expect(Math.abs(gaps.top - gaps.bottom)).toBeLessThan(24);
@@ -217,8 +234,12 @@ test('рамка облегает кадр вплотную', async ({ page }) =
 
   const framed = await page.evaluate(() => {
     const canvas = document.querySelector('.ghpd-canvas').getBoundingClientRect();
-    // Всё, у чего есть видимая рамка, должно совпадать с кадром по размеру.
+    // Всё, что обрамляет кадр, должно совпадать с ним по размеру. Кнопки со
+    // своими рамками сюда не относятся — берём только предков холста и его
+    // самого.
+    const canvasNode = document.querySelector('.ghpd-canvas');
     return [...document.querySelectorAll('.ghpd-view, .ghpd-view *')]
+      .filter((node) => node === canvasNode || node.contains(canvasNode))
       .filter((node) => parseFloat(getComputedStyle(node).borderTopWidth) > 0)
       .map((node) => {
         const rect = node.getBoundingClientRect();
@@ -411,6 +432,44 @@ test('без отдельного потока считает сам', async ({ 
 
   expect(await page.evaluate(() => globalThis.workersStarted)).toBe(0);
   expect(await page.textContent('.ghpd-meta')).toMatch(/^[\d,]+ pixels/);
+});
+
+test('переключает «до», «после» и разницу', async ({ page }) => {
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-crop-toggle');
+
+  // Цвет полоски, которая и отличается: в «до» серая, в «после» красная.
+  const stripe = () =>
+    page.evaluate(() => {
+      const canvas = document.querySelector('.ghpd-canvas');
+      const [r, g, b] = canvas.getContext('2d').getImageData(30, 605, 1, 1).data;
+      return `${r},${g},${b}`;
+    });
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(1)');
+  expect(await stripe()).toBe('201,209,217');
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(2)');
+  expect(await stripe()).toBe('248,81,73');
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(3)');
+  expect(await page.evaluate(() =>
+    document.querySelector('.ghpd-views .ghpd-view-button:nth-child(3)').classList.contains('selected'),
+  )).toBe(true);
+});
+
+test('переключатель кадров можно выключить в настройках', async ({ page }) => {
+  await openFrame(page, null, { showViews: false });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector('.ghpd-views')?.hidden))
+    .toBe(true);
 });
 
 test('подпись на языке интерфейса', async ({ page }) => {

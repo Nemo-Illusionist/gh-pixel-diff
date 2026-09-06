@@ -88,6 +88,18 @@
   "showOutline": {
     "message": "вернуть рамку"
   },
+  "viewBefore": {
+    "message": "до"
+  },
+  "viewAfter": {
+    "message": "после"
+  },
+  "viewDiff": {
+    "message": "разница"
+  },
+  "popupShowViews": {
+    "message": "Показывать переключатель «до / после / разница»"
+  },
   "sizeChanged": {
     "message": "размер изменился: $before$ → $after$",
     "placeholders": {

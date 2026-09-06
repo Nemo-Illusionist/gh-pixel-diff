@@ -72,6 +72,18 @@
   "showOutline": {
     "message": "show the outline"
   },
+  "viewBefore": {
+    "message": "before"
+  },
+  "viewAfter": {
+    "message": "after"
+  },
+  "viewDiff": {
+    "message": "diff"
+  },
+  "popupShowViews": {
+    "message": "Show the before / after / diff switcher"
+  },
   "sizeChanged": {
     "message": "size changed: $before$ → $after$",
     "placeholders": {

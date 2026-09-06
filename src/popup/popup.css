@@ -35,6 +35,16 @@ button {
 
 button:hover { background: color-mix(in srgb, canvastext 14%, transparent); }
 
+.setting {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 12px 0 0;
+  cursor: pointer;
+}
+
+.setting input { margin: 2px 0 0; }
+
 .note {
   margin: 12px 0 0;
   color: color-mix(in srgb, canvastext 60%, transparent);

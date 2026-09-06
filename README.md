@@ -22,6 +22,9 @@ fragment where the difference lives.
 - Counts how many pixels changed and what share of the frame that is.
 - A threshold slider — from "catch even anti-aliasing" to "only what the eye
   sees" — styled like the Onion Skin one.
+- A before / after / diff switcher under the frame: the two versions in the same
+  scale and the same crop as the difference. It can be turned off in the
+  extension's window.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame

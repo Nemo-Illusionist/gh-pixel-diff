@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0]
+
+### Added
+
+- A before / after / diff switcher under the frame — the two versions shown in
+  the same scale and crop as the difference.
+- A setting in the extension's window to hide that switcher; it is shown by
+  default.
+
 ## [0.3.0]
 
 ### Added
@@ -82,7 +91,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.1...v0.2.2

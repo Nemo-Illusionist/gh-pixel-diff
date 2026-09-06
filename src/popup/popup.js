@@ -51,6 +51,17 @@ report.href =
   `${REPOSITORY}/issues/new?body=` +
   encodeURIComponent(`\n\n---\n${version} · ${navigator.userAgent}`);
 
+// Переключатель кадров в панели: показывать или нет. По умолчанию да.
+const showViews = document.querySelector('#show-views');
+
+api.storage.sync.get({ showViews: true }).then(({ showViews: value }) => {
+  showViews.checked = value !== false;
+});
+
+showViews.addEventListener('change', () => {
+  api.storage.sync.set({ showViews: showViews.checked });
+});
+
 function show(granted) {
   status.classList.remove('status-checking');
   status.classList.toggle('status-granted', granted);
