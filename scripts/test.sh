@@ -3,7 +3,7 @@
 # и результат не зависит от того, что стоит на машине.
 set -euo pipefail
 
-IMAGE="mcr.microsoft.com/playwright:v1.62.1-noble"
+IMAGE="mcr.microsoft.com/playwright:v1.63.0-noble"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 if ! docker info >/dev/null 2>&1; then
