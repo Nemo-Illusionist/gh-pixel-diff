@@ -16,6 +16,7 @@
   const THRESHOLD_MAX = 0.5;
   const THRESHOLD_DEFAULT = 0.1;
   const THRESHOLD_KEY = 'ghpd:threshold';
+  const OUTLINE_KEY = 'ghpd:outline';
 
   /** Репозиторий страницы: GitHub кладёт его во фрейм параметром `nwo`. */
   function repositoryFromUrl() {
@@ -37,27 +38,32 @@
    * дальше хочется с тем же. Хранилище фрейма для этого и годится — оно своё
    * у домена viewscreen и переживает переход к следующему файлу.
    */
-  function readThreshold() {
+  function readSetting(key) {
     try {
-      // Именно так: Number(null) — это ноль, и без проверки на пустоту порог
-      // молча уезжал бы в самый левый край при первом же открытии.
-      const stored = localStorage.getItem(THRESHOLD_KEY);
-      const saved = Number(stored);
-      if (stored !== null && Number.isFinite(saved) && saved >= 0 && saved <= THRESHOLD_MAX) {
-        return saved;
-      }
+      return localStorage.getItem(key);
     } catch {
       // Приватный режим и запрет на хранилище — не повод падать.
+      return null;
     }
-    return THRESHOLD_DEFAULT;
   }
 
-  function saveThreshold(value) {
+  function saveSetting(key, value) {
     try {
-      localStorage.setItem(THRESHOLD_KEY, String(value));
+      localStorage.setItem(key, String(value));
     } catch {
       // См. выше.
     }
+  }
+
+  function readThreshold() {
+    // Именно так: Number(null) — это ноль, и без проверки на пустоту порог
+    // молча уезжал бы в самый левый край при первом же открытии.
+    const stored = readSetting(THRESHOLD_KEY);
+    const saved = Number(stored);
+    if (stored !== null && Number.isFinite(saved) && saved >= 0 && saved <= THRESHOLD_MAX) {
+      return saved;
+    }
+    return THRESHOLD_DEFAULT;
   }
 
   /**
@@ -81,7 +87,7 @@
 
     input.addEventListener('input', () => {
       const value = Number(input.value);
-      saveThreshold(value);
+      saveSetting(THRESHOLD_KEY, value);
       onChange(value);
     });
 
@@ -94,7 +100,7 @@
     return { element: controls, get value() { return Number(input.value); } };
   }
 
-  function drawCrop(canvas, result, cropped) {
+  function drawCrop(canvas, result, cropped, outline) {
     const full = document.createElement('canvas');
     full.width = result.diff.width;
     full.height = result.diff.height;
@@ -106,8 +112,9 @@
       const ctx = canvas.getContext('2d');
       ctx.drawImage(full, 0, 0);
       // Кадр показывается уменьшенным, и несколько изменившихся пикселей на нём
-      // просто исчезают. Поэтому обводим место, где они нашлись.
-      if (result.bounds) {
+      // просто исчезают. Поэтому обводим место, где они нашлись — если рамка
+      // не мешает: на мелком снимке она закрывает половину кадра.
+      if (result.bounds && outline) {
         const box = result.bounds;
         const margin = Math.max(6, Math.round(Math.max(result.width, result.height) / 120));
         ctx.strokeStyle = '#d1242f';
@@ -147,6 +154,8 @@
     const meta = el('p', 'ghpd-meta');
     const cropToggle = el('button', 'ghpd-crop-toggle');
     cropToggle.type = 'button';
+    const outlineToggle = el('button', 'ghpd-outline-toggle');
+    outlineToggle.type = 'button';
 
     shell.append(frame, meta);
     view.append(shell);
@@ -155,9 +164,13 @@
     let prepared = null;
     let loading = null;
     let cropped = true;
+    // Рамка вокруг изменений — по умолчанию да: без неё правку в несколько
+    // пикселей на уменьшенном кадре не найти. Но на мелком снимке она сама
+    // закрывает картинку, поэтому её можно убрать, и выбор запоминается.
+    let outline = readSetting(OUTLINE_KEY) !== 'off';
 
     const render = () => {
-      const box = drawCrop(canvas, result, cropped);
+      const box = drawCrop(canvas, result, cropped, outline);
       const percent = result.ratio * 100;
       const shown = percent >= 0.01 ? percent.toFixed(2) : '<0.01';
 
@@ -171,6 +184,11 @@
           ? t('showFullFrame', box.width, box.height)
           : t('showChangesOnly');
         meta.append(' · ', cropToggle);
+        // Рамка есть только в полном кадре — там же и переключатель.
+        if (!cropped) {
+          outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
+          meta.append(' · ', outlineToggle);
+        }
       }
       if (result.sizeChanged) {
         meta.append(
@@ -185,6 +203,12 @@
 
     cropToggle.addEventListener('click', () => {
       cropped = !cropped;
+      render();
+    });
+
+    outlineToggle.addEventListener('click', () => {
+      outline = !outline;
+      saveSetting(OUTLINE_KEY, outline ? 'on' : 'off');
       render();
     });
 

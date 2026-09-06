@@ -16,7 +16,9 @@ fragment where the difference lives.
 ## What it does
 
 - Sits as a fourth button in the native row of modes — no separate panel.
-- Opens on the changed fragment; the full frame is one link away in the caption.
+- Opens on the changed fragment; the full frame is one link away in the caption,
+  with the changed area outlined in red — the outline can be turned off, and the
+  choice is remembered.
 - Counts how many pixels changed and what share of the frame that is.
 - A threshold slider — from "catch even anti-aliasing" to "only what the eye
   sees" — styled like the Onion Skin one.

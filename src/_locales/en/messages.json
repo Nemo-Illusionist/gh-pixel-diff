@@ -6,61 +6,119 @@
   "extDescription": {
     "message": "Adds a pixel-level image diff to GitHub's image viewer — next to 2-up, Swipe and Onion Skin."
   },
-
-  "modeName": { "message": "Pixel Diff" },
-  "computing": { "message": "Comparing…" },
+  "modeName": {
+    "message": "Pixel Diff"
+  },
+  "computing": {
+    "message": "Comparing…"
+  },
   "failed": {
     "message": "Failed: $reason$",
-    "placeholders": { "reason": { "content": "$1" } }
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
   },
   "loadFailed": {
     "message": "could not load $url$",
-    "placeholders": { "url": { "content": "$1" } }
+    "placeholders": {
+      "url": {
+        "content": "$1"
+      }
+    }
   },
-
   "pixelsOne": {
     "message": "$count$ pixel",
-    "placeholders": { "count": { "content": "$1" } }
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "pixelsOther": {
     "message": "$count$ pixels",
-    "placeholders": { "count": { "content": "$1" } }
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "shareOfFrame": {
     "message": "$percent$% of the frame",
-    "placeholders": { "percent": { "content": "$1" } }
+    "placeholders": {
+      "percent": {
+        "content": "$1"
+      }
+    }
   },
   "showFullFrame": {
     "message": "fragment $width$×$height$ — show the whole frame",
-    "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } }
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
   },
-  "showChangesOnly": { "message": "show changes only" },
+  "showChangesOnly": {
+    "message": "show changes only"
+  },
+  "hideOutline": {
+    "message": "hide the outline"
+  },
+  "showOutline": {
+    "message": "show the outline"
+  },
   "sizeChanged": {
     "message": "size changed: $before$ → $after$",
-    "placeholders": { "before": { "content": "$1" }, "after": { "content": "$2" } }
+    "placeholders": {
+      "before": {
+        "content": "$1"
+      },
+      "after": {
+        "content": "$2"
+      }
+    }
   },
-
-  "thresholdLabel": { "message": "Comparison threshold" },
+  "thresholdLabel": {
+    "message": "Comparison threshold"
+  },
   "thresholdHint": {
     "message": "Threshold: to the left even anti-aliasing counts, to the right only what the eye can see"
   },
-
   "popupLead": {
     "message": "Adds a <b>Pixel Diff</b> mode next to 2-up, Swipe and Onion Skin in GitHub's image viewer."
   },
-  "popupChecking": { "message": "Checking access…" },
-  "popupGranted": { "message": "Access granted — the mode will appear in the image viewer." },
-  "popupMissing": { "message": "No access: without it the mode won't appear." },
-  "popupGrant": { "message": "Grant access" },
+  "popupChecking": {
+    "message": "Checking access…"
+  },
+  "popupGranted": {
+    "message": "Access granted — the mode will appear in the image viewer."
+  },
+  "popupMissing": {
+    "message": "No access: without it the mode won't appear."
+  },
+  "popupGrant": {
+    "message": "Grant access"
+  },
   "popupDenied": {
     "message": "Access was not granted. You can also enable it in the extension settings, under \"Edit websites\"."
   },
   "popupCheckFailed": {
     "message": "Could not check access: $reason$",
-    "placeholders": { "reason": { "content": "$1" } }
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
   },
   "popupNote": {
     "message": "GitHub shows images in a frame from <code>viewscreen.githubusercontent.com</code> — that is the domain the access is for. The extension never reads <code>github.com</code> pages."
   },
-  "popupReport": { "message": "Report a problem" }
+  "popupReport": {
+    "message": "Report a problem"
+  }
 }

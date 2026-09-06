@@ -72,7 +72,8 @@
   text-align: center;
 }
 
-.ghpd-crop-toggle {
+.ghpd-crop-toggle,
+.ghpd-outline-toggle {
   font: inherit;
   color: var(--fgColor-accent, #0969da);
   background: none;

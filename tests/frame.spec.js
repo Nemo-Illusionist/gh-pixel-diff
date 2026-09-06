@@ -170,6 +170,39 @@ test('в полном кадре изменения обведены', async ({ 
   expect(outline).toBeGreaterThan(0);
 });
 
+test('рамку вокруг изменений можно убрать', async ({ page }) => {
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-crop-toggle');
+
+  const redPixels = () =>
+    page.evaluate(() => {
+      const canvas = document.querySelector('.ghpd-canvas');
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      let found = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] === 209 && data[i + 1] === 36 && data[i + 2] === 47) found++;
+      }
+      return found;
+    });
+
+  expect(await redPixels()).toBeGreaterThan(0);
+
+  await page.click('.ghpd-outline-toggle');
+  expect(await redPixels()).toBe(0);
+
+  // Выбор запоминается — как и порог.
+  expect(await page.evaluate(() => localStorage.getItem('ghpd:outline'))).toBe('off');
+  await page.reload();
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-crop-toggle');
+  expect(await redPixels()).toBe(0);
+});
+
 test('ползунок слушается клавиатуры и помнит порог', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);

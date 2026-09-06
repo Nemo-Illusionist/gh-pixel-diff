@@ -6,69 +6,135 @@
   "extDescription": {
     "message": "Добавляет в просмотр картинок на GitHub режим попиксельной разницы — рядом с 2-up, Swipe и Onion Skin."
   },
-
-  "modeName": { "message": "Pixel Diff" },
-  "computing": { "message": "Считаю…" },
+  "modeName": {
+    "message": "Pixel Diff"
+  },
+  "computing": {
+    "message": "Считаю…"
+  },
   "failed": {
     "message": "Не вышло: $reason$",
-    "placeholders": { "reason": { "content": "$1" } }
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
   },
   "loadFailed": {
     "message": "не удалось загрузить $url$",
-    "placeholders": { "url": { "content": "$1" } }
+    "placeholders": {
+      "url": {
+        "content": "$1"
+      }
+    }
   },
-
   "pixelsOne": {
     "message": "$count$ пиксель",
-    "placeholders": { "count": { "content": "$1" } }
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "pixelsFew": {
     "message": "$count$ пикселя",
-    "placeholders": { "count": { "content": "$1" } }
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "pixelsMany": {
     "message": "$count$ пикселей",
-    "placeholders": { "count": { "content": "$1" } }
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "pixelsOther": {
     "message": "$count$ пикселей",
-    "placeholders": { "count": { "content": "$1" } }
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "shareOfFrame": {
     "message": "$percent$% кадра",
-    "placeholders": { "percent": { "content": "$1" } }
+    "placeholders": {
+      "percent": {
+        "content": "$1"
+      }
+    }
   },
   "showFullFrame": {
     "message": "фрагмент $width$×$height$ — показать кадр целиком",
-    "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } }
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
   },
-  "showChangesOnly": { "message": "показать только изменения" },
+  "showChangesOnly": {
+    "message": "показать только изменения"
+  },
+  "hideOutline": {
+    "message": "убрать рамку"
+  },
+  "showOutline": {
+    "message": "вернуть рамку"
+  },
   "sizeChanged": {
     "message": "размер изменился: $before$ → $after$",
-    "placeholders": { "before": { "content": "$1" }, "after": { "content": "$2" } }
+    "placeholders": {
+      "before": {
+        "content": "$1"
+      },
+      "after": {
+        "content": "$2"
+      }
+    }
   },
-
-  "thresholdLabel": { "message": "Порог сравнения" },
+  "thresholdLabel": {
+    "message": "Порог сравнения"
+  },
   "thresholdHint": {
     "message": "Порог: слева ловятся даже отличия в сглаживании, справа — только заметные глазу"
   },
-
   "popupLead": {
     "message": "Добавляет режим <b>Pixel Diff</b> к 2-up, Swipe и Onion Skin в просмотре картинок на GitHub."
   },
-  "popupChecking": { "message": "Проверяю доступ…" },
-  "popupGranted": { "message": "Доступ есть — режим появится в панели просмотра картинок." },
-  "popupMissing": { "message": "Доступа нет: без него режим не появится." },
-  "popupGrant": { "message": "Разрешить доступ" },
+  "popupChecking": {
+    "message": "Проверяю доступ…"
+  },
+  "popupGranted": {
+    "message": "Доступ есть — режим появится в панели просмотра картинок."
+  },
+  "popupMissing": {
+    "message": "Доступа нет: без него режим не появится."
+  },
+  "popupGrant": {
+    "message": "Разрешить доступ"
+  },
   "popupDenied": {
     "message": "Доступ не выдан. Его же можно включить в настройках расширения, кнопкой «Изменить сайты»."
   },
   "popupCheckFailed": {
     "message": "Не удалось проверить доступ: $reason$",
-    "placeholders": { "reason": { "content": "$1" } }
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
   },
   "popupNote": {
     "message": "Картинки GitHub показывает во фрейме с домена <code>viewscreen.githubusercontent.com</code> — доступ нужен именно к нему. Страницы <code>github.com</code> расширение не читает."
   },
-  "popupReport": { "message": "Сообщить о проблеме" }
+  "popupReport": {
+    "message": "Сообщить о проблеме"
+  }
 }
