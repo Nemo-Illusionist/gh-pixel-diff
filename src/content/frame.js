@@ -468,10 +468,11 @@
     // ложатся ровно на то место, где найдена разница.
     const views = el('div', 'ghpd-views');
     const viewButtons = new Map();
-    for (const name of ['before', 'after', 'diff']) {
+    const viewNames = { before: 'viewBefore', after: 'viewAfter', diff: 'viewDiff' };
+    for (const [name, key] of Object.entries(viewNames)) {
       const button = el('button', 'ghpd-view-button');
       button.type = 'button';
-      button.textContent = t(`view${name[0].toUpperCase()}${name.slice(1)}`);
+      button.textContent = t(key);
       button.setAttribute('aria-pressed', String(name === 'diff'));
       button.addEventListener('click', () => {
         shownFrame = name;
@@ -497,8 +498,8 @@
       element: view,
       showViews(visible) {
         views.hidden = !visible;
-        // Переключатель занимает место под кадром — кадр вписываем с учётом.
-        document.documentElement.style.setProperty('--ghpd-reserve', visible ? '120px' : '90px');
+        // Переключатель занимает место под кадром — размер запаса знает CSS.
+        document.documentElement.classList.toggle('ghpd-with-views', visible);
       },
       show() {
         view.hidden = false;

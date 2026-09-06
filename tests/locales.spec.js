@@ -33,8 +33,6 @@ function requestedKeys() {
     keys.add(`${key}One`);
     keys.add(`${key}Other`);
   }
-  // Имена кадров тоже собираются из имени кнопки.
-  for (const name of ['Before', 'After', 'Diff']) keys.add(`view${name}`);
   return keys;
 }
 
@@ -67,4 +65,13 @@ test('манифест ссылается на существующие стро
       expect(messages[key], `${key} нет в локали ${name}`).toBeTruthy();
     }
   }
+});
+
+test('версии в манифесте и в пакете совпадают', () => {
+  // Их синхронизирует npm-хук `version`, а тег сверяется уже при релизе:
+  // ручная правка одного из файлов всплыла бы только при публикации.
+  const manifest = JSON.parse(read('../src/manifest.json'));
+  const pkg = JSON.parse(read('../package.json'));
+
+  expect(manifest.version).toBe(pkg.version);
 });

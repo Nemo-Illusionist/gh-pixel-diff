@@ -176,14 +176,33 @@ async function openFrame(page, images = null, settings = {}, options = {}) {
   return store;
 }
 
-/** Догружает расширение в открытую страницу — как это делает браузер. */
+/**
+ * Догружает расширение в открытую страницу — как это делает браузер.
+ * Состав и порядок берём из манифеста: список, переписанный руками,рано или
+ * поздно разойдётся с тем, что грузит браузер, и тесты начнут проверять не то.
+ */
+const contentScripts = JSON.parse(read('../src/manifest.json')).content_scripts[0];
+
 async function injectExtension(page) {
-  await page.addStyleTag({ path: file('../src/content/frame.css') });
-  for (const script of ['../src/vendor/pixelmatch.js', '../src/content/i18n.js',
-    '../src/content/compare.js', '../src/content/frame.js']) {
-    await page.addScriptTag({ path: file(script) });
+  for (const style of contentScripts.css) {
+    await page.addStyleTag({ path: file(`../src/${style}`) });
+  }
+  for (const script of contentScripts.js) {
+    await page.addScriptTag({ path: file(`../src/${script}`) });
   }
 }
+
+/** Сколько на холсте пикселей цвета обводки. */
+const outlinePixels = (page) =>
+  page.evaluate(() => {
+    const canvas = document.querySelector('.ghpd-canvas');
+    const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    let found = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] === 209 && data[i + 1] === 36 && data[i + 2] === 47) found++;
+    }
+    return found;
+  });
 
 /** Ждёт, пока сравнение посчитается и подпись перестанет быть «Comparing…». */
 async function waitForResult(page) {
@@ -330,17 +349,7 @@ test('в полном кадре изменения обведены', async ({ 
 
   // Кадр целиком показывается уменьшенным, и несколько пикселей на нём не
   // разглядеть — поэтому место правки обводится красным.
-  const outline = await page.evaluate(() => {
-    const canvas = document.querySelector('.ghpd-canvas');
-    const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-    let found = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i] === 209 && data[i + 1] === 36 && data[i + 2] === 47) found++;
-    }
-    return found;
-  });
-
-  expect(outline).toBeGreaterThan(0);
+  expect(await outlinePixels(page)).toBeGreaterThan(0);
 });
 
 test('рамку вокруг изменений можно убрать', async ({ page }) => {
@@ -350,21 +359,10 @@ test('рамку вокруг изменений можно убрать', async
   await waitForResult(page);
   await page.click('.ghpd-crop-toggle');
 
-  const redPixels = () =>
-    page.evaluate(() => {
-      const canvas = document.querySelector('.ghpd-canvas');
-      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-      let found = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i] === 209 && data[i + 1] === 36 && data[i + 2] === 47) found++;
-      }
-      return found;
-    });
-
-  expect(await redPixels()).toBeGreaterThan(0);
+  expect(await outlinePixels(page)).toBeGreaterThan(0);
 
   await page.click('.ghpd-outline-toggle');
-  expect(await redPixels()).toBe(0);
+  expect(await outlinePixels(page)).toBe(0);
 
   // Выбор запоминается — как и порог.
   expect(store['ghpd:outline']).toBe('off');
@@ -373,7 +371,7 @@ test('рамку вокруг изменений можно убрать', async
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
   await page.click('.ghpd-crop-toggle');
-  expect(await redPixels()).toBe(0);
+  expect(await outlinePixels(page)).toBe(0);
 });
 
 test('помнит выбранный режим на следующей картинке', async ({ page }) => {
