@@ -211,7 +211,7 @@ async function waitForResult(page) {
     .toMatch(/pixels/);
 }
 
-test('встаёт двумя кнопками в родной ряд, родные не трогает', async ({ page }) => {
+test('встаёт четвёртой кнопкой, родные не трогает', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);
 
@@ -222,10 +222,8 @@ test('встаёт двумя кнопками в родной ряд, родн�
     })),
   );
 
-  expect(modes.map((mode) => mode.text)).toEqual([
-    '2-up', 'Swipe', 'Onion Skin', 'Pixel Diff', '3-up',
-  ]);
-  expect(modes.map((mode) => mode.ours)).toEqual([false, false, false, true, true]);
+  expect(modes.map((mode) => mode.text)).toEqual(['2-up', 'Swipe', 'Onion Skin', 'Pixel Diff']);
+  expect(modes.map((mode) => mode.ours)).toEqual([false, false, false, true]);
 });
 
 test('в любой момент виден ровно один режим', async ({ page }) => {
@@ -506,6 +504,26 @@ test('переключает «до», «после» и разницу', async 
   expect(await page.evaluate(() =>
     document.querySelector('.ghpd-views .ghpd-view-button:nth-child(3)').classList.contains('selected'),
   )).toBe(true);
+
+  expect(await page.evaluate(() =>
+    [...document.querySelectorAll('.ghpd-views .ghpd-view-button')].map((n) => n.textContent),
+  )).toEqual(['before', 'after', 'diff', '3-up']);
+});
+
+test('выбранный кадр помнится между картинками', async ({ page }) => {
+  const store = await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(4)');
+
+  expect(store['ghpd:frame']).toBe('triple');
+
+  await page.reload();
+  await injectExtension(page);
+  await waitForResult(page);
+
+  expect(await page.evaluate(() => !document.querySelector('.ghpd-triple').hidden)).toBe(true);
 });
 
 test('переключатель кадров можно выключить в настройках', async ({ page }) => {
@@ -691,8 +709,9 @@ test('три кадра рядом влезают по ширине', async ({ p
   await openFrame(page);
   await injectExtension(page);
   // Второй наш пункт в ряду — три кадра рядом.
-  await page.click('.js-view-modes .js-view-mode-item:nth-child(5)');
+  await page.click('.ghpd-mode-item');
   await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(4)');
 
   const layout = await page.evaluate(() => {
     const canvases = [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')];
@@ -701,7 +720,8 @@ test('три кадра рядом влезают по ширине', async ({ p
     return {
       сколько: canvases.length,
       одиночныйСпрятан: document.querySelector('.ghpd-view > .ghpd-shell > .ghpd-canvas').hidden,
-      переключательСпрятан: document.querySelector('.ghpd-views').hidden,
+      // Переключатель остаётся на месте: это он и переключил.
+      переключательВиден: !document.querySelector('.ghpd-views').hidden,
       влезают: boxes.every((box) => box.left >= view.left - 1 && box.right <= view.right + 1),
       // Все три одного размера: сравнивать глазами иначе невозможно.
       ширины: boxes.map((box) => Math.round(box.width)),
@@ -711,7 +731,7 @@ test('три кадра рядом влезают по ширине', async ({ p
 
   expect(layout.сколько).toBe(3);
   expect(layout.одиночныйСпрятан).toBe(true);
-  expect(layout.переключательСпрятан).toBe(true);
+  expect(layout.переключательВиден).toBe(true);
   expect(layout.влезают).toBe(true);
   expect(new Set(layout.ширины).size).toBe(1);
   expect(layout.подписи).toEqual(['before', 'after', 'diff']);
@@ -720,9 +740,10 @@ test('три кадра рядом влезают по ширине', async ({ p
 test('три кадра показывают разные картинки', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);
-  await page.click('.js-view-modes .js-view-mode-item:nth-child(5)');
+  await page.click('.ghpd-mode-item');
   await waitForResult(page);
   await page.click('.ghpd-crop-toggle');
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(4)');
 
   // Полоска, которая и отличается: в «до» серая, в «после» красная.
   const colors = await page.evaluate(() =>

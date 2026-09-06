@@ -64,8 +64,8 @@ test('добавляет режим к родным и считает разни
       return current.evaluate(readState).catch(() => null);
     };
 
-    // Наши два режима встали рядом с тремя родными.
-    await expect.poll(state, { timeout: 60_000 }).toMatchObject({ modes: 5, ours: 2 });
+    // Наш режим встал рядом с тремя родными, ровно один.
+    await expect.poll(state, { timeout: 60_000 }).toMatchObject({ modes: 4, ours: 1 });
 
     await frame().evaluate(() => {
       document.querySelector('.ghpd-mode-item input[value="pixel-diff"]').click();

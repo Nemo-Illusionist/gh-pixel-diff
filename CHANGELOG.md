@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0]
+
+### Changed
+
+- Three frames side by side is now the fourth option of the before / after /
+  diff switcher rather than its own entry in the native row of modes, and the
+  chosen frame is remembered between images.
+
 ## [0.6.1]
 
 ### Fixed
@@ -155,7 +163,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.5.0...v0.5.1

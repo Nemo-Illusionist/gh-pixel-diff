@@ -9,10 +9,6 @@
   "modeName": {
     "message": "Pixel Diff"
   },
-  "modeNameTriple": {
-    "message": "3-up",
-    "description": "Название режима с тремя кадрами рядом."
-  },
   "computing": {
     "message": "Comparing…"
   },
@@ -87,6 +83,10 @@
   },
   "viewDiff": {
     "message": "diff"
+  },
+  "viewTriple": {
+    "message": "3-up",
+    "description": "Кнопка переключателя: все три кадра сразу."
   },
   "popupShowViews": {
     "message": "Show the before / after / diff switcher"
