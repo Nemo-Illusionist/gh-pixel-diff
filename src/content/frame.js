@@ -40,24 +40,58 @@
   }
 
   /**
-   * Порог живёт между картинками: подобрав его на одном снимке, читать diff
-   * дальше хочется с тем же. Хранилище фрейма для этого и годится — оно своё
-   * у домена viewscreen и переживает переход к следующему файлу.
+   * Настройки: порог, рамка, выбранный режим.
+   *
+   * Хранятся у расширения, а не во фрейме. Хранилище фрейма для этого не
+   * годится в Safari: viewscreen — третья сторона по отношению к github.com,
+   * и WebKit делает такое хранилище эфемерным — всё пропадало при перезапуске
+   * браузера, а на iOS практически при каждом возврате к вкладке.
+   *
+   * Значения читаются один раз при запуске и дальше живут в памяти: панель
+   * строится синхронно, дожидаться хранилища на каждый чих незачем.
    */
-  function readSetting(key) {
+  const settings = {
+    [THRESHOLD_KEY]: null,
+    [OUTLINE_KEY]: null,
+    [MODE_KEY]: null,
+  };
+
+  async function loadSettings() {
     try {
-      return localStorage.getItem(key);
+      const stored = await api?.storage?.local?.get(settings);
+      if (stored) Object.assign(settings, stored);
+      return;
     } catch {
-      // Приватный режим и запрет на хранилище — не повод падать.
-      return null;
+      // Хранилища расширения нет — остаётся хранилище фрейма.
+    }
+    for (const key of Object.keys(settings)) {
+      try {
+        settings[key] = localStorage.getItem(key);
+      } catch {
+        // Приватный режим и запрет на хранилище — не повод падать.
+      }
     }
   }
 
+  function readSetting(key) {
+    return settings[key];
+  }
+
   function saveSetting(key, value) {
+    settings[key] = String(value);
+    try {
+      const saved = api?.storage?.local?.set({ [key]: String(value) });
+      if (saved) {
+        saved.catch(() => {});
+        return;
+      }
+    } catch {
+      // См. ниже.
+    }
     try {
       localStorage.setItem(key, String(value));
     } catch {
-      // См. выше.
+      // Запрет на запись — настройка просто не переживёт перезагрузку.
     }
   }
 
@@ -66,7 +100,8 @@
     // молча уезжал бы в самый левый край при первом же открытии.
     const stored = readSetting(THRESHOLD_KEY);
     const saved = Number(stored);
-    if (stored !== null && Number.isFinite(saved) && saved >= 0 && saved <= THRESHOLD_MAX) {
+    if (stored !== null && stored !== '' && Number.isFinite(saved)
+        && saved >= 0 && saved <= THRESHOLD_MAX) {
       return saved;
     }
     return THRESHOLD_DEFAULT;
@@ -535,9 +570,12 @@
     else sync();
   }
 
+  // Настройки читаются до сборки панели: иначе ползунок и режим успели бы
+  // моргнуть значениями по умолчанию.
+  const started = loadSettings();
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mount);
+    document.addEventListener('DOMContentLoaded', () => started.then(mount));
   } else {
-    mount();
+    started.then(mount);
   }
 })(self);

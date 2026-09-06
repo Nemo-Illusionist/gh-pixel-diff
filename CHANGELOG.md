@@ -6,6 +6,38 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0]
+
+### Fixed
+
+- Moving the threshold slider while the images were still loading started a
+  second worker and handed it buffers already given away — the panel showed
+  `ArrayBuffer is already detached` and the new threshold was dropped.
+- A worker that failed to start left the panel on "Comparing…" forever. It now
+  greets the main thread before the images are handed over, so a failure falls
+  back to computing in place with the images intact.
+- A failed load is no longer remembered forever: a network blip used to lock the
+  frame into the same error until another file was opened.
+- Settings (threshold, outline, remembered mode) live in extension storage
+  instead of the frame's own. In Safari the frame is third-party storage, which
+  WebKit makes ephemeral — everything was lost on restart, and on iOS almost
+  every time the tab came back.
+- Safari 15.4–16.3 could not compare at all: `OffscreenCanvas` arrived in 16.4.
+  There is a plain canvas fallback now.
+- An image with no size reported `The source width is 0` from the canvas
+  internals instead of a readable message.
+- Zero changed pixels were shown as `<0.01% of the frame` instead of `0%`.
+- The extension window now offers the access button even when the check itself
+  failed; before that the user got an error message and no way forward.
+
+### Changed
+
+- One listener on the worker for its whole life instead of a pair per slider
+  move.
+- The caption announces itself to screen readers (`aria-live`), the frame
+  switcher reports its state (`aria-pressed`), the canvas is no longer mute
+  (`role="img"`).
+
 ## [0.4.0]
 
 ### Added
@@ -91,7 +123,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.2...v0.2.3

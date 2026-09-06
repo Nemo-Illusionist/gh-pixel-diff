@@ -49,6 +49,13 @@ function svgPair(size) {
 
 /** Ставит подмену сети и подкладывает тексты вместо chrome.i18n. */
 async function openFrame(page, images = null, settings = {}, options = {}) {
+  // Хранилище расширения: живёт в тесте, поэтому переживает page.reload().
+  const store = {};
+  await page.exposeFunction('ghpdStorageGet', (defaults) => ({ ...defaults, ...store }));
+  await page.exposeFunction('ghpdStorageSet', (values) => {
+    Object.assign(store, values);
+  });
+
   await page.route('https://viewscreen.githubusercontent.com/**', (route) =>
     route.fulfill({ contentType: 'text/html; charset=utf-8', body: read('fixtures/frame.html') }),
   );
@@ -124,6 +131,15 @@ async function openFrame(page, images = null, settings = {}, options = {}) {
           // @ts-ignore
           get: async (defaults) => ({ ...defaults, ...globalThis.storedSettings }),
         },
+        // Настройки панели живут здесь: во фрейме Safari своё хранилище
+        // эфемерное, поэтому расширение держит их у себя. Само хранилище — на
+        // стороне теста, чтобы переживать перезагрузку страницы, как настоящее.
+        local: {
+          // @ts-ignore
+          get: (defaults) => globalThis.ghpdStorageGet(defaults),
+          // @ts-ignore
+          set: (values) => globalThis.ghpdStorageSet(values),
+        },
         onChanged: { addListener: () => {} },
       },
     };
@@ -137,6 +153,7 @@ async function openFrame(page, images = null, settings = {}, options = {}) {
   }
 
   await page.goto(images ? FRAME_URL_SVG : FRAME_URL);
+  return store;
 }
 
 /** Догружает расширение в открытую страницу — как это делает браузер. */
@@ -307,7 +324,7 @@ test('в полном кадре изменения обведены', async ({ 
 });
 
 test('рамку вокруг изменений можно убрать', async ({ page }) => {
-  await openFrame(page);
+  const store = await openFrame(page);
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
@@ -330,7 +347,7 @@ test('рамку вокруг изменений можно убрать', async
   expect(await redPixels()).toBe(0);
 
   // Выбор запоминается — как и порог.
-  expect(await page.evaluate(() => localStorage.getItem('ghpd:outline'))).toBe('off');
+  expect(store['ghpd:outline']).toBe('off');
   await page.reload();
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
@@ -363,7 +380,7 @@ test('помнит выбранный режим на следующей кар�
 });
 
 test('ползунок слушается клавиатуры и помнит порог', async ({ page }) => {
-  await openFrame(page);
+  const store = await openFrame(page);
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
@@ -373,7 +390,7 @@ test('ползунок слушается клавиатуры и помнит �
   await page.keyboard.press('ArrowRight');
 
   expect(await page.inputValue('.ghpd-slider')).toBe('0.12');
-  expect(await page.evaluate(() => localStorage.getItem('ghpd:threshold'))).toBe('0.12');
+  expect(store['ghpd:threshold']).toBe('0.12');
 
   // Порог переживает переход к следующей картинке — фрейм там новый.
   await page.reload();
@@ -546,6 +563,36 @@ test('после ошибки загрузки можно попробовать
 
   await waitForResult(page);
   expect(await page.textContent('.ghpd-meta')).toMatch(/^[\d,]+ pixels/);
+});
+
+test('настройки переживают запрет хранилища фрейма', async ({ page }) => {
+  // Ровно случай Safari: viewscreen — третья сторона по отношению к github.com,
+  // и WebKit делает такое хранилище эфемерным. Настройки обязаны жить у
+  // расширения, а не во фрейме.
+  const store = await openFrame(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(globalThis, 'localStorage', {
+      get() {
+        throw new Error('storage is blocked');
+      },
+    });
+  });
+  await page.reload();
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  await page.focus('.ghpd-slider');
+  await page.keyboard.press('ArrowRight');
+  expect(store['ghpd:threshold']).toBe('0.11');
+
+  // И на следующей картинке всё на месте: режим и порог.
+  await page.reload();
+  await injectExtension(page);
+  await waitForResult(page);
+
+  expect(await page.isChecked('.ghpd-mode-item input')).toBe(true);
+  expect(await page.inputValue('.ghpd-slider')).toBe('0.11');
 });
 
 test('подпись на языке интерфейса', async ({ page }) => {
