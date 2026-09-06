@@ -9,6 +9,10 @@
   "modeName": {
     "message": "Pixel Diff"
   },
+  "modeNameTriple": {
+    "message": "3-up",
+    "description": "Название режима с тремя кадрами рядом."
+  },
   "computing": {
     "message": "Считаю…"
   },

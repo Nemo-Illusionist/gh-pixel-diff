@@ -62,6 +62,8 @@
    Рамка — на самом холсте, без обёртки: обёртка мерила бы ширину по
    натуральному размеру картинки, а та ужимается по высоте, и справа от кадра
    оставалась пустая полоса внутри рамки. */
+.ghpd-canvas[hidden] { display: none; }
+
 .ghpd-canvas {
   display: block;
   /* Размер задают только max-width и max-height: flex не должен ни тянуть
@@ -199,4 +201,37 @@
 .ghpd-view-button:focus-visible {
   outline: 2px solid var(--fgColor-accent, #0969da);
   outline-offset: 1px;
+}
+
+/* Три кадра рядом. Ширина делится поровну, и каждый вписывается в свою треть:
+   иначе на снимке страницы они вылезли бы за края фрейма. */
+.ghpd-triple {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 0;
+}
+
+.ghpd-triple[hidden] { display: none; }
+
+.ghpd-triple-item {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Место под подпись каждого кадра — на неё запаса нужно чуть больше. */
+.ghpd-triple .ghpd-canvas {
+  max-height: calc(100vh - var(--ghpd-bar-height, 40px) - var(--ghpd-reserve, 90px) - 20px);
+}
+
+.ghpd-triple-label {
+  flex: none;
+  font-size: 11px;
+  color: var(--fgColor-muted, #59636e);
 }

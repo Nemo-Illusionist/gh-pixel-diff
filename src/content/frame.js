@@ -12,6 +12,8 @@
   const { plural, t } = global.GhPixelDiffI18n;
 
   const MODE = 'pixel-diff';
+  /** Второй наш режим: три кадра рядом — «до», «после» и разница. */
+  const MODE_TRIPLE = 'pixel-3up';
   const CROP_PADDING = 40;
   /** Порог pixelmatch: 0 — ловит даже сглаживание, 0.5 — только явные отличия. */
   const THRESHOLD_MAX = 0.5;
@@ -324,6 +326,20 @@
     canvas.setAttribute('role', 'img');
     const full = document.createElement('canvas');
 
+    // Три кадра рядом: те же данные, другая раскладка. Заводим сразу, чтобы
+    // переключение между режимами не пересчитывало сравнение.
+    const triple = el('div', 'ghpd-triple');
+    triple.hidden = true;
+    const tripleCanvases = new Map();
+    for (const [name, key] of Object.entries({ before: 'viewBefore', after: 'viewAfter', diff: 'viewDiff' })) {
+      const item = el('div', 'ghpd-triple-item');
+      const tripleCanvas = el('canvas', 'ghpd-canvas');
+      tripleCanvas.setAttribute('role', 'img');
+      item.append(tripleCanvas, el('span', 'ghpd-triple-label', t(key)));
+      tripleCanvases.set(name, tripleCanvas);
+      triple.append(item);
+    }
+
     const meta = el('p', 'ghpd-meta');
     meta.setAttribute('aria-live', 'polite');
     const cropToggle = el('button', 'ghpd-crop-toggle');
@@ -331,7 +347,7 @@
     const outlineToggle = el('button', 'ghpd-outline-toggle');
     outlineToggle.type = 'button';
 
-    shell.append(canvas, meta);
+    shell.append(canvas, triple, meta);
     view.append(shell);
 
     let result = null;
@@ -343,13 +359,22 @@
     let cropped = true;
     // Какой из трёх кадров показан: разница, «до» или «после».
     let shownFrame = 'diff';
+    // Раскладка: один кадр или три рядом.
+    let layout = MODE;
     // Рамка вокруг изменений — по умолчанию да: без неё правку в несколько
     // пикселей на уменьшенном кадре не найти. Но на мелком снимке она сама
     // закрывает картинку, поэтому её можно убрать, и выбор запоминается.
     let outline = readSetting(OUTLINE_KEY) !== 'off';
 
     const render = () => {
-      const box = drawCrop(canvas, full, result, cropped, outline, shownFrame);
+      const single = layout === MODE;
+      canvas.hidden = !single;
+      triple.hidden = single;
+      views.hidden = !single || !viewsAllowed;
+
+      const box = single
+        ? drawCrop(canvas, full, result, cropped, outline, shownFrame)
+        : drawTriple();
       fitCanvas(canvas);
       const percent = result.ratio * 100;
       // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
@@ -385,6 +410,15 @@
           )}`,
         );
       }
+    };
+
+    /** Рисует все три кадра сразу; размер возвращаем по разнице — она общая. */
+    const drawTriple = () => {
+      let box = null;
+      for (const [name, target] of tripleCanvases) {
+        box = drawCrop(target, full, result, cropped, outline, name);
+      }
+      return box;
     };
 
     cropToggle.addEventListener('click', () => {
@@ -463,6 +497,10 @@
       }
     };
 
+    // Показывать ли переключатель кадров — решает настройка; в раскладке из
+    // трёх кадров он не нужен, там и так видно все три.
+    let viewsAllowed = true;
+
     // Переключатель кадров. Родные 2-up и Swipe показывают то же самое, но
     // без обрезки по изменениям и без общего масштаба — здесь «до» и «после»
     // ложатся ровно на то место, где найдена разница.
@@ -496,8 +534,13 @@
 
     return {
       element: view,
+      layout(mode) {
+        layout = mode;
+        if (result) render();
+      },
       showViews(visible) {
-        views.hidden = !visible;
+        viewsAllowed = visible;
+        views.hidden = !visible || layout !== MODE;
         // Переключатель занимает место под кадром — размер запаса знает CSS.
         document.documentElement.classList.toggle('ghpd-with-views', visible);
       },
@@ -536,38 +579,50 @@
     reserveForBar();
     addEventListener('resize', reserveForBar);
 
-    const label = el('label', 'js-view-mode-item ghpd-mode-item');
-    const input = el('input');
-    input.type = 'radio';
-    input.name = 'view-mode';
-    input.value = MODE;
-    label.append(input, t('modeName'));
-    modes.append(label);
+    // Два наших режима подряд в родном ряду: один кадр и три рядом.
+    const inputs = new Map();
+    for (const [mode, key] of [[MODE, 'modeName'], [MODE_TRIPLE, 'modeNameTriple']]) {
+      const label = el('label', 'js-view-mode-item ghpd-mode-item');
+      const input = el('input');
+      input.type = 'radio';
+      input.name = 'view-mode';
+      input.value = mode;
+      label.append(input, t(key));
+      modes.append(label);
+      inputs.set(mode, input);
+    }
+
+    const chosen = () => [...inputs].find(([, input]) => input.checked)?.[0] ?? null;
 
     const sync = () => {
-      const ours = input.checked;
+      const ours = chosen();
       for (const item of modes.querySelectorAll('.js-view-mode-item')) {
         item.classList.toggle('selected', item.querySelector('input')?.checked === true);
       }
       // Родные режимы прячем классом на документе, а не inline-стилем: какой
       // из них показать при возврате, знает скрипт GitHub, и его выбор нельзя
       // затирать — иначе назад приходят все три разом.
-      document.documentElement.classList.toggle('ghpd-active', ours);
-      if (ours) panel.show();
-      else panel.hide();
+      document.documentElement.classList.toggle('ghpd-active', Boolean(ours));
+      if (!ours) {
+        panel.hide();
+        return;
+      }
+      panel.layout(ours);
+      panel.show();
     };
 
     modes.addEventListener('change', () => {
       // Запоминаем только свой выбор: на пул-реквесте с десятком картинок
-      // иначе пришлось бы нажимать Pixel Diff в каждом файле заново. Уход на
+      // иначе пришлось бы нажимать наш режим в каждом файле заново. Уход на
       // родной режим — сигнал больше не вмешиваться.
-      saveSetting(MODE_KEY, input.checked ? MODE : '');
+      saveSetting(MODE_KEY, chosen() ?? '');
       sync();
     });
 
     // Восстанавливаем выбор так же, как это сделал бы человек: щелчком.
     // Скрипт GitHub слушает то же событие и должен узнать о смене режима.
-    if (readSetting(MODE_KEY) === MODE) input.click();
+    const remembered = inputs.get(readSetting(MODE_KEY));
+    if (remembered) remembered.click();
     else sync();
   }
 

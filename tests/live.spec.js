@@ -24,7 +24,7 @@ function readState() {
   return {
     modes: document.querySelectorAll('.js-view-mode-item').length,
     ours: document.querySelectorAll('.ghpd-mode-item').length,
-    checked: document.querySelector('.ghpd-mode-item input')?.checked ?? false,
+    checked: document.querySelector('.ghpd-mode-item input[value="pixel-diff"]')?.checked ?? false,
     meta: document.querySelector('.ghpd-meta')?.textContent ?? '',
     canvas: canvas ? `${canvas.width}x${canvas.height}` : null,
     viewHidden: view ? view.hidden : null,
@@ -64,11 +64,11 @@ test('добавляет режим к родным и считает разни
       return current.evaluate(readState).catch(() => null);
     };
 
-    // Наш режим встал рядом с тремя родными, ровно один.
-    await expect.poll(state, { timeout: 60_000 }).toMatchObject({ modes: 4, ours: 1 });
+    // Наши два режима встали рядом с тремя родными.
+    await expect.poll(state, { timeout: 60_000 }).toMatchObject({ modes: 5, ours: 2 });
 
     await frame().evaluate(() => {
-      document.querySelector('.ghpd-mode-item input').click();
+      document.querySelector('.ghpd-mode-item input[value="pixel-diff"]').click();
     });
 
     await expect.poll(state, { timeout: 60_000 }).toMatchObject({

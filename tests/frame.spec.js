@@ -211,7 +211,7 @@ async function waitForResult(page) {
     .toMatch(/pixels/);
 }
 
-test('встаёт четвёртой кнопкой, родные не трогает', async ({ page }) => {
+test('встаёт двумя кнопками в родной ряд, родные не трогает', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);
 
@@ -222,8 +222,10 @@ test('встаёт четвёртой кнопкой, родные не трог
     })),
   );
 
-  expect(modes.map((mode) => mode.text)).toEqual(['2-up', 'Swipe', 'Onion Skin', 'Pixel Diff']);
-  expect(modes.map((mode) => mode.ours)).toEqual([false, false, false, true]);
+  expect(modes.map((mode) => mode.text)).toEqual([
+    '2-up', 'Swipe', 'Onion Skin', 'Pixel Diff', '3-up',
+  ]);
+  expect(modes.map((mode) => mode.ours)).toEqual([false, false, false, true, true]);
 });
 
 test('в любой момент виден ровно один режим', async ({ page }) => {
@@ -682,6 +684,57 @@ test('совпадающие картинки — ноль, а не «меньш
   await page.click('.ghpd-mode-item');
 
   await expect.poll(() => page.textContent('.ghpd-meta')).toContain('0 pixels · 0% of the frame');
+});
+
+test('три кадра рядом влезают по ширине', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  // Второй наш пункт в ряду — три кадра рядом.
+  await page.click('.js-view-modes .js-view-mode-item:nth-child(5)');
+  await waitForResult(page);
+
+  const layout = await page.evaluate(() => {
+    const canvases = [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')];
+    const view = document.querySelector('.ghpd-view').getBoundingClientRect();
+    const boxes = canvases.map((node) => node.getBoundingClientRect());
+    return {
+      сколько: canvases.length,
+      одиночныйСпрятан: document.querySelector('.ghpd-view > .ghpd-shell > .ghpd-canvas').hidden,
+      переключательСпрятан: document.querySelector('.ghpd-views').hidden,
+      влезают: boxes.every((box) => box.left >= view.left - 1 && box.right <= view.right + 1),
+      // Все три одного размера: сравнивать глазами иначе невозможно.
+      ширины: boxes.map((box) => Math.round(box.width)),
+      подписи: [...document.querySelectorAll('.ghpd-triple-label')].map((n) => n.textContent),
+    };
+  });
+
+  expect(layout.сколько).toBe(3);
+  expect(layout.одиночныйСпрятан).toBe(true);
+  expect(layout.переключательСпрятан).toBe(true);
+  expect(layout.влезают).toBe(true);
+  expect(new Set(layout.ширины).size).toBe(1);
+  expect(layout.подписи).toEqual(['before', 'after', 'diff']);
+});
+
+test('три кадра показывают разные картинки', async ({ page }) => {
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.js-view-modes .js-view-mode-item:nth-child(5)');
+  await waitForResult(page);
+  await page.click('.ghpd-crop-toggle');
+
+  // Полоска, которая и отличается: в «до» серая, в «после» красная.
+  const colors = await page.evaluate(() =>
+    [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')].map((canvas) => {
+      const [r, g, b] = canvas.getContext('2d').getImageData(30, 605, 1, 1).data;
+      return `${r},${g},${b}`;
+    }),
+  );
+
+  expect(colors[0]).toBe('201,209,217');
+  expect(colors[1]).toBe('248,81,73');
+  expect(colors[2]).not.toBe(colors[0]);
 });
 
 test('подпись на языке интерфейса', async ({ page }) => {
