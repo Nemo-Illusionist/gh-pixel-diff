@@ -1,0 +1,38 @@
+# Проверки на каждый push и пул-реквест.
+#
+# Тесты идут в том же образе Playwright, что и локальный `npm test`, поэтому
+# результат в CI и на машине совпадает.
+name: Проверки
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Тесты
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.62.1-noble
+    steps:
+      - uses: actions/checkout@v5
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/build.mjs
+      # Живой тест ходит на github.com и вынесен в отдельный запуск: он ломается
+      # от чужих изменений, а не от наших, и не должен блокировать пул-реквест.
+      - run: npx playwright test tests/parse.spec.js
+
+  lint:
+    name: Проверка манифеста Firefox
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/build.mjs
+      - run: npx --yes web-ext@8 lint --source-dir dist/firefox --self-hosted

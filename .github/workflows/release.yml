@@ -1,0 +1,65 @@
+# Релиз по тегу: собирает архивы и выкладывает их на страницу релизов.
+#
+# Версия берётся из манифеста и сверяется с тегом — иначе в релизе окажется
+# архив с версией, которой никто не ждал.
+name: Релиз
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Сборка и публикация
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Сверить версию с тегом
+        run: |
+          manifest="$(node -p "require('./src/manifest.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$manifest" != "$tag" ]; then
+            echo "Тег $GITHUB_REF_NAME не совпадает с версией манифеста $manifest" >&2
+            exit 1
+          fi
+          echo "version=$manifest" >> "$GITHUB_ENV"
+
+      - name: Собрать архивы
+        run: scripts/package.sh
+
+      - name: Опубликовать
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'NOTES'
+          ## Установка
+
+          **Chrome, Edge, любой Chromium** — скачать `gh-pixel-diff-chrome-*.zip`,
+          распаковать, открыть `chrome://extensions`, включить «Режим разработчика»
+          и нажать «Загрузить распакованное расширение» → распакованная папка.
+
+          **Firefox** — скачать `gh-pixel-diff-firefox-*.zip`, открыть
+          `about:debugging#/runtime/this-firefox` → «Загрузить временное
+          дополнение» → выбрать архив. Живёт до перезапуска браузера: постоянная
+          установка возможна только после подписи на addons.mozilla.org.
+
+          **Safari, macOS и iOS** — скачать `gh-pixel-diff-safari-*.zip`,
+          распаковать и следовать `КАК-СОБРАТЬ.txt` внутри. Нужен Xcode и свой
+          сертификат: без подписи macOS расширение не зарегистрирует.
+
+          Суммы SHA-256 всех архивов — в `checksums.txt`.
+          NOTES
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            dist/release/*.zip dist/release/checksums.txt
