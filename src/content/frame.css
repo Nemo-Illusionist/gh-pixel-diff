@@ -43,25 +43,26 @@
   flex: 0 1 auto;
 }
 
-.ghpd-frame {
-  display: flex;
-  overflow: hidden;
-  min-height: 0;
-  flex: 0 1 auto;
-  max-width: 100%;
-  border: 1px solid var(--borderColor-default, #d0d7de);
-  border-radius: 4px;
-}
-
 /* Кадр вписывается целиком: увеличивать его сверх натурального размера незачем.
    Предел считаем от высоты фрейма, а не в процентах от родителя: у того высота
    определяется содержимым, и процент браузер просто не разрешит. Вычет — место
-   под подпись, ползунок, отступы и панель режимов. */
+   под подпись, ползунок, отступы и панель режимов.
+
+   Рамка — на самом холсте, без обёртки: обёртка мерила бы ширину по
+   натуральному размеру картинки, а та ужимается по высоте, и справа от кадра
+   оставалась пустая полоса внутри рамки. */
 .ghpd-canvas {
   display: block;
+  /* Размер задают только max-width и max-height: flex не должен ни тянуть
+     холст, ни жать — иначе коробка перестаёт совпадать с картинкой. */
+  flex: none;
+  width: auto;
+  height: auto;
   max-width: 100%;
   max-height: calc(100vh - var(--ghpd-bar-height, 40px) - 90px);
   object-fit: contain;
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 4px;
 }
 
 .ghpd-meta {

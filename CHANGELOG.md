@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.3]
+
+### Fixed
+
+- No empty strip inside the border next to the frame in Safari: the canvas now
+  carries the border itself and its aspect ratio is set explicitly, instead of
+  being left to how the browser sizes a flex item.
+
 ## [0.2.2]
 
 ### Added
@@ -57,7 +65,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.1.1...v0.2.0

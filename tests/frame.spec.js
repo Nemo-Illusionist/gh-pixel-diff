@@ -148,6 +148,54 @@ test('в высоком фрейме содержимое по центру', as
   expect(Math.abs(gaps.top - gaps.bottom)).toBeLessThan(24);
 });
 
+test('рамка облегает кадр вплотную', async ({ page }) => {
+  // Высокая картинка ужимается ограничением по высоте, а рамка вокруг неё
+  // раньше жила на отдельной обёртке и мерила ширину по натуральному размеру
+  // кадра — справа от картинки внутри рамки оставалась пустая полоса.
+  await page.setViewportSize({ width: 900, height: 500 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const framed = await page.evaluate(() => {
+    const canvas = document.querySelector('.ghpd-canvas').getBoundingClientRect();
+    // Всё, у чего есть видимая рамка, должно совпадать с кадром по размеру.
+    return [...document.querySelectorAll('.ghpd-view, .ghpd-view *')]
+      .filter((node) => parseFloat(getComputedStyle(node).borderTopWidth) > 0)
+      .map((node) => {
+        const rect = node.getBoundingClientRect();
+        return {
+          className: node.className,
+          extraWidth: Math.round(rect.width - canvas.width),
+          extraHeight: Math.round(rect.height - canvas.height),
+        };
+      });
+  });
+
+  expect(framed.length).toBeGreaterThan(0);
+  for (const box of framed) {
+    expect(box, box.className).toMatchObject({ extraWidth: 0, extraHeight: 0 });
+  }
+
+  // И сама коробка холста совпадает с картинкой: если браузер растянет её по
+  // одной стороне, object-fit впишет кадр по другой — и внутри рамки появится
+  // пустая полоса.
+  const fit = await page.evaluate(() => {
+    const canvas = document.querySelector('.ghpd-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const scale = Math.min(rect.width / canvas.width, rect.height / canvas.height);
+    return {
+      slackWidth: Math.round(rect.width - canvas.width * scale),
+      slackHeight: Math.round(rect.height - canvas.height * scale),
+    };
+  });
+
+  // Два пикселя — рамка.
+  expect(fit.slackWidth).toBeLessThanOrEqual(2);
+  expect(fit.slackHeight).toBeLessThanOrEqual(2);
+});
+
 test('в полном кадре изменения обведены', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);

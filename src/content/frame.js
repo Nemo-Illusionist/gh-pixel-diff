@@ -100,6 +100,16 @@
     return { element: controls, get value() { return Number(input.value); } };
   }
 
+  /**
+   * Задаёт холсту соотношение сторон явно.
+   * Без этого размер коробки остаётся на усмотрение браузера: Safari внутри
+   * flex-контейнера растягивает её по одной стороне, картинка вписывается по
+   * другой, и рядом с кадром внутри рамки появляется пустая полоса.
+   */
+  function fitCanvas(canvas) {
+    canvas.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
+  }
+
   function drawCrop(canvas, result, cropped, outline) {
     const full = document.createElement('canvas');
     full.width = result.diff.width;
@@ -147,9 +157,7 @@
     view.hidden = true;
 
     const shell = el('span', 'shell ghpd-shell');
-    const frame = el('span', 'ghpd-frame');
     const canvas = el('canvas', 'ghpd-canvas');
-    frame.append(canvas);
 
     const meta = el('p', 'ghpd-meta');
     const cropToggle = el('button', 'ghpd-crop-toggle');
@@ -157,7 +165,7 @@
     const outlineToggle = el('button', 'ghpd-outline-toggle');
     outlineToggle.type = 'button';
 
-    shell.append(frame, meta);
+    shell.append(canvas, meta);
     view.append(shell);
 
     let result = null;
@@ -171,6 +179,7 @@
 
     const render = () => {
       const box = drawCrop(canvas, result, cropped, outline);
+      fitCanvas(canvas);
       const percent = result.ratio * 100;
       const shown = percent >= 0.01 ? percent.toFixed(2) : '<0.01';
 
