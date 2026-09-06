@@ -220,8 +220,16 @@
     if (!modes || !pair || document.querySelector('.ghpd-view')) return;
 
     const panel = build(pair, modes);
-    const container = document.querySelector('.two-up.view')?.parentElement || document.body;
-    container.append(panel.element);
+    document.body.append(panel.element);
+
+    // Панель режимов остаётся видимой: под неё оставляем место.
+    const bar = document.querySelector('.js-render-bar') || modes.parentElement;
+    const reserveForBar = () => {
+      const height = Math.ceil(bar?.getBoundingClientRect().height || 40);
+      document.documentElement.style.setProperty('--ghpd-bar-height', `${height}px`);
+    };
+    reserveForBar();
+    addEventListener('resize', reserveForBar);
 
     const label = el('label', 'js-view-mode-item ghpd-mode-item');
     const input = el('input');

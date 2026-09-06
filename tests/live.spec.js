@@ -29,10 +29,11 @@ function readState() {
     canvas: canvas ? `${canvas.width}x${canvas.height}` : null,
     viewHidden: view ? view.hidden : null,
     nativeHidden: [...document.querySelectorAll('.view:not(.ghpd-view)')]
-      .every((v) => getComputedStyle(v).display === 'none'),
+      .every((v) => getComputedStyle(v).visibility === 'hidden'),
     // Родных режимов одновременно виден ровно один — тот, что выбран.
     nativeVisible: [...document.querySelectorAll('.view:not(.ghpd-view)')]
-      .filter((v) => getComputedStyle(v).display !== 'none').length,
+      .filter((v) => getComputedStyle(v).display !== 'none'
+        && getComputedStyle(v).visibility !== 'hidden').length,
     slider: !!document.querySelector('.ghpd-controls .ghpd-track .ghpd-dragger'),
   };
 }
