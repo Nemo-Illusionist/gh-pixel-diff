@@ -7,15 +7,18 @@ as an overlay — but not the one thing that matters: **what actually changed**.
 a three-thousand-pixel page screenshot an edit takes up four lines, and no eye
 will find them.
 
-The extension adds a fourth mode next to **2-up**, **Swipe** and **Onion Skin** —
-**Pixel Diff**. It compares the images pixel by pixel and opens straight on the
-fragment where the difference lives.
+The extension adds two modes next to **2-up**, **Swipe** and **Onion Skin**.
+**Pixel Diff** compares the images pixel by pixel and opens straight on the
+fragment where the difference lives; **3-up** puts before, after and the
+difference side by side, each scaled to fit.
 
 ![Pixel Diff mode](docs/screenshots/frame-changes.png)
 
 ## What it does
 
-- Sits as a fourth button in the native row of modes — no separate panel.
+- Sits in the native row of modes — no separate panel.
+- **3-up** shows all three frames at once, in the same crop and scale, so the
+  eye compares like with like.
 - Opens on the changed fragment; the full frame is one link away in the caption,
   with the changed area outlined in red — the outline can be turned off, and the
   choice is remembered.
@@ -42,6 +45,8 @@ fragment where the difference lives.
 - The interface speaks English, or Russian when the browser is set to Russian.
 
 ![Full frame](docs/screenshots/frame-full.png)
+
+![Three frames side by side](docs/screenshots/frame-3up.png)
 
 ## Installation
 
