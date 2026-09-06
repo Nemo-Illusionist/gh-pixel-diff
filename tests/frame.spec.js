@@ -185,7 +185,15 @@ const contentScripts = JSON.parse(read('../src/manifest.json')).content_scripts[
 
 async function injectExtension(page) {
   for (const style of contentScripts.css) {
-    await page.addStyleTag({ path: file(`../src/${style}`) });
+    // Ставим стиль первым, как это делает браузер: CSS расширения приходит
+    // раньше страничного, поэтому при равной силе побеждает страница. Иначе
+    // тест не увидит, как чужие правила перебивают наши.
+    const css = readFileSync(file(`../src/${style}`), 'utf8');
+    await page.evaluate((text) => {
+      const node = document.createElement('style');
+      node.textContent = text;
+      document.head.prepend(node);
+    }, css);
   }
   for (const script of contentScripts.js) {
     await page.addScriptTag({ path: file(`../src/${script}`) });
@@ -790,6 +798,34 @@ test('запомненный режим ждёт, пока фрейм вырас
   expect(await page.isChecked('.ghpd-mode-item input[value="pixel-diff"]')).toBe(true);
   expect(canvas.доляВысоты).toBeGreaterThan(0.9);
   expect(canvas.доляШирины).toBeGreaterThan(0.9);
+});
+
+test('кадр по центру, даже если подпись шире', async ({ page }) => {
+  // Подпись бывает длинной: обрезка плюс изменение размера. Кадр обязан
+  // остаться по центру, а не прижаться к её левому краю.
+  await page.setViewportSize({ width: 1200, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const centers = await page.evaluate(() => {
+    document.querySelector('.ghpd-meta').append(
+      ' · размер изменился: 375×849 → 375×861 и ещё немного текста для длины',
+    );
+    const middle = (selector) => {
+      const box = document.querySelector(selector).getBoundingClientRect();
+      return box.left + box.width / 2;
+    };
+    return {
+      вид: middle('.ghpd-view'),
+      холст: middle('.ghpd-view > .ghpd-shell > .ghpd-canvas'),
+      подпись: middle('.ghpd-meta'),
+    };
+  });
+
+  expect(Math.abs(centers.холст - centers.вид)).toBeLessThan(2);
+  expect(Math.abs(centers.подпись - centers.вид)).toBeLessThan(2);
 });
 
 test('подпись на языке интерфейса', async ({ page }) => {
