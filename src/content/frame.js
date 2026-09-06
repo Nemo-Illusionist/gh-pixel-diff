@@ -331,7 +331,10 @@
     const view = el('div', 'ghpd-view');
     view.hidden = true;
 
-    const shell = el('span', 'shell ghpd-shell');
+    // Родной класс `shell` не берём: он задаёт display: block и побеждает наш
+    // flex — выравнивание по центру переставало работать, и кадр прижимался
+    // к левому краю подписи.
+    const shell = el('div', 'ghpd-shell');
     const canvas = el('canvas', 'ghpd-canvas');
     canvas.setAttribute('role', 'img');
     const full = document.createElement('canvas');

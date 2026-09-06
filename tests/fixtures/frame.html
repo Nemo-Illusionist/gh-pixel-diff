@@ -33,6 +33,9 @@
       .js-view-mode-item { padding: 4px 8px; cursor: pointer; }
       .js-view-mode-item.selected { background: #ddf4ff; border-radius: 6px; }
       img { max-width: 100%; }
+      /* У GitHub этот класс задаёт display: block и бьёт чужой flex.
+         Держим его здесь, чтобы поймать возврат к нему. */
+      .shell { display: block; }
     </style>
   </head>
   <body>

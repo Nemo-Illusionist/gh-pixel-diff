@@ -6,6 +6,16 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1]
+
+### Fixed
+
+- The frame was pinned to the left edge of a long caption instead of sitting in
+  the middle. The panel borrowed GitHub's own `shell` class, and that class sets
+  `display: block`, which beat our flex layout — so centering never applied.
+  The tests now load the extension's CSS before the page's own, the way a
+  browser does, and catch this class of collision.
+
 ## [0.7.0]
 
 ### Changed
@@ -163,7 +173,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.5.1...v0.6.0
