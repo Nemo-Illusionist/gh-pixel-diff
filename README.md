@@ -24,6 +24,9 @@ fragment where the difference lives.
   sees" — styled like the Onion Skin one.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
+- Works in private repositories: the image addresses are read from the frame
+  GitHub has already built — signed URLs and all — rather than reconstructed
+  from the repository name.
 - If the pull request came from a fork that was later deleted, the image is
   taken from the upstream repository — GitHub itself shows "Invalid image
   source" in that case.
