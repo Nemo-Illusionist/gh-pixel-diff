@@ -6,6 +6,16 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1]
+
+### Changed
+
+- `main` is protected: everything lands through a pull request with green
+  checks, and a release is cut by tagging after the version bump is merged.
+- Housekeeping from the code review: the height reserve lives in CSS only, the
+  string keys are looked up by name, and the tests read the script list from the
+  manifest instead of repeating it.
+
 ## [0.5.0]
 
 ### Fixed
@@ -123,7 +133,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.2.3...v0.3.0
