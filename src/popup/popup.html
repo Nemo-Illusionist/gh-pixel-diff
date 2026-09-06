@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <title>GitHub Pixel Diff</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <h1>GitHub Pixel Diff</h1>
+    <p class="lead">
+      Добавляет режим <b>Pixel Diff</b> к 2-up, Swipe и Onion Skin в просмотре
+      картинок на GitHub.
+    </p>
+
+    <p id="status" class="status status-checking">Проверяю доступ…</p>
+
+    <button id="grant" type="button" hidden>Разрешить доступ</button>
+
+    <p class="note">
+      Картинки GitHub показывает во фрейме с домена
+      <code>viewscreen.githubusercontent.com</code> — доступ нужен именно к нему.
+      Страницы <code>github.com</code> расширение не читает.
+    </p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

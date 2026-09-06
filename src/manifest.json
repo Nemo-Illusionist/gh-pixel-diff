@@ -29,5 +29,13 @@
       "run_at": "document_end",
       "all_frames": true
     }
-  ]
+  ],
+  "action": {
+    "default_title": "GitHub Pixel Diff",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  }
 }
