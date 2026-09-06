@@ -43,6 +43,31 @@ test('отбрасывает чужие адреса и битые данные'
   }
 });
 
+test('подменяет репозиторий в адресе картинки', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const fork = 'https://raw.githubusercontent.com/fork-owner/DaniloFF/abc123/tests/shot.png';
+    const repository = { owner: 'DanilovSoft', name: 'DaniloFF' };
+    return {
+      rewritten: self.GhPixelDiff.rewriteRepository(fork, repository),
+      // Тот же репозиторий подменять незачем.
+      same: self.GhPixelDiff.rewriteRepository(
+        'https://raw.githubusercontent.com/DanilovSoft/DaniloFF/abc123/tests/shot.png',
+        repository,
+      ),
+      // Чужой хост не трогаем.
+      foreign: self.GhPixelDiff.rewriteRepository('https://example.com/a.png', repository),
+      noRepository: self.GhPixelDiff.rewriteRepository(fork, null),
+    };
+  });
+
+  expect(result.rewritten).toBe(
+    'https://raw.githubusercontent.com/DanilovSoft/DaniloFF/abc123/tests/shot.png',
+  );
+  expect(result.same).toBeNull();
+  expect(result.foreign).toBeNull();
+  expect(result.noRepository).toBeNull();
+});
+
 test('находит прямоугольник с различиями', async ({ page }) => {
   const bounds = await page.evaluate(() => {
     const width = 8;

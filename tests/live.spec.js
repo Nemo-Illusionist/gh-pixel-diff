@@ -1,6 +1,9 @@
 // @ts-check
-// Проверка на живой странице GitHub: разметку diff-вью там меняют без
+// Проверка на живой странице GitHub: разметку панели просмотра там меняют без
 // предупреждений, и этот тест — единственный способ узнать об этом вовремя.
+//
+// Работаем через evaluate, а не через локаторы: страница живёт своей жизнью,
+// фрейм может перерисоваться, и снимок состояния надёжнее ожидания на узле.
 import { test, expect, chromium } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { mkdtemp } from 'node:fs/promises';
@@ -8,10 +11,32 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const EXTENSION = fileURLToPath(new URL('../dist/chrome', import.meta.url));
-// Пул-реквест с пятнадцатью изменёнными снимками — удобный постоянный образец.
-const PULL_REQUEST = 'https://github.com/DanilovSoft/DaniloFF/pull/2/files';
+// Свой пул-реквест-полигон: одна изменённая картинка, живёт столько же,
+// сколько репозиторий.
+const PULL_REQUEST = 'https://github.com/Nemo-Illusionist/gh-pixel-diff/pull/1/files';
 
-test('панель появляется у картинки и считает разницу', async () => {
+const isViewscreen = (url) => url.includes('viewscreen.githubusercontent.com/diff/img');
+
+/** Снимок состояния панели внутри фрейма. */
+function readState() {
+  const canvas = document.querySelector('.ghpd-canvas');
+  const view = document.querySelector('.ghpd-view');
+  return {
+    modes: document.querySelectorAll('.js-view-mode-item').length,
+    ours: document.querySelectorAll('.ghpd-mode-item').length,
+    checked: document.querySelector('.ghpd-mode-item input')?.checked ?? false,
+    meta: document.querySelector('.ghpd-meta')?.textContent ?? '',
+    canvas: canvas ? `${canvas.width}x${canvas.height}` : null,
+    viewHidden: view ? view.hidden : null,
+    nativeHidden: [...document.querySelectorAll('.view:not(.ghpd-view)')]
+      .every((v) => getComputedStyle(v).display === 'none'),
+    slider: !!document.querySelector('.ghpd-controls .ghpd-track .ghpd-dragger'),
+  };
+}
+
+test('добавляет режим к родным и считает разницу', async () => {
+  test.setTimeout(120_000);
+
   const profile = await mkdtemp(join(tmpdir(), 'ghpd-'));
   // Расширения работают и в headless-режиме Chromium — отдельный экран не нужен.
   const context = await chromium.launchPersistentContext(profile, {
@@ -24,29 +49,52 @@ test('панель появляется у картинки и считает р
     const page = await context.newPage();
     await page.goto(PULL_REQUEST, { waitUntil: 'domcontentloaded' });
 
-    const panel = page.locator('.ghpd-panel').first();
-    await expect(panel).toBeVisible({ timeout: 30_000 });
+    // Фрейм берём заново на каждом шаге: GitHub пересоздаёт его при перерисовке.
+    const frame = () => page.frames().find((f) => isViewscreen(f.url()));
+    const state = async () => {
+      const current = frame();
+      if (!current) return null;
+      return current.evaluate(readState).catch(() => null);
+    };
 
-    await panel.getByRole('button', { name: 'Пиксельная разница' }).click();
+    // Наш режим встал рядом с тремя родными, ровно один.
+    await expect.poll(state, { timeout: 60_000 }).toMatchObject({ modes: 4, ours: 1 });
 
-    const status = panel.locator('.ghpd-status');
-    await expect(status).toContainText('пикселей', { timeout: 30_000 });
-    await expect(status).not.toContainText('Не вышло');
+    await frame().evaluate(() => {
+      document.querySelector('.ghpd-mode-item input').click();
+    });
 
-    // Диффов должно быть заметно много: правки задели весь текст страницы.
-    const changed = Number((await status.textContent()).replace(/\s/g, '').match(/^(\d+)/)?.[1]);
-    expect(changed).toBeGreaterThan(100);
+    await expect.poll(state, { timeout: 60_000 }).toMatchObject({
+      checked: true,
+      viewHidden: false,
+      // Родные режимы на это время спрятаны, ползунок порога — на месте.
+      nativeHidden: true,
+      slider: true,
+    });
 
-    // По умолчанию показывается фрагмент с изменениями, а не весь снимок.
-    await expect(panel.locator('.ghpd-crop canvas')).toBeVisible();
-    await expect(panel.locator('.ghpd-crop')).toContainText('уместились все различия');
+    // Расчёт занимает заметное время: снимок делаем, когда он закончен.
+    await expect
+      .poll(async () => (await state())?.meta ?? '', { timeout: 60_000 })
+      .not.toBe('Считаю…');
 
-    await panel.getByRole('button', { name: 'Разница целиком' }).click();
-    await expect(panel.locator('canvas.ghpd-canvas')).toBeVisible();
+    const done = await state();
+    // Корень без окончания: число склоняется — «181 пиксель», «2 пикселя».
+    expect(done.meta).toMatch(/\d+ пиксел(ь|я|ей)/);
+    expect(done.meta).not.toContain('Не вышло');
+    // По умолчанию показан фрагмент с изменениями, а не весь кадр.
+    expect(done.meta).toContain('фрагмент');
+    expect(Number(done.meta.replace(/\s/g, '').match(/^(\d+)/)?.[1])).toBeGreaterThan(100);
+    expect(done.canvas).toMatch(/^\d+x\d+$/);
 
-    // Режимы переключаются.
-    await panel.getByRole('button', { name: 'Рядом' }).click();
-    await expect(panel.locator('.ghpd-side-img')).toHaveCount(2);
+    // Возврат к родному режиму возвращает всё как было.
+    await frame().evaluate(() => {
+      document.querySelector('.js-view-mode-item input[value="two-up"]').click();
+    });
+    await expect.poll(state, { timeout: 30_000 }).toMatchObject({
+      checked: false,
+      viewHidden: true,
+      nativeHidden: false,
+    });
   } finally {
     await context.close();
   }

@@ -34,6 +34,21 @@
     return { before, after, path: url.searchParams.get('path') };
   }
 
+  /**
+   * Переписывает адрес картинки на другой репозиторий.
+   * Нужно, когда пул-реквест пришёл из форка, а форк потом удалили: GitHub
+   * оставляет в разметке ссылку на него и сам показывает «Invalid image
+   * source», хотя коммит уже влит и лежит в основном репозитории.
+   */
+  function rewriteRepository(url, repository) {
+    if (!repository) return null;
+    const rewritten = url.replace(
+      /^https:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\//,
+      `https://raw.githubusercontent.com/${repository.owner}/${repository.name}/`,
+    );
+    return rewritten === url ? null : rewritten;
+  }
+
   /** Загружает картинку так, чтобы холст остался «чистым» и читаемым. */
   function loadImage(src) {
     return new Promise((resolve, reject) => {
@@ -44,6 +59,17 @@
       img.onerror = () => reject(new Error(`не удалось загрузить ${src}`));
       img.src = src;
     });
+  }
+
+  /** Загрузка с запасным адресом в основном репозитории. */
+  async function loadImageWithFallback(src, repository) {
+    try {
+      return await loadImage(src);
+    } catch (error) {
+      const fallback = rewriteRepository(src, repository);
+      if (!fallback) throw error;
+      return loadImage(fallback);
+    }
   }
 
   /**
@@ -94,7 +120,10 @@
    *                    sizeChanged: boolean}>}
    */
   async function comparePair(pair, options = {}) {
-    const [before, after] = await Promise.all([loadImage(pair.before), loadImage(pair.after)]);
+    const [before, after] = await Promise.all([
+      loadImageWithFallback(pair.before, options.repository),
+      loadImageWithFallback(pair.after, options.repository),
+    ]);
 
     const width = Math.max(before.naturalWidth, after.naturalWidth);
     const height = Math.max(before.naturalHeight, after.naturalHeight);
@@ -129,6 +158,7 @@
     decodeHexUrl,
     comparePair,
     loadImage,
+    rewriteRepository,
     boundsOfChanges,
     VIEWSCREEN_IMG,
   };
