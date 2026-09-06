@@ -30,6 +30,9 @@
    сам вернёт нужный режим, когда переключатся обратно. */
 .ghpd-active .view:not(.ghpd-view) { visibility: hidden !important; }
 
+/* Содержимое не растягивается: GitHub задаёт фрейму высоту по самому рослому
+   из своих режимов, и на месте невысокого кадра иначе получается полоса
+   пустоты с картинкой наверху и ползунком у самого низа. */
 .ghpd-shell {
   display: flex;
   flex-direction: column;
@@ -37,24 +40,27 @@
   gap: 8px;
   max-width: 100%;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 
 .ghpd-frame {
   display: flex;
   overflow: hidden;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   max-width: 100%;
   border: 1px solid var(--borderColor-default, #d0d7de);
   border-radius: 4px;
 }
 
-/* Кадр вписывается целиком: увеличивать его сверх натурального размера незачем. */
+/* Кадр вписывается целиком: увеличивать его сверх натурального размера незачем.
+   Предел считаем от высоты фрейма, а не в процентах от родителя: у того высота
+   определяется содержимым, и процент браузер просто не разрешит. Вычет — место
+   под подпись, ползунок, отступы и панель режимов. */
 .ghpd-canvas {
   display: block;
   max-width: 100%;
-  max-height: 100%;
+  max-height: calc(100vh - var(--ghpd-bar-height, 40px) - 90px);
   object-fit: contain;
 }
 
