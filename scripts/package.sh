@@ -27,7 +27,8 @@ pack firefox
 
 # Safari берёт не архив, а проект Xcode, поэтому к папке кладётся памятка:
 # скачавший её отдельно от релиза иначе не поймёт, что с ней делать.
-cat > "dist/safari/КАК-СОБРАТЬ.txt" <<'NOTE'
+# Имя латиницей: кириллица в zip читается не всеми распаковщиками одинаково.
+cat > "dist/safari/SAFARI-INSTALL.txt" <<'NOTE'
 Safari не ставит расширения из папки — нужен проект Xcode и подпись.
 
   xcrun safari-web-extension-converter . \

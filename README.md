@@ -42,7 +42,7 @@ GitHub умеет показывать две версии картинки ря
 addons.mozilla.org.
 
 **Safari, macOS** — распаковать `…-safari-*.zip` и следовать
-`КАК-СОБРАТЬ.txt` внутри; из исходников то же делает `npm run build:safari`
+`SAFARI-INSTALL.txt` внутри; из исходников то же делает `npm run build:safari`
 (нужен Xcode; при первом запуске конвертер может потребовать
 `sudo xcodebuild -runFirstLaunch`). Дальше открыть
 полученный проект, собрать схему «GitHub Pixel Diff (macOS)» и запустить
