@@ -2,7 +2,7 @@
   "name": "gh-pixel-diff",
   "private": true,
   "version": "0.2.0",
-  "description": "Попиксельная разница изображений в diff'е пул-реквеста на GitHub",
+  "description": "Pixel-level image diff for GitHub pull requests",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
