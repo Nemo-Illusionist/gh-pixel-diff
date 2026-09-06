@@ -1,161 +1,168 @@
 # GitHub Pixel Diff
 
-GitHub умеет показывать две версии картинки рядом, шторкой и наложением, но не
-умеет главного: сказать, **что именно** изменилось. На снимке страницы высотой
-в три тысячи пикселей правка занимает четыре строки — и найти их глазами нельзя.
+[Русский](README.ru.md) · **English**
 
-Расширение добавляет к режимам **2-up**, **Swipe** и **Onion Skin** четвёртый —
-**Pixel Diff**: он считает разницу попиксельно и сразу показывает тот фрагмент,
-где она уместилась.
+GitHub can show two versions of an image side by side, behind a swipe handle and
+as an overlay — but not the one thing that matters: **what actually changed**. On
+a three-thousand-pixel page screenshot an edit takes up four lines, and no eye
+will find them.
 
-![Режим Pixel Diff](docs/screenshots/frame-changes.png)
+The extension adds a fourth mode next to **2-up**, **Swipe** and **Onion Skin** —
+**Pixel Diff**. It compares the images pixel by pixel and opens straight on the
+fragment where the difference lives.
 
-## Что умеет
+![Pixel Diff mode](docs/screenshots/frame-changes.png)
 
-- Встаёт четвёртой кнопкой в родной ряд режимов — отдельной панели нет.
-- Открывается на фрагменте с изменениями; кадр целиком — по ссылке в подписи.
-- Считает, сколько пикселей изменилось и какую долю кадра это составляет.
-- Ползунок порога — от «ловить даже сглаживание» до «только заметное глазу»,
-  в том же виде, что и ползунок Onion Skin.
-- Разные размеры «до» и «после» не ломают сравнение: кадры выравниваются по
-  левому верхнему углу, а изменение размера попадает в подпись.
-- Если пул-реквест пришёл из форка, а форк потом удалили, картинка берётся из
-  основного репозитория — GitHub в этом случае показывает «Invalid image source».
+## What it does
 
-![Кадр целиком](docs/screenshots/frame-full.png)
+- Sits as a fourth button in the native row of modes — no separate panel.
+- Opens on the changed fragment; the full frame is one link away in the caption.
+- Counts how many pixels changed and what share of the frame that is.
+- A threshold slider — from "catch even anti-aliasing" to "only what the eye
+  sees" — styled like the Onion Skin one.
+- Different "before" and "after" sizes don't break the comparison: frames are
+  aligned by their top-left corner and the resize is reported in the caption.
+- If the pull request came from a fork that was later deleted, the image is
+  taken from the upstream repository — GitHub itself shows "Invalid image
+  source" in that case.
 
-## Установка
+![Full frame](docs/screenshots/frame-full.png)
 
-Готовые архивы — на странице
-[релизов](https://github.com/Nemo-Illusionist/gh-pixel-diff/releases). Их
-собирает GitHub из этого же репозитория; суммы SHA-256 лежат рядом в
-`checksums.txt`. Из исходников — `npm run build`, дальше те же шаги, только
-вместо распакованного архива берётся папка `dist/`.
+## Installation
 
-### Chrome, Edge, любой Chromium
+Prebuilt archives live on the
+[releases page](https://github.com/Nemo-Illusionist/gh-pixel-diff/releases).
+GitHub builds them from this very repository; SHA-256 sums sit next to them in
+`checksums.txt`. To build from source run `npm run build` and follow the same
+steps, using the `dist/` folder instead of an unpacked archive.
 
-1. Скачать и распаковать `gh-pixel-diff-chrome-*.zip`.
-2. Открыть `chrome://extensions` и включить «Режим разработчика».
-3. «Загрузить распакованное расширение» → распакованная папка.
+### Chrome, Edge, any Chromium
+
+1. Download and unpack `gh-pixel-diff-chrome-*.zip`.
+2. Open `chrome://extensions` and turn on "Developer mode".
+3. "Load unpacked" → the unpacked folder.
 
 ### Firefox
 
-1. Скачать `gh-pixel-diff-firefox-*.zip` (распаковывать не нужно).
-2. Открыть `about:debugging#/runtime/this-firefox`.
-3. «Загрузить временное дополнение» → выбрать архив.
+1. Download `gh-pixel-diff-firefox-*.zip` (no need to unpack it).
+2. Open `about:debugging#/runtime/this-firefox`.
+3. "Load Temporary Add-on" → pick the archive.
 
-Временное дополнение живёт до перезапуска браузера. Для постоянной установки
-расширение нужно подписать на addons.mozilla.org.
+A temporary add-on lives until the browser restarts. A permanent install
+requires the extension to be signed on addons.mozilla.org.
 
 ### Safari, macOS
 
-Safari не ставит расширения из папки: нужен проект Xcode, приложение-контейнер
-и подпись. Без сертификата macOS расширение попросту не зарегистрирует, и в
-списке Safari оно не появится — бесплатного Apple ID, добавленного в Xcode
-(Settings → Accounts), для этого достаточно.
+Safari doesn't install extensions from a folder: it needs an Xcode project, a
+container app and a signature. Without a certificate macOS simply won't register
+the extension and it will never appear in Safari's list — a free Apple ID added
+to Xcode (Settings → Accounts) is enough for that.
 
-1. Скачать и распаковать `gh-pixel-diff-safari-*.zip`, дальше — по
-   `SAFARI-INSTALL.txt` внутри. Из исходников то же делает
-   `npm run build:safari` (при первом запуске конвертер может потребовать
+1. Download and unpack `gh-pixel-diff-safari-*.zip`, then follow
+   `SAFARI-INSTALL.txt` inside. From source the same thing is done by
+   `npm run build:safari` (on first run the converter may ask for
    `sudo xcodebuild -runFirstLaunch`).
-2. Открыть полученный проект, в настройках цели выбрать свою команду
-   разработчика.
-3. Собрать схему «GitHub Pixel Diff (macOS)» и запустить приложение-контейнер.
-4. Safari → Настройки → Дополнения → включить расширение и разрешить ему
-   доступ к сайту.
-5. Нажать кнопку расширения в панели Safari и выбрать «Разрешить доступ».
+2. Open the resulting project and pick your development team in the target
+   settings.
+3. Build the "GitHub Pixel Diff (macOS)" scheme and run the container app.
+4. Safari → Settings → Extensions → enable the extension and grant it access to
+   the site.
+5. Click the extension button in Safari's toolbar and choose "Allow access".
 
-Последний шаг — не формальность. Safari не распространяет разрешение для сайта
-на кросс-доменные фреймы, а картинки живут именно во фрейме, поэтому доступ
-нужен к `viewscreen.githubusercontent.com` — домену, который в адресной строке
-никто не открывает.
+That last step is not a formality. Safari does not extend a site permission to
+cross-origin frames, and the images live exactly in such a frame — so access is
+needed to `viewscreen.githubusercontent.com`, a domain nobody ever types into
+the address bar.
 
-### Safari, iPhone и iPad
+### Safari, iPhone and iPad
 
-Тот же проект, схема с суффиксом `(iOS)`, сборка на своё устройство из Xcode —
-других способов нет: расширения в мобильный Safari попадают либо так, либо из
-App Store.
+The same project, the scheme with the `(iOS)` suffix, built onto your own device
+from Xcode — there is no other way: extensions reach mobile Safari either like
+this or through the App Store.
 
-1. Поставить платформу iOS (Xcode → Настройки → Компоненты, либо
+1. Install the iOS platform (Xcode → Settings → Components, or
    `xcodebuild -downloadPlatform iOS`).
-2. Выбрать схему «GitHub Pixel Diff (iOS)» и своё устройство, собрать.
-3. Настройки → Приложения → Safari → Расширения → включить.
+2. Pick the "GitHub Pixel Diff (iOS)" scheme and your device, then build.
+3. Settings → Apps → Safari → Extensions → enable it.
 
-Бесплатный аккаунт разработчика даёт сертификат на семь дней, после чего проект
-нужно пересобрать. Постоянная установка — только через App Store, а для неё
-нужен платный Apple Developer Program.
+A free developer account issues a certificate valid for seven days, after which
+the project has to be rebuilt. A permanent install goes through the App Store
+only, and that needs a paid Apple Developer Program membership.
 
 ### Android
 
-Chrome на Android расширения не поддерживает — ни это, ни любое другое.
-Остаётся Firefox, но временные дополнения там недоступны: нужна подписанная
-сборка.
+Chrome on Android supports no extensions at all — neither this one nor any
+other. Firefox remains, but temporary add-ons are unavailable there: a signed
+build is required.
 
-## Что проверено
+## What has been verified
 
-| Цель | Состояние |
+| Target | State |
 |---|---|
-| Chrome / Chromium | Проверено на живой странице пул-реквеста, тест в наборе |
-| Firefox | Сборка проходит проверку `web-ext lint` без замечаний; в браузере не гонялась |
-| Safari, macOS | Схема компилируется; включение расширения в браузере — вручную |
-| Safari, iOS | Схема компилируется, контейнер ставится и запускается в симуляторе (`npm run run:ios`); включение — вручную |
+| Chrome / Chromium | Verified on a live pull request page, covered by a test |
+| Firefox | The build passes `web-ext lint` with no warnings; never run in the browser |
+| Safari, macOS | The scheme compiles; enabling the extension is manual |
+| Safari, iOS | The scheme compiles, the container installs and launches in the simulator (`npm run run:ios`); enabling is manual |
 
-Сама панель во всех трёх браузерах — один и тот же content script, поэтому
-проверка в Chromium покрывает и логику сравнения, и вёрстку. Неизвестной
-остаётся ровно установка: она у каждого браузера своя.
+The panel itself is the same content script in all three browsers, so testing in
+Chromium covers both the comparison logic and the layout. What stays unknown is
+exactly the installation — it differs per browser.
 
-## Как это устроено
+## How it works
 
-Превью бинарных файлов GitHub рисует в отдельном фрейме на своём домене —
-`viewscreen.githubusercontent.com`. Там же живут обе версии картинки и
-переключатель режимов, поэтому расширение работает внутри этого фрейма и по его
-правилам: своя радиокнопка в `.js-view-modes`, свой контейнер, свой ползунок.
-Адреса картинок берутся из параметров `enc_url1` и `enc_url2` в адресе фрейма,
-загружаются с `raw.githubusercontent.com` (он отдаёт
-`access-control-allow-origin: *`, поэтому холст остаётся читаемым) и
-сравниваются через [pixelmatch](https://github.com/mapbox/pixelmatch).
+GitHub renders binary file previews in a separate frame on its own domain —
+`viewscreen.githubusercontent.com`. Both versions of the image and the mode
+switcher live there too, so the extension works inside that frame and by its
+rules: its own radio button in `.js-view-modes`, its own container, its own
+slider. Image addresses come from the `enc_url1` and `enc_url2` parameters of the
+frame URL, are loaded from `raw.githubusercontent.com` (which serves
+`access-control-allow-origin: *`, keeping the canvas readable) and compared with
+[pixelmatch](https://github.com/mapbox/pixelmatch).
 
-Отсюда три следствия:
+Three consequences follow:
 
-- **Страницы github.com расширение не видит вовсе.** Права — только на
-  `viewscreen.githubusercontent.com`, где нет ни ваших репозиториев, ни сессии.
-- Фонового процесса нет — только content script. Поэтому манифест почти не
-  отличается между тремя браузерами: Firefox добавляет свой идентификатор,
-  Safari берёт сборку как есть.
-- Разметку панели просмотра GitHub меняет без предупреждений. Поэтому в тестах
-  есть проверка на живой странице — она и сломается первой, если формат уедет.
+- **The extension never sees github.com pages at all.** Its permissions cover
+  only `viewscreen.githubusercontent.com`, where neither your repositories nor
+  your session exist.
+- There is no background process — only a content script. That's why the
+  manifest barely differs between the three browsers: Firefox adds its own
+  identifier, Safari takes the build as is.
+- GitHub changes the viewer markup without warning. Hence the live page test —
+  it will be the first thing to break if the format moves.
 
-## Разработка
+## Development
 
 ```bash
-npm run build     # сборка всех трёх целей
-npm test          # тесты в образе Playwright (нужен Docker)
-npm run package   # архивы для релиза в dist/release
+npm run build     # builds all three targets
+npm test          # tests in the Playwright image (needs Docker)
+npm run package   # release archives into dist/release
 ```
 
-На каждый push и пул-реквест GitHub гоняет офлайн-тесты в том же образе
-Playwright и проверяет сборку Firefox через `web-ext lint`. Живой тест вынесен
-в отдельный запуск — раз в неделю и по кнопке: он ломается от чужих изменений,
-а не от наших, и блокировать пул-реквест не должен.
+On every push and pull request GitHub runs the offline tests in that same
+Playwright image and checks the Firefox build with `web-ext lint`. The live test
+is a separate run — weekly and on demand: it breaks because of someone else's
+changes, not ours, and shouldn't block a pull request.
 
-Релиз делает тег: `npm version 0.2.0` (правит и `package.json`, и манифест),
-затем `git push --follow-tags`. Дальше GitHub сам собирает архивы, сверяет тег
-с версией манифеста и выкладывает их на страницу релизов.
+A release is cut by a tag: `npm version 0.2.0` (which updates both
+`package.json` and the manifest), then `git push --follow-tags`. GitHub builds
+the archives, checks the tag against the manifest version and publishes them to
+the releases page.
 
-Тесты — два уровня. `tests/parse.spec.js` проверяет разбор адресов, подмену
-репозитория и поиск области различий, не выходя в сеть. `tests/live.spec.js`
-поднимает настоящий Chromium с загруженным расширением, открывает
-[пул-реквест-полигон](https://github.com/Nemo-Illusionist/gh-pixel-diff/pull/1)
-и убеждается, что режим встал в ряд к родным и посчитал разницу.
+Tests come in two levels. `tests/parse.spec.js` checks URL parsing, the
+repository fallback and the search for the changed area, without going online.
+`tests/live.spec.js` starts a real Chromium with the extension loaded, opens the
+[test-bed pull request](https://github.com/Nemo-Illusionist/gh-pixel-diff/pull/1)
+and makes sure the mode joined the native row and counted the difference.
 
-Полигон — открытый пул-реквест с одной изменённой картинкой в этом же
-репозитории; он намеренно не сливается. Раньше тест ходил на чужой пул-реквест,
-и тот перестал годиться, когда форк с исходной картинкой удалили.
+The test bed is an open pull request with a single changed image in this same
+repository; it is deliberately never merged. The test used to point at someone
+else's pull request, and that stopped working when the fork holding the original
+image was deleted.
 
-Прогон идёт в контейнере, чтобы результат не зависел от того, что стоит на
-машине.
+The run happens in a container so that the result doesn't depend on what is
+installed on the machine.
 
-## Лицензия
+## License
 
-MIT — см. [LICENSE](LICENSE). В составе — [pixelmatch](src/vendor/pixelmatch.js)
-под лицензией ISC, © Mapbox.
+MIT — see [LICENSE](LICENSE). Bundled:
+[pixelmatch](src/vendor/pixelmatch.js) under the ISC license, © Mapbox.
