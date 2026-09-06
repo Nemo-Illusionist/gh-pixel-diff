@@ -25,6 +25,14 @@
   const SHOW_VIEWS_DEFAULT = true;
   /** Сколько ждём ответа от потока, прежде чем считать сами. */
   const WORKER_TIMEOUT = 5000;
+  /**
+   * Пока GitHub не задал фрейму высоту, окно внутри — узкая полоска, и кадр
+   * ужимается в точку. Высоту задаёт родительская страница, и делает это,
+   * когда переключается её собственный режим: наш выбор её не трогает.
+   * Поэтому запомненный режим восстанавливаем не раньше, чем фрейм вырастет.
+   */
+  const FRAME_READY_HEIGHT = 200;
+  const FRAME_READY_TIMEOUT = 4000;
 
   /** Репозиторий страницы: GitHub кладёт его во фрейм параметром `nwo`. */
   function repositoryFromUrl() {
@@ -619,11 +627,35 @@
       sync();
     });
 
+    const remembered = inputs.get(readSetting(MODE_KEY));
+    if (!remembered) {
+      sync();
+      return;
+    }
+
     // Восстанавливаем выбор так же, как это сделал бы человек: щелчком.
     // Скрипт GitHub слушает то же событие и должен узнать о смене режима.
-    const remembered = inputs.get(readSetting(MODE_KEY));
-    if (remembered) remembered.click();
-    else sync();
+    const restore = () => remembered.click();
+    if (innerHeight >= FRAME_READY_HEIGHT) {
+      restore();
+      return;
+    }
+
+    const waitForHeight = () => {
+      if (innerHeight < FRAME_READY_HEIGHT) return;
+      stopWaiting();
+      restore();
+    };
+    // Ждать вечно нельзя: у маленькой картинки фрейм и не должен вырасти.
+    const timer = setTimeout(() => {
+      stopWaiting();
+      restore();
+    }, FRAME_READY_TIMEOUT);
+    function stopWaiting() {
+      clearTimeout(timer);
+      removeEventListener('resize', waitForHeight);
+    }
+    addEventListener('resize', waitForHeight);
   }
 
   // Настройки читаются до сборки панели: иначе ползунок и режим успели бы

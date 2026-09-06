@@ -737,6 +737,40 @@ test('три кадра показывают разные картинки', asy
   expect(colors[2]).not.toBe(colors[0]);
 });
 
+test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {
+  // Высоту фрейма задаёт родительская страница, и делает это, когда меняется
+  // её собственный режим. Восстановишь свой раньше — окно внутри остаётся
+  // полоской, и кадр ужимается в точку: режим выбран, а показывать нечего.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  // Следующая картинка открывается в ещё не выросшем фрейме.
+  await page.setViewportSize({ width: 900, height: 150 });
+  await page.reload();
+  await injectExtension(page);
+  await page.waitForSelector('.ghpd-mode-item');
+
+  expect(await page.isChecked('.ghpd-mode-item input[value="pixel-diff"]')).toBe(false);
+
+  // Фрейм вырос — вот теперь можно.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await waitForResult(page);
+
+  const canvas = await page.evaluate(() => {
+    const node = document.querySelector('.ghpd-view > .ghpd-shell > .ghpd-canvas');
+    const box = node.getBoundingClientRect();
+    // Сравниваем с самим кадром: в точку он ужимается, когда фрейм — полоска.
+    return { доляВысоты: box.height / node.height, доляШирины: box.width / node.width };
+  });
+
+  expect(await page.isChecked('.ghpd-mode-item input[value="pixel-diff"]')).toBe(true);
+  expect(canvas.доляВысоты).toBeGreaterThan(0.9);
+  expect(canvas.доляШирины).toBeGreaterThan(0.9);
+});
+
 test('подпись на языке интерфейса', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);

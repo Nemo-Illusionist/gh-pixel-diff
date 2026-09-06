@@ -6,6 +6,16 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1]
+
+### Fixed
+
+- With a remembered mode, the page opened on Pixel Diff showing nothing until
+  you switched away and back. The frame's height is set by the parent page, and
+  only when GitHub's own mode changes — restoring our mode earlier left the
+  window inside a 150-pixel strip and the frame squeezed to a couple of pixels.
+  The restore now waits for the frame to grow.
+
 ## [0.6.0]
 
 ### Added
@@ -145,7 +155,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.4.0...v0.5.0
