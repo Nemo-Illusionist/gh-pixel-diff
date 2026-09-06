@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "GitHub Pixel Diff",
+  "name": "__MSG_extName__",
   "version": "0.1.1",
-  "description": "Добавляет в просмотр картинок на GitHub режим попиксельной разницы — рядом с 2-up, Swipe и Onion Skin.",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -20,6 +21,7 @@
       ],
       "js": [
         "vendor/pixelmatch.js",
+        "content/i18n.js",
         "content/compare.js",
         "content/frame.js"
       ],
@@ -31,11 +33,15 @@
     }
   ],
   "action": {
-    "default_title": "GitHub Pixel Diff",
+    "default_title": "__MSG_extName__",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
     }
+  },
+  "options_ui": {
+    "page": "popup/popup.html",
+    "open_in_tab": false
   }
 }

@@ -25,6 +25,7 @@ fragment where the difference lives.
 - If the pull request came from a fork that was later deleted, the image is
   taken from the upstream repository — GitHub itself shows "Invalid image
   source" in that case.
+- The interface speaks English, or Russian when the browser is set to Russian.
 
 ![Full frame](docs/screenshots/frame-full.png)
 
@@ -95,6 +96,27 @@ Chrome on Android supports no extensions at all — neither this one nor any
 other. Firefox remains, but temporary add-ons are unavailable there: a signed
 build is required.
 
+## Granting access
+
+However it was installed, the extension needs access to one domain —
+`viewscreen.githubusercontent.com`. Chrome and Firefox grant it on install;
+Safari does not, because a site permission there does not extend to
+cross-origin frames, and the images live exactly in such a frame.
+
+Access is requested from the extension's own window: click its button in the
+toolbar and press **Grant access**. The same window shows whether access is
+already there.
+
+![The extension popup](docs/screenshots/popup.png)
+
+In Safari the same thing can be done without the popup: Settings → Extensions →
+GitHub Pixel Diff → **Edit websites…** → set `viewscreen.githubusercontent.com`
+to "Allow". That pane belongs to Safari, and no extension can put its own button
+there.
+
+Nothing else is requested. There are no permissions for `github.com` pages at
+all, so the extension cannot see your repositories or your session.
+
 ## What has been verified
 
 | Target | State |
@@ -148,9 +170,14 @@ A release is cut by a tag: `npm version 0.2.0` (which updates both
 the archives, checks the tag against the manifest version and publishes them to
 the releases page.
 
-Tests come in two levels. `tests/parse.spec.js` checks URL parsing, the
-repository fallback and the search for the changed area, without going online.
-`tests/live.spec.js` starts a real Chromium with the extension loaded, opens the
+Tests come in three levels. `tests/parse.spec.js` checks URL parsing, the
+repository fallback and the search for the changed area, without touching the
+DOM. `tests/frame.spec.js` loads the extension into a stub of GitHub's viewer
+frame and checks how it coexists with someone else's markup: that exactly one
+mode is visible at a time, that the panel doesn't change the document height,
+that the content stays centered in a tall frame. Every one of those broke at
+least once and was caught by eye on a screenshot. `tests/live.spec.js` starts a
+real Chromium with the extension loaded, opens the
 [test-bed pull request](https://github.com/Nemo-Illusionist/gh-pixel-diff/pull/1)
 and makes sure the mode joined the native row and counted the difference.
 
@@ -161,6 +188,10 @@ image was deleted.
 
 The run happens in a container so that the result doesn't depend on what is
 installed on the machine.
+
+Interface strings live in `src/_locales`. English is the fallback locale; a new
+language is a copy of `en/messages.json` with the values translated — Russian
+carries two extra plural forms, which `Intl.PluralRules` picks by itself.
 
 ## License
 

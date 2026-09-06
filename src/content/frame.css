@@ -94,25 +94,55 @@
   cursor: pointer;
 }
 
-.ghpd-slider { flex: 1; padding: 8px 0; }
+/* Родной input[type=range], раздетый до вида дорожки Onion Skin. */
+.ghpd-slider {
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
 
-.ghpd-track {
-  position: relative;
-  display: block;
+.ghpd-slider::-webkit-slider-runnable-track {
   height: 2px;
   border-radius: 2px;
   background: var(--borderColor-default, #d0d7de);
 }
 
-.ghpd-dragger {
-  position: absolute;
-  top: 50%;
+.ghpd-slider::-moz-range-track {
+  height: 2px;
+  border-radius: 2px;
+  background: var(--borderColor-default, #d0d7de);
+}
+
+.ghpd-slider::-webkit-slider-thumb {
   width: 12px;
   height: 12px;
-  margin-left: -6px;
+  margin-top: -5px;
+  border: none;
   border-radius: 50%;
-  transform: translateY(-50%);
   background: var(--fgColor-muted, #6e7781);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ghpd-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: var(--fgColor-muted, #6e7781);
+}
+
+/* Фокус виден: ползунком теперь пользуются и с клавиатуры. */
+.ghpd-slider:focus-visible {
+  outline: 2px solid var(--fgColor-accent, #0969da);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* Метки по краям: слева мелкая, справа крупная — как растёт огрубление. */

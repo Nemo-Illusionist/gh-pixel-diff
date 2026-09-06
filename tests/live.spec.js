@@ -34,7 +34,7 @@ function readState() {
     nativeVisible: [...document.querySelectorAll('.view:not(.ghpd-view)')]
       .filter((v) => getComputedStyle(v).display !== 'none'
         && getComputedStyle(v).visibility !== 'hidden').length,
-    slider: !!document.querySelector('.ghpd-controls .ghpd-track .ghpd-dragger'),
+    slider: !!document.querySelector('.ghpd-controls input.ghpd-slider'),
   };
 }
 
@@ -77,16 +77,16 @@ test('добавляет режим к родным и считает разни
     });
 
     // Расчёт занимает заметное время: снимок делаем, когда он закончен.
+    // Язык подписи — язык браузера, поэтому проверяем оба: русское склонение
+    // числа и английское множественное.
     await expect
       .poll(async () => (await state())?.meta ?? '', { timeout: 60_000 })
-      .not.toBe('Считаю…');
+      .toMatch(/\d+ (пиксел(ь|я|ей)|pixels?)/);
 
     const done = await state();
-    // Корень без окончания: число склоняется — «181 пиксель», «2 пикселя».
-    expect(done.meta).toMatch(/\d+ пиксел(ь|я|ей)/);
-    expect(done.meta).not.toContain('Не вышло');
+    expect(done.meta).not.toMatch(/Не вышло|Failed/);
     // По умолчанию показан фрагмент с изменениями, а не весь кадр.
-    expect(done.meta).toContain('фрагмент');
+    expect(done.meta).toMatch(/фрагмент|fragment/);
     expect(Number(done.meta.replace(/\s/g, '').match(/^(\d+)/)?.[1])).toBeGreaterThan(100);
     expect(done.canvas).toMatch(/^\d+x\d+$/);
 

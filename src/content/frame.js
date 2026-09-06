@@ -7,10 +7,15 @@
 (function (global) {
   'use strict';
 
-  const { comparePair, readImagePair } = global.GhPixelDiff;
+  const { diffPrepared, preparePair, readImagePair } = global.GhPixelDiff;
+  const { plural, t } = global.GhPixelDiffI18n;
 
   const MODE = 'pixel-diff';
   const CROP_PADDING = 40;
+  /** Порог pixelmatch: 0 — ловит даже сглаживание, 0.5 — только явные отличия. */
+  const THRESHOLD_MAX = 0.5;
+  const THRESHOLD_DEFAULT = 0.1;
+  const THRESHOLD_KEY = 'ghpd:threshold';
 
   /** Репозиторий страницы: GitHub кладёт его во фрейм параметром `nwo`. */
   function repositoryFromUrl() {
@@ -18,16 +23,6 @@
     if (!nwo) return null;
     const [owner, name] = nwo.split('/');
     return owner && name ? { owner, name } : null;
-  }
-
-  /** «1 пиксель», «2 пикселя», «5 пикселей». */
-  function pluralPixels(count) {
-    const tens = count % 100;
-    const ones = count % 10;
-    if (tens >= 11 && tens <= 14) return 'пикселей';
-    if (ones === 1) return 'пиксель';
-    if (ones >= 2 && ones <= 4) return 'пикселя';
-    return 'пикселей';
   }
 
   function el(tag, className, text) {
@@ -38,56 +33,65 @@
   }
 
   /**
+   * Порог живёт между картинками: подобрав его на одном снимке, читать diff
+   * дальше хочется с тем же. Хранилище фрейма для этого и годится — оно своё
+   * у домена viewscreen и переживает переход к следующему файлу.
+   */
+  function readThreshold() {
+    try {
+      // Именно так: Number(null) — это ноль, и без проверки на пустоту порог
+      // молча уезжал бы в самый левый край при первом же открытии.
+      const stored = localStorage.getItem(THRESHOLD_KEY);
+      const saved = Number(stored);
+      if (stored !== null && Number.isFinite(saved) && saved >= 0 && saved <= THRESHOLD_MAX) {
+        return saved;
+      }
+    } catch {
+      // Приватный режим и запрет на хранилище — не повод падать.
+    }
+    return THRESHOLD_DEFAULT;
+  }
+
+  function saveThreshold(value) {
+    try {
+      localStorage.setItem(THRESHOLD_KEY, String(value));
+    } catch {
+      // См. выше.
+    }
+  }
+
+  /**
    * Ползунок порога — в том же виде, что у режима Onion Skin: тонкая дорожка
    * между двумя метками. Классы GitHub здесь не годятся: их стили живут внутри
    * onion-skin-контейнера и снаружи прячут элемент, поэтому вид повторён своим.
+   *
+   * Внутри — родной input[type=range]: он один даёт и клавиатуру, и стрелки,
+   * и озвучку скринридером, которых у собранного из div'ов ползунка нет.
    */
   function createSlider(onChange) {
     const controls = el('div', 'ghpd-controls');
-    const track = el('span', 'ghpd-track');
-    const dragger = el('span', 'ghpd-dragger');
-    const slider = el('div', 'ghpd-slider');
-    track.append(dragger);
-    slider.append(track);
+    const input = el('input', 'ghpd-slider');
+    input.type = 'range';
+    input.min = '0';
+    input.max = String(THRESHOLD_MAX);
+    input.step = '0.01';
+    input.value = String(readThreshold());
+    input.setAttribute('aria-label', t('thresholdLabel'));
+    input.title = t('thresholdHint');
+
+    input.addEventListener('input', () => {
+      const value = Number(input.value);
+      saveThreshold(value);
+      onChange(value);
+    });
+
     controls.append(
       el('span', 'ghpd-mark ghpd-mark-small'),
-      slider,
+      input,
       el('span', 'ghpd-mark ghpd-mark-large'),
     );
 
-    // Порог pixelmatch: 0 — ловит даже сглаживание, 0.5 — только явные отличия.
-    let value = 0.1;
-    const apply = () => {
-      dragger.style.left = `${(value / 0.5) * 100}%`;
-    };
-    apply();
-
-    const move = (event) => {
-      const rect = track.getBoundingClientRect();
-      const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-      value = Math.min(0.5, Math.max(0, (x / rect.width) * 0.5));
-      apply();
-      onChange(value);
-    };
-    const stop = () => {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', stop);
-      document.removeEventListener('touchmove', move);
-      document.removeEventListener('touchend', stop);
-    };
-    const start = (event) => {
-      event.preventDefault();
-      move(event);
-      document.addEventListener('mousemove', move);
-      document.addEventListener('mouseup', stop);
-      document.addEventListener('touchmove', move, { passive: false });
-      document.addEventListener('touchend', stop);
-    };
-    slider.addEventListener('mousedown', start);
-    slider.addEventListener('touchstart', start, { passive: false });
-    controls.title = 'Порог: слева ловятся даже отличия в сглаживании, справа — только заметные глазу';
-
-    return { element: controls, get value() { return value; } };
+    return { element: controls, get value() { return Number(input.value); } };
   }
 
   function drawCrop(canvas, result, cropped) {
@@ -148,30 +152,33 @@
     view.append(shell);
 
     let result = null;
+    let prepared = null;
+    let loading = null;
     let cropped = true;
-    let busy = false;
 
     const render = () => {
       const box = drawCrop(canvas, result, cropped);
-      const changed = result.changed.toLocaleString('ru-RU');
       const percent = result.ratio * 100;
       const shown = percent >= 0.01 ? percent.toFixed(2) : '<0.01';
 
       meta.replaceChildren();
       meta.append(
-        el('strong', null, `${changed} ${pluralPixels(result.changed)}`),
-        ` · ${shown}% кадра`,
+        el('strong', null, plural('pixels', result.changed)),
+        ` · ${t('shareOfFrame', shown)}`,
       );
       if (result.bounds) {
         cropToggle.textContent = cropped
-          ? `фрагмент ${box.width}×${box.height} — показать кадр целиком`
-          : 'показать только изменения';
+          ? t('showFullFrame', box.width, box.height)
+          : t('showChangesOnly');
         meta.append(' · ', cropToggle);
       }
       if (result.sizeChanged) {
         meta.append(
-          ` · размер изменился: ${result.before.naturalWidth}×${result.before.naturalHeight} → ` +
-          `${result.after.naturalWidth}×${result.after.naturalHeight}`,
+          ` · ${t(
+            'sizeChanged',
+            `${result.before.naturalWidth}×${result.before.naturalHeight}`,
+            `${result.after.naturalWidth}×${result.after.naturalHeight}`,
+          )}`,
         );
       }
     };
@@ -181,17 +188,20 @@
       render();
     });
 
+    // Картинки грузятся и раскладываются по холстам ровно один раз: движение
+    // ползунка меняет только порог, и пересчитывать ради него декодирование
+    // снимка в несколько мегапикселей незачем.
     const compare = async (threshold) => {
-      if (busy) return;
-      busy = true;
-      meta.textContent = 'Считаю…';
       try {
-        result = await comparePair(pair, { threshold, repository: repositoryFromUrl() });
+        if (!prepared) {
+          meta.textContent = t('computing');
+          loading ??= preparePair(pair, { repository: repositoryFromUrl() });
+          prepared = await loading;
+        }
+        result = diffPrepared(prepared, { threshold });
         render();
       } catch (error) {
-        meta.textContent = `Не вышло: ${error.message}`;
-      } finally {
-        busy = false;
+        meta.textContent = t('failed', error.message);
       }
     };
 
@@ -236,7 +246,7 @@
     input.type = 'radio';
     input.name = 'view-mode';
     input.value = MODE;
-    label.append(input, 'Pixel Diff');
+    label.append(input, t('modeName'));
     modes.append(label);
 
     const sync = () => {

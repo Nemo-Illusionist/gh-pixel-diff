@@ -69,15 +69,25 @@ test('подменяет репозиторий в адресе картинки
 });
 
 test('находит прямоугольник с различиями', async ({ page }) => {
+  // Границы берутся из готового диффа: pixelmatch красит изменившийся пиксель
+  // в чистый красный, поэтому искать нужно именно его.
   const bounds = await page.evaluate(() => {
     const width = 8;
     const height = 8;
-    const a = new Uint8ClampedArray(width * height * 4).fill(255);
-    const b = new Uint8ClampedArray(a);
-    // Помечаем один пиксель в точке (3, 5).
-    const i = (5 * width + 3) * 4;
-    b[i] = 0;
-    return self.GhPixelDiff.boundsOfChanges(a, b, width, height);
+    const diff = new Uint8ClampedArray(width * height * 4);
+    // Серый фон — то, чем pixelmatch рисует совпавшие пиксели.
+    for (let i = 0; i < diff.length; i += 4) {
+      diff[i] = diff[i + 1] = diff[i + 2] = 128;
+      diff[i + 3] = 255;
+    }
+    const mark = (x, y) => {
+      const i = (y * width + x) * 4;
+      diff[i] = 255;
+      diff[i + 1] = 0;
+      diff[i + 2] = 0;
+    };
+    mark(3, 5);
+    return self.GhPixelDiff.boundsOfChanges(diff, width, height);
   });
 
   expect(bounds).toEqual({ x: 3, y: 5, width: 1, height: 1 });
@@ -85,8 +95,8 @@ test('находит прямоугольник с различиями', async 
 
 test('без различий прямоугольника нет', async ({ page }) => {
   const bounds = await page.evaluate(() => {
-    const a = new Uint8ClampedArray(4 * 4 * 4).fill(7);
-    return self.GhPixelDiff.boundsOfChanges(a, new Uint8ClampedArray(a), 4, 4);
+    const diff = new Uint8ClampedArray(4 * 4 * 4).fill(128);
+    return self.GhPixelDiff.boundsOfChanges(diff, 4, 4);
   });
 
   expect(bounds).toBeNull();

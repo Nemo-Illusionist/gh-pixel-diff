@@ -56,7 +56,8 @@
       img.crossOrigin = 'anonymous';
       img.decoding = 'async';
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error(`не удалось загрузить ${src}`));
+      // Вне расширения текста для сообщения нет — тогда в ошибку идёт адрес.
+      img.onerror = () => reject(new Error(global.GhPixelDiffI18n?.t('loadFailed', src) || src));
       img.src = src;
     });
   }
@@ -89,8 +90,13 @@
    * Для длинного снимка страницы это главное: правка обычно занимает
    * несколько строк, а искать их глазами по трём тысячам пикселей высоты
    * никто не станет.
+   *
+   * Читаем готовый дифф, а не исходные картинки: pixelmatch красит
+   * изменившийся пиксель в чистый красный, а всё остальное — в серое
+   * (у серого r = g = b, так что спутать нельзя). Значит, границы считаются
+   * по тому же порогу, что и число пикселей, — и одним проходом вместо двух.
    */
-  function boundsOfChanges(a, b, width, height) {
+  function boundsOfChanges(diff, width, height) {
     let minX = width;
     let minY = height;
     let maxX = -1;
@@ -100,7 +106,7 @@
       const row = y * width * 4;
       for (let x = 0; x < width; x++) {
         const i = row + x * 4;
-        if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) {
+        if (diff[i] === 255 && diff[i + 1] === 0 && diff[i + 2] === 0) {
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
@@ -114,12 +120,14 @@
   }
 
   /**
-   * Сравнивает две картинки и возвращает данные для отрисовки.
-   * @returns {Promise<{width, height, changed, ratio, diff: ImageData,
-   *                    before: HTMLImageElement, after: HTMLImageElement,
+   * Загружает обе версии и раскладывает их по холстам одного размера.
+   * Отделено от сравнения намеренно: при движении ползунка порога меняется
+   * только сравнение, а загрузка и декодирование — самая дорогая часть —
+   * делаются один раз.
+   * @returns {Promise<{width, height, before, after, dataBefore, dataAfter,
    *                    sizeChanged: boolean}>}
    */
-  async function comparePair(pair, options = {}) {
+  async function preparePair(pair, options = {}) {
     const [before, after] = await Promise.all([
       loadImageWithFallback(pair.before, options.repository),
       loadImageWithFallback(pair.after, options.repository),
@@ -127,36 +135,67 @@
 
     const width = Math.max(before.naturalWidth, after.naturalWidth);
     const height = Math.max(before.naturalHeight, after.naturalHeight);
-    const sizeChanged =
-      before.naturalWidth !== after.naturalWidth || before.naturalHeight !== after.naturalHeight;
 
-    const dataBefore = toImageData(before, width, height);
-    const dataAfter = toImageData(after, width, height);
+    return {
+      width,
+      height,
+      before,
+      after,
+      dataBefore: toImageData(before, width, height),
+      dataAfter: toImageData(after, width, height),
+      sizeChanged:
+        before.naturalWidth !== after.naturalWidth ||
+        before.naturalHeight !== after.naturalHeight,
+    };
+  }
+
+  /**
+   * Сравнивает уже загруженную пару с заданным порогом.
+   * @returns {{width, height, changed, ratio, bounds, diff: ImageData,
+   *            before: HTMLImageElement, after: HTMLImageElement,
+   *            sizeChanged: boolean}}
+   */
+  function diffPrepared(prepared, options = {}) {
+    const { width, height } = prepared;
     const diff = new ImageData(width, height);
 
-    const changed = global.pixelmatch(dataBefore.data, dataAfter.data, diff.data, width, height, {
-      threshold: options.threshold ?? 0.1,
-      includeAA: options.includeAA ?? false,
-      alpha: options.alpha ?? 0.35,
-    });
+    const changed = global.pixelmatch(
+      prepared.dataBefore.data,
+      prepared.dataAfter.data,
+      diff.data,
+      width,
+      height,
+      {
+        threshold: options.threshold ?? 0.1,
+        includeAA: options.includeAA ?? false,
+        alpha: options.alpha ?? 0.35,
+      },
+    );
 
     return {
       width,
       height,
       changed,
       ratio: changed / (width * height),
-      bounds: boundsOfChanges(dataBefore.data, dataAfter.data, width, height),
+      bounds: boundsOfChanges(diff.data, width, height),
       diff,
-      before,
-      after,
-      sizeChanged,
+      before: prepared.before,
+      after: prepared.after,
+      sizeChanged: prepared.sizeChanged,
     };
+  }
+
+  /** Загрузка и сравнение одним вызовом. */
+  async function comparePair(pair, options = {}) {
+    return diffPrepared(await preparePair(pair, options), options);
   }
 
   global.GhPixelDiff = {
     readImagePair,
     decodeHexUrl,
     comparePair,
+    preparePair,
+    diffPrepared,
     loadImage,
     rewriteRepository,
     boundsOfChanges,

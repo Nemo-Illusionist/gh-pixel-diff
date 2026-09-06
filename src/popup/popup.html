@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <title>GitHub Pixel Diff</title>
@@ -7,19 +7,18 @@
   </head>
   <body>
     <h1>GitHub Pixel Diff</h1>
-    <p class="lead">
-      Добавляет режим <b>Pixel Diff</b> к 2-up, Swipe и Onion Skin в просмотре
-      картинок на GitHub.
-    </p>
+    <!-- Текст подставляет popup.js из _locales: язык окна следует за браузером. -->
+    <p class="lead" data-i18n-rich="popupLead"></p>
 
-    <p id="status" class="status status-checking">Проверяю доступ…</p>
+    <p id="status" class="status status-checking" data-i18n="popupChecking"></p>
 
-    <button id="grant" type="button" hidden>Разрешить доступ</button>
+    <button id="grant" type="button" hidden data-i18n="popupGrant"></button>
 
-    <p class="note">
-      Картинки GitHub показывает во фрейме с домена
-      <code>viewscreen.githubusercontent.com</code> — доступ нужен именно к нему.
-      Страницы <code>github.com</code> расширение не читает.
+    <p class="note" data-i18n-rich="popupNote"></p>
+
+    <p class="report">
+      <a id="report" href="https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/new"
+         target="_blank" rel="noreferrer" data-i18n="popupReport"></a>
     </p>
 
     <script src="popup.js"></script>

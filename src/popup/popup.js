@@ -5,17 +5,54 @@
 // значит попросить доступ можно только отсюда, по нажатию.
 const api = globalThis.browser ?? globalThis.chrome;
 const ORIGINS = { origins: ['https://viewscreen.githubusercontent.com/*'] };
+const REPOSITORY = 'https://github.com/Nemo-Illusionist/gh-pixel-diff';
+
+const t = (key, ...substitutions) => api.i18n.getMessage(key, substitutions.map(String));
+
+// Разметка держит только ключи: data-i18n — для обычного текста, data-i18n-rich —
+// для строк с <b> и <code>, которые в переводе остаются частью фразы.
+//
+// Разметку из перевода собираем узлами, а не innerHTML: строка приходит из
+// файла локали, но присваивание innerHTML само по себе — замечание при
+// проверке дополнения, и обходиться без него дешевле, чем объяснять.
+const TAGS = /<(b|code)>(.*?)<\/\1>/g;
+
+function setRich(node, text) {
+  node.replaceChildren();
+  let cut = 0;
+  for (const match of text.matchAll(TAGS)) {
+    if (match.index > cut) node.append(text.slice(cut, match.index));
+    const tag = document.createElement(match[1]);
+    tag.textContent = match[2];
+    node.append(tag);
+    cut = match.index + match[0].length;
+  }
+  node.append(text.slice(cut));
+}
+
+for (const node of document.querySelectorAll('[data-i18n]')) {
+  node.textContent = t(node.dataset.i18n);
+}
+for (const node of document.querySelectorAll('[data-i18n-rich]')) {
+  setRich(node, t(node.dataset.i18nRich));
+}
 
 const status = document.querySelector('#status');
 const grant = document.querySelector('#grant');
+const report = document.querySelector('#report');
+
+// В теле задачи — версия и браузер: без них первый вопрос всё равно про них.
+report.href =
+  `${REPOSITORY}/issues/new?body=` +
+  encodeURIComponent(
+    `\n\n---\n${api.runtime.getManifest().version} · ${navigator.userAgent}`,
+  );
 
 function show(granted) {
   status.classList.remove('status-checking');
   status.classList.toggle('status-granted', granted);
   status.classList.toggle('status-missing', !granted);
-  status.textContent = granted
-    ? 'Доступ есть — режим появится в панели просмотра картинок.'
-    : 'Доступа нет: без него режим не появится.';
+  status.textContent = granted ? t('popupGranted') : t('popupMissing');
   grant.hidden = granted;
 }
 
@@ -23,7 +60,7 @@ async function check() {
   try {
     show(await api.permissions.contains(ORIGINS));
   } catch (error) {
-    status.textContent = `Не удалось проверить доступ: ${error.message}`;
+    status.textContent = t('popupCheckFailed', error.message);
   }
 }
 
@@ -31,12 +68,9 @@ grant.addEventListener('click', async () => {
   try {
     const granted = await api.permissions.request(ORIGINS);
     show(granted);
-    if (!granted) {
-      status.textContent =
-        'Доступ не выдан. Его же можно включить в настройках расширения, кнопкой «Изменить сайты».';
-    }
+    if (!granted) status.textContent = t('popupDenied');
   } catch (error) {
-    status.textContent = `Не вышло: ${error.message}`;
+    status.textContent = t('failed', error.message);
   }
 });
 

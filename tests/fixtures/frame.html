@@ -1,0 +1,74 @@
+<!doctype html>
+<!--
+  Заглушка фрейма, в котором GitHub показывает картинки: панель режимов,
+  три контейнера `.view` и правило, прячущее всё, кроме выбранного.
+
+  Повторяет ровно то, за что цепляется расширение, — и существует затем, чтобы
+  проверять вёрстку панели без похода на github.com, где разметка меняется
+  когда угодно.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>image diff</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 12px -apple-system, system-ui, sans-serif; background: #fff; }
+      .view { display: none; padding: 16px; text-align: center; }
+      .view.selected { display: block; }
+      .js-render-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        border-top: 1px solid #d0d7de;
+        background: #f6f8fa;
+      }
+      .js-view-mode-item input { display: none; }
+      .js-view-mode-item { padding: 4px 8px; cursor: pointer; }
+      .js-view-mode-item.selected { background: #ddf4ff; border-radius: 6px; }
+      img { max-width: 100%; }
+    </style>
+  </head>
+  <body>
+    <div class="view view-2-up selected"><img id="two-up" alt=""></div>
+    <div class="view view-swipe">swipe</div>
+    <div class="view view-onion">onion skin</div>
+
+    <div class="js-render-bar">
+      <div class="js-view-modes">
+        <label class="js-view-mode-item selected">
+          <input type="radio" name="view-mode" value="two-up" checked>2-up
+        </label>
+        <label class="js-view-mode-item">
+          <input type="radio" name="view-mode" value="swipe">Swipe
+        </label>
+        <label class="js-view-mode-item">
+          <input type="radio" name="view-mode" value="onion">Onion Skin
+        </label>
+      </div>
+    </div>
+
+    <script>
+      // GitHub сам показывает выбранный режим и прячет остальные.
+      const modes = document.querySelector('.js-view-modes');
+      const views = {
+        'two-up': document.querySelector('.view-2-up'),
+        swipe: document.querySelector('.view-swipe'),
+        onion: document.querySelector('.view-onion'),
+      };
+      modes.addEventListener('change', (event) => {
+        for (const [value, view] of Object.entries(views)) {
+          view.classList.toggle('selected', event.target.value === value);
+        }
+      });
+      document.querySelector('#two-up').src =
+        new URL(location.href).searchParams.get('preview') || '';
+    </script>
+  </body>
+</html>

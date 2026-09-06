@@ -41,23 +41,39 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat > notes.md <<'NOTES'
-          ## Установка
+          # Что изменилось — из CHANGELOG, раздел ровно этой версии.
+          node - <<'JS' > notes.md
+          const { readFileSync } = require('node:fs');
+          const version = process.env.version;
+          const changelog = readFileSync('CHANGELOG.md', 'utf8');
+          const section = changelog.split(/^## /m).find((part) => part.startsWith(`[${version}]`));
+          if (section) {
+            console.log(section.replace(/^\[.*?\].*$/m, "## What's changed").trimEnd());
+            console.log();
+          }
+          JS
+          cat >> notes.md <<'NOTES'
+          ## Installation
 
-          **Chrome, Edge, любой Chromium** — скачать `gh-pixel-diff-chrome-*.zip`,
-          распаковать, открыть `chrome://extensions`, включить «Режим разработчика»
-          и нажать «Загрузить распакованное расширение» → распакованная папка.
+          **Chrome, Edge, any Chromium** — download `gh-pixel-diff-chrome-*.zip`,
+          unpack it, open `chrome://extensions`, turn on "Developer mode" and
+          press "Load unpacked" → the unpacked folder.
 
-          **Firefox** — скачать `gh-pixel-diff-firefox-*.zip`, открыть
-          `about:debugging#/runtime/this-firefox` → «Загрузить временное
-          дополнение» → выбрать архив. Живёт до перезапуска браузера: постоянная
-          установка возможна только после подписи на addons.mozilla.org.
+          **Firefox** — download `gh-pixel-diff-firefox-*.zip`, open
+          `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" →
+          pick the archive. It lives until the browser restarts: a permanent
+          install requires signing on addons.mozilla.org.
 
-          **Safari, macOS и iOS** — скачать `gh-pixel-diff-safari-*.zip`,
-          распаковать и следовать `SAFARI-INSTALL.txt` внутри. Нужен Xcode и свой
-          сертификат: без подписи macOS расширение не зарегистрирует.
+          **Safari, macOS and iOS** — download `gh-pixel-diff-safari-*.zip`,
+          unpack it and follow `SAFARI-INSTALL.txt` inside. Xcode and your own
+          certificate are required: without a signature macOS won't register the
+          extension.
 
-          Суммы SHA-256 всех архивов — в `checksums.txt`.
+          After installing, open the extension popup and grant access to
+          `viewscreen.githubusercontent.com` — that is the domain GitHub serves
+          image previews from.
+
+          SHA-256 sums for every archive are in `checksums.txt`.
           NOTES
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
