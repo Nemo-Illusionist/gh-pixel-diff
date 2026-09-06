@@ -99,7 +99,22 @@
     if (!cropped || !result.bounds) {
       canvas.width = result.width;
       canvas.height = result.height;
-      canvas.getContext('2d').drawImage(full, 0, 0);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(full, 0, 0);
+      // Кадр показывается уменьшенным, и несколько изменившихся пикселей на нём
+      // просто исчезают. Поэтому обводим место, где они нашлись.
+      if (result.bounds) {
+        const box = result.bounds;
+        const margin = Math.max(6, Math.round(Math.max(result.width, result.height) / 120));
+        ctx.strokeStyle = '#d1242f';
+        ctx.lineWidth = Math.max(2, Math.round(Math.max(result.width, result.height) / 400));
+        ctx.strokeRect(
+          box.x - margin,
+          box.y - margin,
+          box.width + margin * 2,
+          box.height + margin * 2,
+        );
+      }
       return { x: 0, y: 0, width: result.width, height: result.height };
     }
 
@@ -221,10 +236,10 @@
       for (const item of modes.querySelectorAll('.js-view-mode-item')) {
         item.classList.toggle('selected', item.querySelector('input')?.checked === true);
       }
-      // Родные режимы прячем сами: их скрипт про наш ничего не знает.
-      for (const view of document.querySelectorAll('.view:not(.ghpd-view)')) {
-        view.style.display = ours ? 'none' : '';
-      }
+      // Родные режимы прячем классом на документе, а не inline-стилем: какой
+      // из них показать при возврате, знает скрипт GitHub, и его выбор нельзя
+      // затирать — иначе назад приходят все три разом.
+      document.documentElement.classList.toggle('ghpd-active', ours);
       if (ours) panel.show();
       else panel.hide();
     };

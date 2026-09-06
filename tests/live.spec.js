@@ -30,6 +30,9 @@ function readState() {
     viewHidden: view ? view.hidden : null,
     nativeHidden: [...document.querySelectorAll('.view:not(.ghpd-view)')]
       .every((v) => getComputedStyle(v).display === 'none'),
+    // Родных режимов одновременно виден ровно один — тот, что выбран.
+    nativeVisible: [...document.querySelectorAll('.view:not(.ghpd-view)')]
+      .filter((v) => getComputedStyle(v).display !== 'none').length,
     slider: !!document.querySelector('.ghpd-controls .ghpd-track .ghpd-dragger'),
   };
 }
@@ -94,6 +97,7 @@ test('добавляет режим к родным и считает разни
       checked: false,
       viewHidden: true,
       nativeHidden: false,
+      nativeVisible: 1,
     });
   } finally {
     await context.close();

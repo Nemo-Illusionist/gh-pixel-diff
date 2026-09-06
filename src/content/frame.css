@@ -15,6 +15,10 @@
 
 .ghpd-view[hidden] { display: none; }
 
+/* Пока показан наш режим, родные спрятаны — но их inline-стили не тронуты,
+   поэтому GitHub сам вернёт нужный, когда переключатся обратно. */
+.ghpd-active .view:not(.ghpd-view) { display: none !important; }
+
 .ghpd-shell {
   display: flex;
   flex-direction: column;
