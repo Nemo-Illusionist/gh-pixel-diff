@@ -185,5 +185,20 @@
   },
   "siteExtensionLink": {
     "message": "Install the extension"
+  },
+  "siteSlotBefore": {
+    "message": "Before"
+  },
+  "siteSlotAfter": {
+    "message": "After"
+  },
+  "siteClear": {
+    "message": "Remove"
+  },
+  "siteClearAll": {
+    "message": "Start over"
+  },
+  "siteResult": {
+    "message": "Difference"
   }
 }

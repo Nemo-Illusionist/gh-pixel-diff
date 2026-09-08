@@ -201,5 +201,20 @@
   },
   "siteExtensionLink": {
     "message": "Поставьте расширение"
+  },
+  "siteSlotBefore": {
+    "message": "Было"
+  },
+  "siteSlotAfter": {
+    "message": "Стало"
+  },
+  "siteClear": {
+    "message": "Убрать"
+  },
+  "siteClearAll": {
+    "message": "Начать заново"
+  },
+  "siteResult": {
+    "message": "Разница"
   }
 }

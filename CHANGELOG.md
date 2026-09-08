@@ -8,6 +8,9 @@ adheres to [semantic versioning](https://semver.org/).
 
 ### Added
 
+- Each half of the standalone page now has a **Remove** button, and the result
+  has **Start over**; the file name is shown with the image's size, since the
+  thumbnail alone does not tell you what is being compared.
 - A standalone page — <https://nemo-illusionist.github.io/gh-pixel-diff/> — where
   you drop two images of your own and get the same comparison: the same crop to
   what changed, the same threshold slider, the same before / after / diff / 3-up.
@@ -43,6 +46,16 @@ adheres to [semantic versioning](https://semver.org/).
 - `npm run screenshots` — the screenshots for the README and for the store
   listings are now made from the live pull request by a script, in English, in
   the same container as the tests.
+
+### Fixed
+
+- The standalone page came out without a single caption in some browsers. It
+  claimed `window.chrome` to hand the shared i18n code its source of strings,
+  and that name belongs to the browser: where it is closed for writing, the
+  assignment threw in strict mode, the script carrying the strings never
+  finished, and every label silently rendered empty. The source now has a name
+  of its own. A test reproduces the read-only `window.chrome` and fails on the
+  old code.
 
 ### Changed
 

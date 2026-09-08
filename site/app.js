@@ -221,6 +221,8 @@
   async function compare() {
     if (!files.before || !files.after) {
       panel.hidden = true;
+      // Пока хоть одна половина пуста, объясняем это словами: пустая страница
+      // под двумя рамками выглядит поломкой, а не ожиданием.
       failure.hidden = false;
       failure.textContent = t('siteNeedBoth');
       return;
@@ -263,6 +265,8 @@
     debounce = setTimeout(compare, SLIDER_DELAY);
   });
 
+  const slotBox = (slot) => document.querySelector(`.drop[data-slot="${slot}"]`);
+
   /** Кладёт файл в половину и перезапускает сравнение. */
   function accept(slot, file) {
     if (!file) return;
@@ -281,14 +285,44 @@
       vector: file.type === 'image/svg+xml',
     };
 
-    const box = document.querySelector(`.drop[data-slot="${slot}"]`);
+    const box = slotBox(slot);
     const preview = box.querySelector('.drop-preview');
     preview.src = files[slot].url;
     preview.hidden = false;
+    // Размер пишем рядом с именем: по уменьшенному образцу его не угадать, а
+    // на нём держится половина подписи под кадром.
+    preview.addEventListener(
+      'load',
+      () => {
+        box.querySelector('.drop-file').textContent =
+          `${file.name} · ${preview.naturalWidth}×${preview.naturalHeight}`;
+      },
+      { once: true },
+    );
     box.querySelector('.drop-file').textContent = file.name;
+    box.querySelector('.drop-clear').hidden = false;
     box.classList.add('filled');
 
     // Пара сменилась — прежний расчёт больше не о ней.
+    session = null;
+    result = null;
+    compare();
+  }
+
+  /** Убирает картинку из половины. */
+  function clear(slot) {
+    if (files[slot]) URL.revokeObjectURL(files[slot].url);
+    files[slot] = null;
+
+    const box = slotBox(slot);
+    const preview = box.querySelector('.drop-preview');
+    preview.hidden = true;
+    preview.removeAttribute('src');
+    box.querySelector('.drop-file').textContent = '';
+    box.querySelector('.drop-clear').hidden = true;
+    box.querySelector('input[type=file]').value = '';
+    box.classList.remove('filled');
+
     session = null;
     result = null;
     compare();
@@ -299,6 +333,7 @@
     const input = box.querySelector('input[type=file]');
 
     input.addEventListener('change', () => accept(slot, input.files[0]));
+    box.querySelector('.drop-clear').addEventListener('click', () => clear(slot));
 
     for (const name of ['dragenter', 'dragover']) {
       box.addEventListener(name, (event) => {
@@ -314,6 +349,11 @@
       accept(slot, event.dataTransfer?.files?.[0]);
     });
   }
+
+  document.querySelector('#reset').addEventListener('click', () => {
+    clear('before');
+    clear('after');
+  });
 
   // Вставка из буфера: первая картинка идёт в «до», вторая в «после».
   document.addEventListener('paste', (event) => {

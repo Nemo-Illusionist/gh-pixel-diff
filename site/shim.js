@@ -3,6 +3,10 @@
 // i18n.js написан под chrome.i18n, и переписывать его ради страницы значит
 // завести вторую копию, которая разойдётся с первой. Дешевле подставить сюда
 // тот кусок API, которым он пользуется: две функции.
+//
+// Кладём их под своим именем, а не в window.chrome. То имя принадлежит
+// браузеру, и там, где оно защищено от записи, присваивание в строгом режиме
+// роняет весь этот файл — страница остаётся без единой надписи, молча.
 (function (global) {
   'use strict';
 
@@ -23,6 +27,6 @@
     return text;
   }
 
-  global.chrome = { i18n: { getMessage, getUILanguage: () => locale } };
+  global.GhPixelDiffMessages = { getMessage, getUILanguage: () => locale };
   global.__GHPD_LOCALE = locale;
 })(self);
