@@ -4,7 +4,7 @@
     "description": "Название расширения в браузере и в магазине."
   },
   "extDescription": {
-    "message": "Добавляет в просмотр картинок на GitHub режим попиксельной разницы — рядом с 2-up, Swipe и Onion Skin."
+    "message": "Добавляет попиксельное сравнение картинок в просмотрщик GitHub и GitLab — рядом с 2-up, Swipe и Onion Skin."
   },
   "modeName": {
     "message": "Pixel Diff"
@@ -136,7 +136,7 @@
     "message": "Порог: слева ловятся даже отличия в сглаживании, справа — только заметные глазу"
   },
   "popupLead": {
-    "message": "Добавляет режим <b>Pixel Diff</b> к 2-up, Swipe и Onion Skin в просмотре картинок на GitHub."
+    "message": "Добавляет режим <b>Pixel Diff</b> рядом с 2-up, Swipe и Onion Skin — в просмотрщике картинок GitHub и GitLab."
   },
   "popupChecking": {
     "message": "Проверяю доступ…"
@@ -162,7 +162,7 @@
     }
   },
   "popupNote": {
-    "message": "Картинки GitHub показывает во фрейме с домена <code>viewscreen.githubusercontent.com</code> — доступ нужен именно к нему. Страницы <code>github.com</code> расширение не читает."
+    "message": "GitHub показывает картинки во фрейме с <code>viewscreen.githubusercontent.com</code>, GitLab — на <code>gitlab.com</code>; доступ нужен к этим двум адресам. Страницы <code>github.com</code> расширение не читает."
   },
   "popupReport": {
     "message": "Сообщить о проблеме"

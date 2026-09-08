@@ -1,0 +1,36 @@
+/* Панель внутри просмотрщика GitLab.
+   Сами элементы оформлены в panel.css — общем с фреймом GitHub и отдельной
+   страницей; здесь только то, что связано с чужой разметкой вокруг. */
+
+/* Пункт ряда режимов. Оформление у GitLab своё, на классе `active`, — берём
+   его как есть, чтобы наш пункт не отличался от родных. */
+.ghpd-mode-item {
+  cursor: pointer;
+}
+
+/* Родной кадр на время нашего режима спрятан. `display: none`, а не
+   `visibility`: высоту здесь никто снаружи не меряет, а пустая полоса на
+   месте спрятанного кадра была бы заметна. */
+.diff-viewer .image[hidden] {
+  display: none;
+}
+
+.ghpd-panel {
+  display: flex;
+  justify-content: center;
+  padding: 16px 12px;
+}
+
+.ghpd-panel[hidden] {
+  display: none;
+}
+
+/* Кадр вписывается в окно: у длинного снимка страницы иначе получается
+   полотно во весь экран, и подпись с ползунком уезжают за его нижний край. */
+.ghpd-panel .ghpd-canvas {
+  max-height: calc(100vh - 220px);
+}
+
+.ghpd-panel .ghpd-triple .ghpd-canvas {
+  max-height: calc(100vh - 240px);
+}

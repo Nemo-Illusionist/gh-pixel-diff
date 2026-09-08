@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Merge request · Changes</title>
+<!-- Разметка повторяет image_diff_viewer.vue: те же классы, тот же порядок.
+     Полотно вокруг не нужно — проверяется соседство с чужой разметкой. -->
+<style>
+  body { margin: 0; font: 14px sans-serif; }
+  .view-modes-menu { display: flex; gap: 12px; list-style: none; margin: 0; padding: 8px; }
+  .view-modes-menu li { cursor: pointer; }
+  .view-modes-menu li.active { font-weight: 700; }
+  .frame img { max-width: 300px; }
+</style>
+
+<div class="diff-file-container">
+  <div class="diff-viewer">
+    <div class="image js-replaced-image">
+      <div class="two-up view">
+        <div class="wrap"><div class="frame deleted"><img alt="" src="/owner/repo/-/raw/aaa/shot.png"></div></div>
+        <div class="wrap"><div class="frame added"><img alt="" src="/owner/repo/-/raw/bbb/shot.png"></div></div>
+      </div>
+    </div>
+    <div class="view-modes">
+      <ul class="view-modes-menu">
+        <li class="active">2-up</li>
+        <li>Swipe</li>
+        <li>Onion skin</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Родные пункты у GitLab переключает Vue: класс `active` переезжает, а
+  // содержимое кадра перерисовывается. Здесь важно только первое.
+  for (const item of document.querySelectorAll('.view-modes-menu li')) {
+    item.addEventListener('click', () => {
+      for (const other of item.parentNode.children) other.classList.remove('active');
+      item.classList.add('active');
+    });
+  }
+</script>

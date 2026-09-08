@@ -2,14 +2,15 @@
 
 [Русский](README.ru.md) · **English**
 
-GitHub can show two versions of an image side by side, behind a swipe handle and
-as an overlay — but not the one thing that matters: **what actually changed**. On
-a three-thousand-pixel page screenshot an edit takes up four lines, and no eye
-will find them.
+GitHub and GitLab can both show two versions of an image side by side, behind a
+swipe handle and as an overlay — but not the one thing that matters: **what
+actually changed**. On a three-thousand-pixel page screenshot an edit takes up
+four lines, and no eye will find them.
 
 The extension adds a fourth mode next to **2-up**, **Swipe** and **Onion Skin** —
 **Pixel Diff**: it compares the images pixel by pixel and opens straight on the
-fragment where the difference lives.
+fragment where the difference lives. It works in GitHub's image viewer and in
+GitLab's, in merge requests on `gitlab.com`.
 
 ![Pixel Diff mode](docs/screenshots/frame-changes.png)
 
@@ -124,8 +125,10 @@ build is required.
 
 ## Granting access
 
-However it was installed, the extension needs access to one domain —
-`viewscreen.githubusercontent.com`. Chrome and Firefox grant it on install;
+However it was installed, the extension needs access to two domains —
+`viewscreen.githubusercontent.com`, the frame GitHub renders image diffs in, and
+`gitlab.com`, where GitLab renders them on the page itself. Chrome and Firefox
+grant them on install;
 Safari does not, because a site permission there does not extend to
 cross-origin frames, and the images live exactly in such a frame.
 

@@ -1,6 +1,8 @@
 // @ts-check
-// Проверка на живой странице GitHub: разметку панели просмотра там меняют без
-// предупреждений, и этот тест — единственный способ узнать об этом вовремя.
+// Проверка на живых страницах GitHub и GitLab: разметку просмотрщика там
+// меняют без предупреждений, и эти тесты — единственный способ узнать об этом
+// вовремя. Случай не гипотетический: GitLab переписал показ диффов целиком, и
+// заглушка об этом умолчала бы.
 //
 // Работаем через evaluate, а не через локаторы: страница живёт своей жизнью,
 // фрейм может перерисоваться, и снимок состояния надёжнее ожидания на узле.
@@ -104,6 +106,72 @@ test('добавляет режим к родным и считает разни
       nativeHidden: false,
       nativeVisible: 1,
     });
+  } finally {
+    await context.close();
+  }
+});
+
+// Полигона на GitLab у нас своего нет — нужен мердж-реквест, в котором картинку
+// именно заменили, а не добавили: только у такого GitLab показывает ряд
+// режимов. Взят чужой, уже слитый: слитое не исчезает. Если проект переедет
+// или закроется, тест придётся перенацелить — искать замену умеет
+// GET /api/v4/projects/:id/merge_requests/:iid/diffs, по полям new_file,
+// deleted_file и renamed_file.
+const MERGE_REQUEST = 'https://gitlab.com/inkscape/inkscape/-/merge_requests/8126/diffs';
+
+test('на GitLab встаёт в родной ряд и считает разницу', async () => {
+  test.setTimeout(180_000);
+
+  const profile = await mkdtemp(join(tmpdir(), 'ghpd-gl-'));
+  const context = await chromium.launchPersistentContext(profile, {
+    channel: 'chromium',
+    headless: true,
+    args: [`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`],
+  });
+
+  try {
+    const page = await context.newPage();
+    await page.goto(MERGE_REQUEST, { waitUntil: 'domcontentloaded' });
+
+    // Файлы подгружаются по мере прокрутки, а просмотрщик картинок GitLab
+    // поднимает отдельным приложением уже после разметки — ждём, а не ищем раз.
+    const modes = () =>
+      page
+        .evaluate(() =>
+          [...document.querySelectorAll('.view-modes-menu li')].map((item) =>
+            item.textContent.trim(),
+          ),
+        )
+        .catch(() => []);
+
+    await expect
+      .poll(modes, { timeout: 90_000 })
+      .toEqual(['2-up', 'Swipe', 'Onion skin', 'Pixel Diff']);
+
+    await page.click('.ghpd-mode-item');
+
+    await expect
+      .poll(
+        () =>
+          page
+            .evaluate(() => document.querySelector('.ghpd-meta')?.textContent ?? '')
+            .catch(() => ''),
+        { timeout: 90_000 },
+      )
+      .toMatch(/\d+ (пиксел(ь|я|ей)|pixels?)/);
+
+    const state = await page.evaluate(() => ({
+      worker: document.documentElement.dataset.ghpdWorker ?? null,
+      meta: document.querySelector('.ghpd-meta')?.textContent ?? '',
+      // Родной кадр на время нашего режима спрятан, но не выброшен.
+      nativeHidden: document.querySelector('.diff-viewer > .image')?.hidden ?? null,
+      canvas: document.querySelector('.ghpd-panel .ghpd-canvas')?.width ?? 0,
+    }));
+
+    expect(state.worker).toBe('on');
+    expect(state.meta).not.toMatch(/Не вышло|Failed/);
+    expect(state.nativeHidden).toBe(true);
+    expect(state.canvas).toBeGreaterThan(0);
   } finally {
     await context.close();
   }

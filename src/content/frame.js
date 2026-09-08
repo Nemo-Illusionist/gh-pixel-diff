@@ -11,6 +11,7 @@
   const api = global.browser ?? global.chrome;
   const { plural, t } = global.GhPixelDiffI18n;
   const { drawCrop } = global.GhPixelDiffRender;
+  const { create: createWorker } = global.GhPixelDiffWorker;
 
   const MODE = 'pixel-diff';
   /** Что показано: один из кадров или все три сразу. */
@@ -24,8 +25,6 @@
   const MODE_KEY = 'ghpd:mode';
   /** Настройка из окна расширения: показывать ли переключатель кадров. */
   const SHOW_VIEWS_DEFAULT = true;
-  /** Сколько ждём ответа от потока, прежде чем считать сами. */
-  const WORKER_TIMEOUT = 5000;
   /**
    * Пока GitHub не задал фрейму высоту, окно внутри — узкая полоска, и кадр
    * ужимается в точку. Высоту задаёт родительская страница, и делает это,
@@ -161,97 +160,6 @@
    */
   function fitCanvas(canvas) {
     canvas.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
-  }
-
-  /**
-   * Заводит поток для сравнения.
-   *
-   * Собираем его из тех же файлов, что и content script: расширение не может
-   * создать Worker прямо со своего адреса — страница другого происхождения, —
-   * поэтому исходники читаются через fetch и склеиваются в blob. Если это не
-   * вышло (нет chrome.runtime, запрещён blob), считаем в общем потоке: медленнее,
-   * но работает.
-   */
-  async function createWorker() {
-    if (!api?.runtime?.getURL || typeof Worker !== 'function') return null;
-    try {
-      const sources = await Promise.all(
-        ['vendor/pixelmatch.js', 'content/compare.js', 'content/worker.js'].map(async (path) => {
-          const response = await fetch(api.runtime.getURL(path));
-          // Без этой проверки страница-заглушка вместо файла склеилась бы в
-          // рабочий с виду blob, и провал вылез бы вечным «Считаю…».
-          if (!response.ok) throw new Error(`${path}: ${response.status}`);
-          return response.text();
-        }),
-      );
-      const url = URL.createObjectURL(new Blob(sources, { type: 'text/javascript' }));
-      const worker = new Worker(url);
-      URL.revokeObjectURL(url);
-      await greet(worker);
-      return worker;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Ждёт, пока поток отзовётся.
-   *
-   * Отдельный шаг до передачи картинок: буферы уходят во владение и обратно не
-   * возвращаются, поэтому убедиться, что поток жив, нужно раньше. Не отозвался
-   * за отведённое время — считаем в общем потоке, картинки при этом целы.
-   */
-  function greet(worker) {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => stop(new Error('worker is silent')), WORKER_TIMEOUT);
-      const hello = ({ data }) => {
-        if (data?.type === 'hello') stop(null);
-      };
-      const failed = (event) => stop(new Error(event.message || 'worker error'));
-      function stop(error) {
-        clearTimeout(timer);
-        worker.removeEventListener('message', hello);
-        worker.removeEventListener('error', failed);
-        if (!error) return resolve();
-        worker.terminate();
-        reject(error);
-      }
-      worker.addEventListener('message', hello);
-      worker.addEventListener('error', failed);
-    });
-  }
-
-  /**
-   * Разговор с потоком: один слушатель на всё время жизни вместо слушателя на
-   * каждый запрос — иначе за сотню движений ползунка их накапливается сотня.
-   */
-  function connect(worker) {
-    const pending = new Map();
-    let counter = 0;
-
-    worker.addEventListener('message', ({ data }) => {
-      const waiting = pending.get(data?.id);
-      if (!waiting) return;
-      pending.delete(data.id);
-      if (data.type === 'error') waiting.reject(new Error(data.message));
-      else waiting.resolve(data);
-    });
-
-    // Поток умер — отвечать некому: отпускаем всех, кто ждёт.
-    worker.addEventListener('error', (event) => {
-      const error = new Error(event.message || 'worker error');
-      for (const waiting of pending.values()) waiting.reject(error);
-      pending.clear();
-    });
-
-    // transfer — то, что уходит во владение: буферы картинок копировать
-    // незачем, ради этого поток и заводился.
-    return (message, transfer = []) =>
-      new Promise((resolve, reject) => {
-        const id = ++counter;
-        pending.set(id, { resolve, reject });
-        worker.postMessage({ ...message, id }, transfer);
-      });
   }
 
   /**
@@ -398,9 +306,9 @@
     const start = () => {
       starting ??= (async () => {
         const prepared = await preparePair(pair, { repository: repositoryFromUrl() });
-        const worker = await createWorker();
-        if (worker) {
-          const ask = connect(worker);
+        const spawned = await createWorker();
+        if (spawned) {
+          const { worker, ask } = spawned;
           await ask({
             type: 'prepare',
             width: prepared.width,
