@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:safari": "scripts/build-safari.sh",
+    "chrome:token": "node scripts/chrome-token.mjs",
     "icons": "scripts/icons.sh",
     "install:macos": "scripts/install-macos.sh",
     "package": "scripts/package.sh",

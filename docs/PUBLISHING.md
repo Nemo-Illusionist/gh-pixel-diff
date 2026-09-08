@@ -52,31 +52,61 @@ npm run package        # архивы в dist/release
 
 1. <https://console.cloud.google.com> → создать проект.
 2. APIs & Services → Library → включить **Chrome Web Store API**.
-3. OAuth consent screen → тип **External**.
-   **Важно:** перевести его в состояние **In production**. Пока приложение в
-   состоянии Testing, Google протухает refresh-токен через семь дней, и
-   публикация начнёт падать через неделю после настройки.
-4. Credentials → Create credentials → OAuth client ID → тип **Desktop app**.
-   Записать client ID и client secret.
-5. Получить код: открыть в браузере, подставив свой client ID, и разрешить
-   доступ. Код появится на странице.
+3. OAuth consent screen (в новой консоли — Google Auth Platform → **Branding**
+   и **Audience**) → тип **External**. Заполнить название и почту поддержки;
+   блок **App domain** оставить пустым — иначе Google потребует подтвердить
+   владение `github.com` через Search Console, а это невозможно.
+4. **Data Access** → добавить область `https://www.googleapis.com/auth/chromewebstore`.
+5. **Audience** → **Publish app**, чтобы перевести приложение в состояние
+   **In production**.
+
+   **Важно.** Пока приложение в **Testing**, Google протухает refresh-токен
+   через семь дней, и публикация начнёт падать через неделю после настройки.
+   Проверку Google при этом не потребует: область доступа к магазину не
+   считается чувствительной.
+
+   Пока приложение в Testing, экран согласия пускает только тех, кто внесён в
+   **Test users** — включая владельца проекта. Это годится как временная мера,
+   но не как решение.
+6. **Clients** → **Create OAuth client** → тип **Desktop app**. Консоль
+   предложит скачать JSON с ключами — он и нужен дальше; посмотреть секрет
+   второй раз она не даст.
+7. Получить refresh-токен:
 
    ```
-   https://accounts.google.com/o/oauth2/auth?response_type=code&scope=https://www.googleapis.com/auth/chromewebstore&access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&client_id=ВАШ_CLIENT_ID
+   npm run chrome:token -- ~/Downloads/client_secret_….json
    ```
 
-6. Обменять код на refresh-токен (код одноразовый и живёт минуты):
+   Скрипт поднимет слушателя на свободном порту, откроет согласие, поймает
+   код, обменяет его и сам положит все три секрета в репозиторий через `gh` —
+   значения не проходят через терминал и не оседают в истории команд.
+
+   Тем же руками, если понадобится разобраться. Способ через
+   `urn:ietf:wg:oauth:2.0:oob` больше не работает: Google закрыл его в 2022-м, и новый клиент ответит
+   `invalid_request`. Клиентам типа Desktop разрешён возврат на локальный
+   адрес — на нём и строится обмен:
+
+   ```
+   https://accounts.google.com/o/oauth2/auth?response_type=code&access_type=offline&prompt=consent&scope=https://www.googleapis.com/auth/chromewebstore&redirect_uri=http://localhost:8080&client_id=ВАШ_CLIENT_ID
+   ```
+
+   Браузер перекинет на `http://localhost:8080/?code=…` и покажет ошибку —
+   страницы там нет, код берётся из адресной строки. Дальше обменять его
+   (код одноразовый и живёт минуты):
 
    ```
    curl -s https://oauth2.googleapis.com/token \
      -d client_id=ВАШ_CLIENT_ID \
      -d client_secret=ВАШ_CLIENT_SECRET \
-     -d code=КОД_СО_СТРАНИЦЫ \
+     -d code=КОД_ИЗ_АДРЕСНОЙ_СТРОКИ \
      -d grant_type=authorization_code \
-     -d redirect_uri=urn:ietf:wg:oauth:2.0:oob
+     -d redirect_uri=http://localhost:8080
    ```
 
-**5. Секреты репозитория:** `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`,
+   `prompt=consent` обязателен: без него Google при повторной выдаче вернёт
+   только access-токен, а `refresh_token` молча не пришлёт.
+
+**8. Секреты репозитория:** `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`,
 `CHROME_REFRESH_TOKEN`.
 
 ### Что делает автоматика

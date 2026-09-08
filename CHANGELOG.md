@@ -8,6 +8,12 @@ adheres to [semantic versioning](https://semver.org/).
 
 ### Added
 
+- `npm run chrome:token` — issuing the Chrome Web Store refresh token in one
+  run: it catches the code on a loopback port, exchanges it and writes the
+  three secrets straight to the repository, so nothing passes through the
+  terminal. The manual recipe in `docs/PUBLISHING.md` was also wrong — Google
+  closed the `oob` redirect in 2022, and a freshly created client answers
+  `invalid_request`.
 - `npm run icons` also renders the 1400×560 promo image the Chrome listing
   asks for, next to the 440×280 tile. Both are opaque, as that store requires.
 
