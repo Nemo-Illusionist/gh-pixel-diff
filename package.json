@@ -10,9 +10,10 @@
     "install:macos": "scripts/install-macos.sh",
     "package": "scripts/package.sh",
     "release": "scripts/release.sh",
-    "version": "node scripts/sync-version.mjs && git add src/manifest.json",
     "run:ios": "scripts/run-ios-sim.sh",
-    "test": "scripts/test.sh"
+    "screenshots": "scripts/screenshots.sh",
+    "test": "scripts/test.sh",
+    "version": "node scripts/sync-version.mjs && git add src/manifest.json"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

@@ -79,3 +79,11 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --notes-file notes.md \
             dist/release/*.zip dist/release/checksums.txt
+
+  # Магазины подхватывают тот же тег: сначала архивы на странице релизов —
+  # они нужны и тем, кто ставит расширение руками, — потом витрины.
+  stores:
+    name: Магазины
+    needs: release
+    uses: ./.github/workflows/publish.yml
+    secrets: inherit
