@@ -5,7 +5,9 @@
 // английский: он основной и в README, и в магазинах.
 //
 // Витринные кадры магазин принимает только размером 1280×800, поэтому снимок
-// панели ещё раз кладётся на страницу-подложку и снимается целиком.
+// панели ещё раз кладётся на страницу-подложку и снимается целиком. Лежат они
+// в docs/, а не в dist/: сборка чистит dist целиком, а витрину переснимают
+// куда реже, чем собирают.
 import { chromium } from '@playwright/test';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { mkdtemp } from 'node:fs/promises';
@@ -16,7 +18,7 @@ import { join } from 'node:path';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const extension = join(root, 'dist/chrome');
 const shots = join(root, 'docs/screenshots');
-const store = join(root, 'dist/store');
+const store = join(root, 'docs/store');
 
 const PULL_REQUEST = 'https://github.com/Nemo-Illusionist/gh-pixel-diff/pull/1/files';
 const isViewscreen = (url) => url.includes('viewscreen.githubusercontent.com/diff/img');
@@ -191,4 +193,4 @@ try {
 }
 
 console.log(`Снимки: docs/screenshots (${Object.keys(written).length})`);
-console.log(`Витрина: dist/store (${STORE.length} шт., 1280×800)`);
+console.log(`Витрина: docs/store (${STORE.length} шт., 1280×800)`);
