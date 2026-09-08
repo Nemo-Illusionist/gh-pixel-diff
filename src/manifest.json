@@ -25,9 +25,11 @@
         "vendor/pixelmatch.js",
         "content/i18n.js",
         "content/compare.js",
+        "content/render.js",
         "content/frame.js"
       ],
       "css": [
+        "content/panel.css",
         "content/frame.css"
       ],
       "run_at": "document_end",

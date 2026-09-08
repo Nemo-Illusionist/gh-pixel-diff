@@ -166,5 +166,40 @@
   },
   "popupReport": {
     "message": "Сообщить о проблеме"
+  },
+  "siteTitle": {
+    "message": "GitHub Pixel Diff"
+  },
+  "siteTagline": {
+    "message": "Положите сюда две картинки и увидите, что именно между ними изменилось."
+  },
+  "siteRepository": {
+    "message": "Исходный код на GitHub"
+  },
+  "siteDropHint": {
+    "message": "нажмите, перетащите или вставьте картинку"
+  },
+  "sitePasteHint": {
+    "message": "Можно вставлять из буфера обмена: первая картинка станет «до», вторая — «после»."
+  },
+  "siteNeedBoth": {
+    "message": "Добавьте обе картинки — сравнивать пока нечего."
+  },
+  "siteNotImage": {
+    "message": "$name$ — не картинка.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "sitePrivacy": {
+    "message": "Ничего не покидает браузер. Картинки никуда не загружаются, и за этой страницей нет сервера — это статический файл на GitHub Pages."
+  },
+  "siteExtensionPitch": {
+    "message": "Хотите то же самое прямо в пул-реквестах?"
+  },
+  "siteExtensionLink": {
+    "message": "Поставьте расширение"
   }
 }

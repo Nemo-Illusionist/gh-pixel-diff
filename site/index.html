@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub Pixel Diff — compare two images</title>
+<meta name="description" content="Drop two images and see what changed between them, pixel by pixel. Everything happens in your browser.">
+<link rel="icon" href="icon.svg">
+<!-- panel.css общий с расширением, style.css — только про эту страницу. -->
+<link rel="stylesheet" href="panel.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="head">
+  <img class="head-mark" src="icon.svg" alt="" width="44" height="44">
+  <div>
+    <h1 data-i18n="siteTitle"></h1>
+    <p class="head-note" data-i18n="siteTagline"></p>
+  </div>
+  <a class="head-link" href="https://github.com/Nemo-Illusionist/gh-pixel-diff" data-i18n="siteRepository"></a>
+</header>
+
+<main>
+  <!-- Две половины: «до» и «после». Пока обе не заполнены, сравнивать нечего. -->
+  <section class="drops" id="drops">
+    <label class="drop" data-slot="before">
+      <input type="file" accept="image/*" hidden>
+      <span class="drop-label" data-i18n="viewBefore"></span>
+      <span class="drop-hint" data-i18n="siteDropHint"></span>
+      <img class="drop-preview" alt="" hidden>
+      <span class="drop-file"></span>
+    </label>
+    <label class="drop" data-slot="after">
+      <input type="file" accept="image/*" hidden>
+      <span class="drop-label" data-i18n="viewAfter"></span>
+      <span class="drop-hint" data-i18n="siteDropHint"></span>
+      <img class="drop-preview" alt="" hidden>
+      <span class="drop-file"></span>
+    </label>
+  </section>
+
+  <p class="paste" data-i18n="sitePasteHint"></p>
+
+  <!-- Панель сравнения: та же, что во фрейме GitHub. -->
+  <section class="panel" id="panel" hidden>
+    <div class="panel-frame">
+      <canvas class="ghpd-canvas" id="canvas"></canvas>
+      <div class="ghpd-triple" id="triple" hidden></div>
+    </div>
+    <p class="ghpd-meta" id="meta"></p>
+    <div class="ghpd-controls">
+      <span class="ghpd-mark ghpd-mark-small"></span>
+      <input class="ghpd-slider" id="threshold" type="range" min="0" max="0.5" step="0.01" value="0.1">
+      <span class="ghpd-mark ghpd-mark-large"></span>
+    </div>
+    <div class="ghpd-views" id="views"></div>
+  </section>
+
+  <p class="failure" id="failure" hidden></p>
+</main>
+
+<footer class="foot">
+  <p data-i18n="sitePrivacy"></p>
+  <p><span data-i18n="siteExtensionPitch"></span>
+    <a href="https://github.com/Nemo-Illusionist/gh-pixel-diff#installation" data-i18n="siteExtensionLink"></a></p>
+</footer>
+
+<script src="messages.js"></script>
+<script src="shim.js"></script>
+<script src="i18n.js"></script>
+<script src="pixelmatch.js"></script>
+<script src="compare.js"></script>
+<script src="render.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

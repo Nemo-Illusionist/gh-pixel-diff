@@ -150,5 +150,40 @@
   },
   "popupReport": {
     "message": "Report a problem"
+  },
+  "siteTitle": {
+    "message": "GitHub Pixel Diff"
+  },
+  "siteTagline": {
+    "message": "Drop two images and see exactly what changed between them."
+  },
+  "siteRepository": {
+    "message": "Source on GitHub"
+  },
+  "siteDropHint": {
+    "message": "click, drop or paste an image"
+  },
+  "sitePasteHint": {
+    "message": "You can paste from the clipboard too: the first image becomes “before”, the second “after”."
+  },
+  "siteNeedBoth": {
+    "message": "Add both images — there is nothing to compare yet."
+  },
+  "siteNotImage": {
+    "message": "$name$ is not an image.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "sitePrivacy": {
+    "message": "Nothing leaves your browser. The images are not uploaded anywhere, and there is no server behind this page — it is a static file on GitHub Pages."
+  },
+  "siteExtensionPitch": {
+    "message": "Want the same thing inside pull requests?"
+  },
+  "siteExtensionLink": {
+    "message": "Install the extension"
   }
 }

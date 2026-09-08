@@ -1,0 +1,140 @@
+/* Оболочка страницы. Сама панель сравнения оформлена в panel.css — общем
+   с расширением, чтобы кадр, подпись и ползунок выглядели одинаково там и
+   тут. Палитра повторяет GitHub: страница — соседка его просмотрщика. */
+:root {
+  --bgColor-default: #ffffff;
+  --bgColor-muted: #f6f8fa;
+  --borderColor-default: #d0d7de;
+  --fgColor-default: #1f2328;
+  --fgColor-muted: #59636e;
+  --fgColor-accent: #0969da;
+  --fgColor-danger: #d1242f;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bgColor-default: #0d1117;
+    --bgColor-muted: #151b23;
+    --borderColor-default: #3d444d;
+    --fgColor-default: #f0f6fc;
+    --fgColor-muted: #9198a1;
+    --fgColor-accent: #4493f8;
+    --fgColor-danger: #f85149;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+  max-width: 1100px;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+    Helvetica, Arial, sans-serif;
+}
+
+a { color: var(--fgColor-accent); }
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--borderColor-default);
+}
+
+.head-mark { flex: none; }
+.head h1 { margin: 0; font-size: 22px; font-weight: 600; }
+.head-note { margin: 4px 0 0; color: var(--fgColor-muted); }
+.head-link { margin-left: auto; flex: none; font-size: 14px; }
+
+/* Две половины. На узком экране встают друг под друга: тянуть их в одну
+   строку значит получить два окошка шириной с ноготь. */
+.drops {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 24px 0 12px;
+}
+
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 200px;
+  padding: 20px;
+  border: 2px dashed var(--borderColor-default);
+  border-radius: 10px;
+  background: var(--bgColor-muted);
+  text-align: center;
+  cursor: pointer;
+}
+
+.drop:hover,
+.drop.over {
+  border-color: var(--fgColor-accent);
+}
+
+.drop:focus-within {
+  outline: 2px solid var(--fgColor-accent);
+  outline-offset: 2px;
+}
+
+.drop-label { font-weight: 600; }
+.drop-hint { font-size: 13px; color: var(--fgColor-muted); }
+.drop-file { font-size: 12px; color: var(--fgColor-muted); word-break: break-all; }
+
+.drop-preview {
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: 6px;
+  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-default);
+}
+
+/* Пока половина пуста, подсказка на виду; как заполнилась — уступает место
+   картинке, иначе карточка растёт вдвое ради строки, которая уже не нужна. */
+.drop.filled .drop-hint { display: none; }
+
+.paste { margin: 0 0 24px; font-size: 13px; color: var(--fgColor-muted); }
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 10px;
+}
+
+.panel[hidden] { display: none; }
+
+/* Кадр может быть заметно шире экрана — тогда его листают, а страница
+   вбок не разъезжается. */
+.panel-frame {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.failure {
+  margin: 16px 0 0;
+  color: var(--fgColor-danger);
+}
+
+.failure[hidden] { display: none; }
+
+.foot {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--borderColor-default);
+  font-size: 13px;
+  color: var(--fgColor-muted);
+}
+
+.foot p { margin: 0 0 8px; }

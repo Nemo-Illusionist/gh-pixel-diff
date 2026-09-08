@@ -13,6 +13,11 @@ fragment where the difference lives.
 
 ![Pixel Diff mode](docs/screenshots/frame-changes.png)
 
+**No pull request at hand?** The same comparison works on two files of your own:
+<https://nemo-illusionist.github.io/gh-pixel-diff/> — drop two images and get the
+same diff. Nothing is uploaded: the page is a static file, and the comparison
+runs in your browser.
+
 ## What it does
 
 - Sits as a fourth button in the native row of modes — no separate panel.
@@ -182,6 +187,7 @@ Three consequences follow:
 
 ```bash
 npm run build     # builds all three targets
+npm run build:site   # the standalone page into dist/site
 npm test          # tests in the Playwright image (needs Docker)
 npm run package   # release archives into dist/release
 npm run screenshots  # README and store screenshots, from the live pull request
@@ -227,6 +233,12 @@ image was deleted.
 
 The run happens in a container so that the result doesn't depend on what is
 installed on the machine.
+
+The standalone page in `site/` is a shell around the same code, not a second
+copy of it: `scripts/build-site.mjs` takes the comparison, the drawing, the
+worker and the panel's styles straight out of `src/`, and the page's own strings
+live in the same locale files. It is deployed to GitHub Pages by
+`.github/workflows/pages.yml` on every push to `main` that touches it.
 
 Interface strings live in `src/_locales`. English is the fallback locale; a new
 language is a copy of `en/messages.json` with the values translated — Russian

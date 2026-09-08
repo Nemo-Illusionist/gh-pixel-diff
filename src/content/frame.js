@@ -10,12 +10,12 @@
   const { diffPrepared, preparePair, readImagePair } = global.GhPixelDiff;
   const api = global.browser ?? global.chrome;
   const { plural, t } = global.GhPixelDiffI18n;
+  const { drawCrop } = global.GhPixelDiffRender;
 
   const MODE = 'pixel-diff';
   /** Что показано: один из кадров или все три сразу. */
   const FRAMES = { before: 'viewBefore', after: 'viewAfter', diff: 'viewDiff', triple: 'viewTriple' };
   const FRAME_KEY = 'ghpd:frame';
-  const CROP_PADDING = 40;
   /** Порог pixelmatch: 0 — ловит даже сглаживание, 0.5 — только явные отличия. */
   const THRESHOLD_MAX = 0.5;
   const THRESHOLD_DEFAULT = 0.1;
@@ -266,63 +266,6 @@
     } catch {
       return SHOW_VIEWS_DEFAULT;
     }
-  }
-
-  function drawCrop(canvas, full, result, cropped, outline, shownFrame) {
-    // Холст с полным кадром один на всю панель: на снимке в несколько
-    // мегапикселей заводить его заново на каждую отрисовку — лишние десятки
-    // мегабайт при каждом движении ползунка.
-    full.width = result.width;
-    full.height = result.height;
-    const source = full.getContext('2d');
-    if (shownFrame === 'diff') {
-      source.putImageData(result.diff, 0, 0);
-    } else {
-      // «До» и «после» рисуем в том же размере, что и разницу: у вектора это
-      // увеличенный кадр, и переключение не должно менять масштаб.
-      const image = result[shownFrame];
-      source.clearRect(0, 0, result.width, result.height);
-      source.drawImage(
-        image,
-        0,
-        0,
-        image.naturalWidth * result.scale,
-        image.naturalHeight * result.scale,
-      );
-    }
-
-    if (!cropped || !result.bounds) {
-      canvas.width = result.width;
-      canvas.height = result.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(full, 0, 0);
-      // Кадр показывается уменьшенным, и несколько изменившихся пикселей на нём
-      // просто исчезают. Поэтому обводим место, где они нашлись — если рамка
-      // не мешает: на мелком снимке она закрывает половину кадра.
-      if (result.bounds && outline) {
-        const box = result.bounds;
-        const margin = Math.max(6, Math.round(Math.max(result.width, result.height) / 120));
-        ctx.strokeStyle = '#d1242f';
-        ctx.lineWidth = Math.max(2, Math.round(Math.max(result.width, result.height) / 400));
-        ctx.strokeRect(
-          box.x - margin,
-          box.y - margin,
-          box.width + margin * 2,
-          box.height + margin * 2,
-        );
-      }
-      return { x: 0, y: 0, width: result.width, height: result.height };
-    }
-
-    const box = result.bounds;
-    const x = Math.max(0, box.x - CROP_PADDING);
-    const y = Math.max(0, box.y - CROP_PADDING);
-    const width = Math.min(result.width - x, box.width + CROP_PADDING * 2);
-    const height = Math.min(result.height - y, box.height + CROP_PADDING * 2);
-    canvas.width = width;
-    canvas.height = height;
-    canvas.getContext('2d').drawImage(full, x, y, width, height, 0, 0, width, height);
-    return { x, y, width, height };
   }
 
   function build(pair) {

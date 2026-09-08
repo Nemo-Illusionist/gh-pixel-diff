@@ -15,4 +15,4 @@ docker run --rm --ipc=host \
   -v "$ROOT":/work -w /work \
   -e CI=1 \
   "$IMAGE" \
-  bash -lc '[ -d node_modules ] || npm ci --no-audit --no-fund; node scripts/build.mjs >/dev/null; npx playwright test "$@"' _ "$@"
+  bash -lc '[ -d node_modules ] || npm ci --no-audit --no-fund; node scripts/build.mjs >/dev/null; node scripts/build-site.mjs >/dev/null; npx playwright test "$@"' _ "$@"
