@@ -6,6 +6,11 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `npm run icons` also renders the 1400×560 promo image the Chrome listing
+  asks for, next to the 440×280 tile. Both are opaque, as that store requires.
+
 ## [0.8.0]
 
 ### Added
