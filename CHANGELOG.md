@@ -14,6 +14,11 @@ adheres to [semantic versioning](https://semver.org/).
   setup is written down in `docs/PUBLISHING.md`.
 - A privacy policy — `docs/PRIVACY.md`. Both stores ask for one, and it says
   what the extension stores and what it does not.
+- `npm run icons` — every icon size is rendered from a single
+  `src/icons/icon.svg`, along with the 440×280 promo tile the Chrome listing
+  asks for. The mark itself is redrawn: the changed pixels are large enough to
+  survive at 16 px, and the grid is a multiple of eight so they land on whole
+  pixels there.
 - `npm run screenshots` — the screenshots for the README and for the store
   listings are now made from the live pull request by a script, in English, in
   the same container as the tests.
