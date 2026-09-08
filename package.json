@@ -1,7 +1,7 @@
 {
   "name": "gh-pixel-diff",
   "private": true,
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Pixel-level image diff for GitHub pull requests",
   "type": "module",
   "scripts": {

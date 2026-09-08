@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0]
+
 ### Added
 
 - Publishing to the Chrome Web Store and to addons.mozilla.org happens on the
@@ -195,7 +197,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.0...v0.6.1
