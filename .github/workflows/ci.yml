@@ -38,4 +38,6 @@ jobs:
           node-version: 22
       - run: npm ci --no-audit --no-fund
       - run: node scripts/build.mjs
-      - run: npx --yes web-ext@8 lint --source-dir dist/firefox --self-hosted
+      # Без --self-hosted: дополнение подаётся на витрину, и проверять его
+      # надо по тем же правилам, по которым его примет addons.mozilla.org.
+      - run: npx --yes web-ext@8 lint --source-dir dist/firefox

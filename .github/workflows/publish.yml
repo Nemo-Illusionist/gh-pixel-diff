@@ -1,0 +1,129 @@
+# Выкладка в магазины расширений.
+#
+# Запускается из релиза по тегу, и её же можно позвать руками, если магазин
+# отверг сборку и нужно повторить попытку без нового тега.
+#
+# Каждая витрина включается отдельно — переменной репозитория. Пока переменная
+# не задана, задание пропускается: репозиторий-форк не должен пытаться
+# публиковать что-то от чужого имени.
+name: Магазины
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chrome:
+    name: Chrome Web Store
+    # Идентификатор берётся из адреса товара в магазине и не является секретом.
+    # Пока товара нет, публиковать некуда — первую загрузку делают руками.
+    if: vars.CHROME_EXTENSION_ID != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Собрать архив
+        run: |
+          node scripts/build.mjs >/dev/null
+          (cd dist/chrome && zip -qr -X ../chrome.zip .)
+
+      - name: Загрузить и опубликовать
+        env:
+          ITEM_ID: ${{ vars.CHROME_EXTENSION_ID }}
+          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CLIENT_ID:-}" ] || [ -z "${CLIENT_SECRET:-}" ] || [ -z "${REFRESH_TOKEN:-}" ]; then
+            echo "Задана переменная CHROME_EXTENSION_ID, но нет ключей доступа." >&2
+            echo "Нужны секреты CHROME_CLIENT_ID, CHROME_CLIENT_SECRET, CHROME_REFRESH_TOKEN." >&2
+            exit 1
+          fi
+
+          # Токен живёт час: получаем свежий на каждый запуск, хранить нечего.
+          token="$(curl -sS --fail-with-body -X POST https://oauth2.googleapis.com/token \
+            -d client_id="$CLIENT_ID" \
+            -d client_secret="$CLIENT_SECRET" \
+            -d refresh_token="$REFRESH_TOKEN" \
+            -d grant_type=refresh_token | jq -r '.access_token // empty')"
+          if [ -z "$token" ]; then
+            echo "Магазин не выдал токен: проверьте секреты." >&2
+            exit 1
+          fi
+
+          upload="$(curl -sS --fail-with-body -X PUT \
+            -H "Authorization: Bearer $token" \
+            -H "x-goog-api-version: 2" \
+            -T dist/chrome.zip \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$ITEM_ID?uploadType=media")"
+          echo "$upload"
+          # Магазин отвечает кодом 200 и на отказ, поэтому разбираем тело.
+          if [ "$(jq -r '.uploadState // empty' <<<"$upload")" != "SUCCESS" ]; then
+            echo "Загрузка не принята." >&2
+            exit 1
+          fi
+
+          result="$(curl -sS --fail-with-body -X POST \
+            -H "Authorization: Bearer $token" \
+            -H "x-goog-api-version: 2" \
+            -H "Content-Length: 0" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/$ITEM_ID/publish")"
+          echo "$result"
+          # OK — уже в магазине, ITEM_PENDING_REVIEW — ушло на проверку.
+          # Оба ответа означают, что версия принята.
+          if ! jq -e '(.status | length) > 0 and all(.status[]; . == "OK" or . == "ITEM_PENDING_REVIEW")' \
+            >/dev/null <<<"$result"; then
+            echo "Публикация не принята." >&2
+            exit 1
+          fi
+
+  firefox:
+    name: Firefox Add-ons
+    # Идентификатор дополнения web-ext берёт из манифеста, поэтому здесь нужен
+    # только выключатель: публиковать или нет.
+    if: vars.PUBLISH_AMO == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: node scripts/build.mjs
+
+      - name: Отправить на подпись
+        env:
+          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${AMO_API_KEY:-}" ] || [ -z "${AMO_API_SECRET:-}" ]; then
+            echo "Включена публикация в AMO, но нет секретов AMO_API_KEY и AMO_API_SECRET." >&2
+            exit 1
+          fi
+
+          # Ждать проверки не нужно: у витринных дополнений её делают люди, и
+          # это занимает от часов до суток. Нам важно, что версия принята.
+          npx --yes web-ext@8 sign \
+            --source-dir dist/firefox \
+            --artifacts-dir dist/amo \
+            --channel listed \
+            --api-key "$AMO_API_KEY" \
+            --api-secret "$AMO_API_SECRET" \
+            --approval-timeout 0 \
+            --no-input

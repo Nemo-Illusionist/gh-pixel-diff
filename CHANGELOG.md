@@ -6,6 +6,23 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Publishing to the Chrome Web Store and to addons.mozilla.org happens on the
+  release tag, next to the archives. Each store is switched on by a repository
+  variable, so a fork never publishes in someone else's name; the one-time
+  setup is written down in `docs/PUBLISHING.md`.
+- A privacy policy — `docs/PRIVACY.md`. Both stores ask for one, and it says
+  what the extension stores and what it does not.
+- `npm run screenshots` — the screenshots for the README and for the store
+  listings are now made from the live pull request by a script, in English, in
+  the same container as the tests.
+
+### Changed
+
+- The Firefox build is linted the way addons.mozilla.org will lint it: without
+  `--self-hosted`, since the add-on is now submitted to the store.
+
 ## [0.7.1]
 
 ### Fixed

@@ -136,7 +136,9 @@ button, which grants access without any window: set
 `viewscreen.githubusercontent.com` to "Allow".
 
 Nothing else is requested. There are no permissions for `github.com` pages at
-all, so the extension cannot see your repositories or your session.
+all, so the extension cannot see your repositories or your session. Nothing is
+collected and nothing is sent anywhere — see the
+[privacy policy](docs/PRIVACY.md).
 
 ## What has been verified
 
@@ -182,6 +184,7 @@ Three consequences follow:
 npm run build     # builds all three targets
 npm test          # tests in the Playwright image (needs Docker)
 npm run package   # release archives into dist/release
+npm run screenshots  # README and store screenshots, from the live pull request
 ```
 
 On every push and pull request GitHub runs the offline tests in that same
@@ -196,7 +199,11 @@ lands through a pull request with both checks green, and history stays linear
 A release therefore comes in two steps. `npm run release -- 0.6.0` opens a pull
 request that bumps the version in `package.json` and the manifest; once it is
 merged, tagging `v0.6.0` on `main` builds the archives, checks the tag against
-the manifest version and publishes them to the releases page.
+the manifest version and publishes them to the releases page. The same tag then
+pushes the build to the Chrome Web Store and to addons.mozilla.org — each store
+is switched on by a repository variable, so a fork never tries to publish in
+someone else's name. Setting that up is described in
+[docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 Tests come in four levels. `tests/parse.spec.js` checks URL parsing, the
 repository fallback and the search for the changed area, without touching the
