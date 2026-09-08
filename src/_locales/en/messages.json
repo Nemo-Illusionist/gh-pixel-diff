@@ -4,7 +4,7 @@
     "description": "Название расширения в браузере и в магазине."
   },
   "extDescription": {
-    "message": "Adds a pixel-level image diff to GitHub's image viewer — next to 2-up, Swipe and Onion Skin."
+    "message": "Adds a pixel-level image diff to the image viewer on GitHub and GitLab — next to 2-up, Swipe and Onion Skin."
   },
   "modeName": {
     "message": "Pixel Diff"
@@ -120,7 +120,7 @@
     "message": "Threshold: to the left even anti-aliasing counts, to the right only what the eye can see"
   },
   "popupLead": {
-    "message": "Adds a <b>Pixel Diff</b> mode next to 2-up, Swipe and Onion Skin in GitHub's image viewer."
+    "message": "Adds a <b>Pixel Diff</b> mode next to 2-up, Swipe and Onion Skin — in GitHub's image viewer and in GitLab's."
   },
   "popupChecking": {
     "message": "Checking access…"
@@ -146,7 +146,7 @@
     }
   },
   "popupNote": {
-    "message": "GitHub shows images in a frame from <code>viewscreen.githubusercontent.com</code> — that is the domain the access is for. The extension never reads <code>github.com</code> pages."
+    "message": "GitHub shows images in a frame from <code>viewscreen.githubusercontent.com</code>, GitLab shows them on <code>gitlab.com</code> — those are the two domains the access is for. The extension never reads <code>github.com</code> pages."
   },
   "popupReport": {
     "message": "Report a problem"

@@ -8,6 +8,19 @@ adheres to [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **GitLab.** The mode now sits in GitLab's own row of image modes too, in merge
+  requests on `gitlab.com`: the same crop to what changed, the same threshold,
+  the same before / after / diff / 3-up. What differs is the shell around it —
+  GitLab loads diffs as you scroll and re-renders the row of modes, so the
+  button is re-added when it disappears; images live on the same domain, so the
+  canvas is read without CORS, and the request keeps its cookies — without that
+  images in a private project would not load at all.
+- The worker and the drawing are now shared code (`content/worker-host.js`,
+  `content/render.js`), not two copies: the GitHub frame, the GitLab page and
+  the standalone page all use one.
+- The live check runs against GitLab as well. It is not a formality: GitLab
+  rewrote how it renders diffs, and only a real page tells you that.
+
 - Each half of the standalone page now has a **Remove** button, and the result
   has **Start over**; the file name is shown with the image's size, since the
   thumbnail alone does not tell you what is being compared.

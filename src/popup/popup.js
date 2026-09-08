@@ -4,7 +4,9 @@
 // viewscreen.githubusercontent.com в адресной строке никто не открывает —
 // значит попросить доступ можно только отсюда, по нажатию.
 const api = globalThis.browser ?? globalThis.chrome;
-const ORIGINS = { origins: ['https://viewscreen.githubusercontent.com/*'] };
+const ORIGINS = {
+  origins: ['https://viewscreen.githubusercontent.com/*', 'https://gitlab.com/*'],
+};
 const REPOSITORY = 'https://github.com/Nemo-Illusionist/gh-pixel-diff';
 
 const t = (key, ...substitutions) => api.i18n.getMessage(key, substitutions.map(String));

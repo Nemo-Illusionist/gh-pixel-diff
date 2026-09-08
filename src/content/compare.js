@@ -16,6 +16,15 @@
   const RASTER_TARGET = 1024;
   const RASTER_LIMIT = 8;
 
+  /** Картинка с чужого домена — значит нужен CORS. */
+  function isForeign(src) {
+    try {
+      return new URL(src, global.location?.href).origin !== global.location?.origin;
+    } catch {
+      return true;
+    }
+  }
+
   /** Хост, на котором GitHub рендерит превью бинарных файлов. */
   const VIEWSCREEN_IMG = /^https:\/\/viewscreen\.githubusercontent\.com\/diff\/img/;
 
@@ -62,11 +71,18 @@
     return rewritten === url ? null : rewritten;
   }
 
-  /** Загружает картинку так, чтобы холст остался «чистым» и читаемым. */
+  /**
+   * Загружает картинку так, чтобы холст остался «чистым» и читаемым.
+   *
+   * crossOrigin ставим только для чужого домена: у GitHub картинки лежат на
+   * raw.githubusercontent.com, и без него холст стал бы «грязным». А вот на
+   * своём домене — так картинки отдаёт GitLab — он не нужен и вдобавок вреден:
+   * запрос уходит без кук, и в закрытом проекте картинка просто не загрузится.
+   */
   function loadImage(src) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      if (isForeign(src)) img.crossOrigin = 'anonymous';
       img.decoding = 'async';
       img.onload = () => resolve(img);
       // Вне расширения текста для сообщения нет — тогда в ошибку идёт адрес.

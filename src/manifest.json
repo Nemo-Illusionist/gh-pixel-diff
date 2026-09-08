@@ -14,7 +14,8 @@
     "storage"
   ],
   "host_permissions": [
-    "https://viewscreen.githubusercontent.com/*"
+    "https://viewscreen.githubusercontent.com/*",
+    "https://gitlab.com/*"
   ],
   "content_scripts": [
     {
@@ -26,6 +27,7 @@
         "content/i18n.js",
         "content/compare.js",
         "content/render.js",
+        "content/worker-host.js",
         "content/frame.js"
       ],
       "css": [
@@ -34,6 +36,24 @@
       ],
       "run_at": "document_end",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "https://gitlab.com/*"
+      ],
+      "js": [
+        "vendor/pixelmatch.js",
+        "content/i18n.js",
+        "content/compare.js",
+        "content/render.js",
+        "content/worker-host.js",
+        "content/gitlab.js"
+      ],
+      "css": [
+        "content/panel.css",
+        "content/gitlab.css"
+      ],
+      "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
@@ -44,7 +64,8 @@
         "content/worker.js"
       ],
       "matches": [
-        "https://viewscreen.githubusercontent.com/*"
+        "https://viewscreen.githubusercontent.com/*",
+        "https://gitlab.com/*"
       ]
     }
   ],
