@@ -61,6 +61,16 @@ a { color: var(--fgColor-accent); }
 }
 
 .drop {
+  position: relative;
+  border: 2px dashed var(--borderColor-default);
+  border-radius: 10px;
+  background: var(--bgColor-muted);
+}
+
+/* Нажатие открывает выбор файла, поэтому область — label во всю карточку.
+   Кнопка очистки лежит рядом с ним, а не внутри: иначе нажатие на неё
+   заодно открывало бы выбор файла. */
+.drop-body {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -68,9 +78,6 @@ a { color: var(--fgColor-accent); }
   gap: 6px;
   min-height: 200px;
   padding: 20px;
-  border: 2px dashed var(--borderColor-default);
-  border-radius: 10px;
-  background: var(--bgColor-muted);
   text-align: center;
   cursor: pointer;
 }
@@ -85,7 +92,7 @@ a { color: var(--fgColor-accent); }
   outline-offset: 2px;
 }
 
-.drop-label { font-weight: 600; }
+.drop-label { font-weight: 600; font-size: 16px; }
 .drop-hint { font-size: 13px; color: var(--fgColor-muted); }
 .drop-file { font-size: 12px; color: var(--fgColor-muted); word-break: break-all; }
 
@@ -101,7 +108,49 @@ a { color: var(--fgColor-accent); }
    картинке, иначе карточка растёт вдвое ради строки, которая уже не нужна. */
 .drop.filled .drop-hint { display: none; }
 
+/* Убрать картинку: появляется только когда есть что убирать. */
+.drop-clear {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--fgColor-muted);
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.drop-clear:hover { color: var(--fgColor-danger); border-color: var(--fgColor-danger); }
+.drop-clear[hidden] { display: none; }
+
 .paste { margin: 0 0 24px; font-size: 13px; color: var(--fgColor-muted); }
+
+/* Заголовок результата и кнопка «начать заново» — по краям одной строки. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.panel-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
+
+.panel-reset {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 12px;
+  color: var(--fgColor-muted);
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.panel-reset:hover { color: var(--fgColor-default); }
 
 .panel {
   display: flex;

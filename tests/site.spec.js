@@ -127,6 +127,60 @@ test('не картинка — понятный отказ, а не молча�
   await expect(page.locator('#failure')).toContainText('notes.txt');
 });
 
+test('убрать картинку — и сравнивать снова нечего', async ({ page }) => {
+  await load(page);
+  await expect(meta(page)).toContainText(/pixels?/);
+
+  await page.locator('.drop[data-slot=before] .drop-clear').click();
+
+  await expect(page.locator('#panel')).toBeHidden();
+  await expect(page.locator('#failure')).toBeVisible();
+  await expect(page.locator('.drop[data-slot=before] .drop-preview')).toBeHidden();
+  // Половина «после» не тронута: убирали не её.
+  await expect(page.locator('.drop[data-slot=after] .drop-preview')).toBeVisible();
+});
+
+test('«начать заново» очищает обе половины', async ({ page }) => {
+  await load(page);
+  await expect(meta(page)).toContainText(/pixels?/);
+
+  await page.locator('#reset').click();
+
+  await expect(page.locator('.drop-preview')).toHaveCount(2);
+  await expect(page.locator('.drop-preview:visible')).toHaveCount(0);
+  await expect(page.locator('.drop-clear:visible')).toHaveCount(0);
+});
+
+test('одну и ту же половину можно заменить', async ({ page }) => {
+  await load(page);
+  await expect(meta(page)).toContainText(/pixels?/);
+
+  // Тот же файл в обе половины: разницы быть не должно, и это видно.
+  await page.setInputFiles('.drop[data-slot=after] input', fixture('before.png'));
+
+  await expect(meta(page)).toContainText('0');
+  await expect(page.locator('#panel')).toBeVisible();
+});
+
+test('строки не пропадают, даже если window.chrome защищён от записи', async ({ page }) => {
+  // Ровно та поломка, из-за которой страница вышла в свет без единой надписи:
+  // страница присваивала window.chrome, а это имя принадлежит браузеру. Там,
+  // где оно закрыто на запись, присваивание в строгом режиме роняло скрипт со
+  // строками — и весь интерфейс оказывался пустым, молча.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'chrome', { value: {}, writable: false, configurable: false });
+  });
+  await page.goto(origin);
+
+  const empty = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-i18n]')]
+      .filter((node) => !node.textContent.trim())
+      .map((node) => node.dataset.i18n),
+  );
+
+  expect(empty).toEqual([]);
+});
+
 test('строки страницы берутся из локалей расширения', async ({ page }) => {
   // Пустой текст здесь означает потерянный ключ или несобранные локали —
   // на живой странице это выглядело бы как пустое место, и молча.

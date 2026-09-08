@@ -21,28 +21,40 @@
 </header>
 
 <main>
-  <!-- Две половины: «до» и «после». Пока обе не заполнены, сравнивать нечего. -->
+  <!-- Две половины: «было» и «стало». Пока обе не заполнены, сравнивать нечего.
+       Кнопка очистки вынесена из label: внутри неё любое нажатие открывало бы
+       выбор файла, в том числе нажатие на саму кнопку. -->
   <section class="drops" id="drops">
-    <label class="drop" data-slot="before">
-      <input type="file" accept="image/*" hidden>
-      <span class="drop-label" data-i18n="viewBefore"></span>
-      <span class="drop-hint" data-i18n="siteDropHint"></span>
-      <img class="drop-preview" alt="" hidden>
-      <span class="drop-file"></span>
-    </label>
-    <label class="drop" data-slot="after">
-      <input type="file" accept="image/*" hidden>
-      <span class="drop-label" data-i18n="viewAfter"></span>
-      <span class="drop-hint" data-i18n="siteDropHint"></span>
-      <img class="drop-preview" alt="" hidden>
-      <span class="drop-file"></span>
-    </label>
+    <div class="drop" data-slot="before">
+      <label class="drop-body">
+        <input type="file" accept="image/*" hidden>
+        <span class="drop-label" data-i18n="siteSlotBefore"></span>
+        <span class="drop-hint" data-i18n="siteDropHint"></span>
+        <img class="drop-preview" alt="" hidden>
+        <span class="drop-file"></span>
+      </label>
+      <button class="drop-clear" type="button" data-i18n="siteClear" hidden></button>
+    </div>
+    <div class="drop" data-slot="after">
+      <label class="drop-body">
+        <input type="file" accept="image/*" hidden>
+        <span class="drop-label" data-i18n="siteSlotAfter"></span>
+        <span class="drop-hint" data-i18n="siteDropHint"></span>
+        <img class="drop-preview" alt="" hidden>
+        <span class="drop-file"></span>
+      </label>
+      <button class="drop-clear" type="button" data-i18n="siteClear" hidden></button>
+    </div>
   </section>
 
   <p class="paste" data-i18n="sitePasteHint"></p>
 
   <!-- Панель сравнения: та же, что во фрейме GitHub. -->
   <section class="panel" id="panel" hidden>
+    <div class="panel-head">
+      <h2 data-i18n="siteResult"></h2>
+      <button class="panel-reset" id="reset" type="button" data-i18n="siteClearAll"></button>
+    </div>
     <div class="panel-frame">
       <canvas class="ghpd-canvas" id="canvas"></canvas>
       <div class="ghpd-triple" id="triple" hidden></div>
