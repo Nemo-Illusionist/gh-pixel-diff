@@ -8,6 +8,14 @@ adheres to [semantic versioning](https://semver.org/).
 
 ### Added
 
+- A standalone page — <https://nemo-illusionist.github.io/gh-pixel-diff/> — where
+  you drop two images of your own and get the same comparison: the same crop to
+  what changed, the same threshold slider, the same before / after / diff / 3-up.
+  It is a shell around the same code rather than a second copy of it: the
+  comparison, the drawing, the worker and the panel's styles are taken straight
+  out of `src/`, and the page's strings live in the same locale files. Nothing
+  is uploaded — it is a static file on GitHub Pages.
+
 - `npm run chrome:token` — issuing the Chrome Web Store refresh token in one
   run: it catches the code on a loopback port, exchanges it and writes the
   three secrets straight to the repository, so nothing passes through the

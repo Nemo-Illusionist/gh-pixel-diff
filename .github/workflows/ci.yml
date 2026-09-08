@@ -21,12 +21,13 @@ jobs:
       - uses: actions/checkout@v7
       - run: npm ci --no-audit --no-fund
       - run: node scripts/build.mjs
+      - run: node scripts/build-site.mjs
       # Живой тест ходит на github.com и вынесен в отдельный запуск: он ломается
       # от чужих изменений, а не от наших, и не должен блокировать пул-реквест.
       - run: >
           npx playwright test
           tests/parse.spec.js tests/frame.spec.js
-          tests/locales.spec.js tests/popup.spec.js
+          tests/locales.spec.js tests/popup.spec.js tests/site.spec.js
 
   lint:
     name: Проверка манифеста Firefox

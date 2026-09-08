@@ -118,9 +118,14 @@
     return /\.svg(?:[?#]|$)/i.test(url);
   }
 
-  /** Во сколько раз увеличить вектор, чтобы сравнивать его по существу. */
+  /**
+   * Во сколько раз увеличить вектор, чтобы сравнивать его по существу.
+   * Обычно вектор виден по расширению в адресе, но на отдельной странице
+   * картинки приходят файлами, и адрес у них `blob:` — там тип известен
+   * заранее и приходит флагом.
+   */
   function rasterScale(pair, width, height) {
-    if (!isVector(pair.before) && !isVector(pair.after)) return 1;
+    if (!pair.vector && !isVector(pair.before) && !isVector(pair.after)) return 1;
     const longest = Math.max(width, height) || 1;
     return Math.min(RASTER_LIMIT, Math.max(1, Math.round(RASTER_TARGET / longest)));
   }

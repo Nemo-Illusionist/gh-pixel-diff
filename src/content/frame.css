@@ -1,6 +1,11 @@
-/* Оформление наследует панель GitHub: свои цвета задаём только там,
-   где родных классов нет. */
-/* Высоту фрейма GitHub меряет по своему содержимому и сообщает наружу.
+/* Житьё внутри фрейма GitHub: расположение панели и её пределы по высоте.
+   Сами элементы — кадр, подпись, ползунок, переключатель — в panel.css,
+   общем с отдельной страницей.
+
+   Оформление наследует панель GitHub: свои цвета задаём только там,
+   где родных классов нет.
+
+   Высоту фрейма GitHub меряет по своему содержимому и сообщает наружу.
    Поэтому наш блок вынут из потока: иначе он раздувает документ, iframe
    растягивается под него и в родных режимах снизу остаётся пустота.
    Заодно у контейнера появляется определённая высота — по ней вписывается
@@ -40,198 +45,16 @@
    сам вернёт нужный режим, когда переключатся обратно. */
 .ghpd-active .view:not(.ghpd-view) { visibility: hidden !important; }
 
-/* Содержимое не растягивается: GitHub задаёт фрейму высоту по самому рослому
-   из своих режимов, и на месте невысокого кадра иначе получается полоса
-   пустоты с картинкой наверху и ползунком у самого низа. */
-.ghpd-shell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  max-width: 100%;
-  min-height: 0;
-  flex: 0 1 auto;
-}
-
-/* Кадр вписывается целиком: увеличивать его сверх натурального размера незачем.
-   Предел считаем от высоты фрейма, а не в процентах от родителя: у того высота
-   определяется содержимым, и процент браузер просто не разрешит. Вычет — место
-   под подпись, ползунок, отступы и панель режимов; с переключателем кадров
-   его нужно больше, и его размер задаётся при показе.
-
-   Рамка — на самом холсте, без обёртки: обёртка мерила бы ширину по
-   натуральному размеру картинки, а та ужимается по высоте, и справа от кадра
-   оставалась пустая полоса внутри рамки. */
-.ghpd-canvas[hidden] { display: none; }
-
+/* Предел по высоте — только во фрейме: его высоту задаёт GitHub, и кадр
+   вписывается в неё. Вычет — место под подпись, ползунок, отступы и панель
+   режимов; с переключателем кадров запаса нужно больше, и он задаётся при
+   показе. На отдельной странице ограничивать нечего: там кадр листается
+   вместе со страницей. */
 .ghpd-canvas {
-  display: block;
-  /* Размер задают только max-width и max-height: flex не должен ни тянуть
-     холст, ни жать — иначе коробка перестаёт совпадать с картинкой. */
-  flex: none;
-  width: auto;
-  height: auto;
-  max-width: 100%;
   max-height: calc(100vh - var(--ghpd-bar-height, 40px) - var(--ghpd-reserve, 90px));
-  object-fit: contain;
-  border: 1px solid var(--borderColor-default, #d0d7de);
-  border-radius: 4px;
-}
-
-.ghpd-meta {
-  margin: 0;
-  flex: none;
-  font-size: 12px;
-  color: var(--fgColor-muted, #59636e);
-  text-align: center;
-}
-
-.ghpd-crop-toggle,
-.ghpd-outline-toggle {
-  font: inherit;
-  color: var(--fgColor-accent, #0969da);
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-/* Ползунок порога — повторяет вид дорожки Onion Skin. */
-.ghpd-controls {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 12px;
-  width: 340px;
-  max-width: 90%;
-  cursor: pointer;
-}
-
-/* Родной input[type=range], раздетый до вида дорожки Onion Skin. */
-.ghpd-slider {
-  flex: 1;
-  min-width: 0;
-  height: 18px;
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.ghpd-slider::-webkit-slider-runnable-track {
-  height: 2px;
-  border-radius: 2px;
-  background: var(--borderColor-default, #d0d7de);
-}
-
-.ghpd-slider::-moz-range-track {
-  height: 2px;
-  border-radius: 2px;
-  background: var(--borderColor-default, #d0d7de);
-}
-
-.ghpd-slider::-webkit-slider-thumb {
-  width: 12px;
-  height: 12px;
-  margin-top: -5px;
-  border: none;
-  border-radius: 50%;
-  background: var(--fgColor-muted, #6e7781);
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.ghpd-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border: none;
-  border-radius: 50%;
-  background: var(--fgColor-muted, #6e7781);
-}
-
-/* Фокус виден: ползунком теперь пользуются и с клавиатуры. */
-.ghpd-slider:focus-visible {
-  outline: 2px solid var(--fgColor-accent, #0969da);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-/* Метки по краям: слева мелкая, справа крупная — как растёт огрубление. */
-.ghpd-mark {
-  display: block;
-  flex: none;
-  background: var(--fgColor-muted, #6e7781);
-  border-radius: 1px;
-}
-
-.ghpd-mark-small { width: 7px; height: 7px; }
-.ghpd-mark-large { width: 12px; height: 12px; }
-
-/* Переключатель кадров: «до», «после», разница. */
-.ghpd-views {
-  display: flex;
-  flex: none;
-  gap: 4px;
-}
-
-.ghpd-views[hidden] { display: none; }
-
-.ghpd-view-button {
-  font: inherit;
-  font-size: 12px;
-  padding: 2px 10px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  background: none;
-  color: var(--fgColor-muted, #59636e);
-  cursor: pointer;
-}
-
-.ghpd-view-button:hover { color: var(--fgColor-default, #1f2328); }
-
-.ghpd-view-button.selected {
-  border-color: var(--borderColor-default, #d0d7de);
-  color: var(--fgColor-default, #1f2328);
-}
-
-.ghpd-view-button:focus-visible {
-  outline: 2px solid var(--fgColor-accent, #0969da);
-  outline-offset: 1px;
-}
-
-/* Три кадра рядом. Ширина делится поровну, и каждый вписывается в свою треть:
-   иначе на снимке страницы они вылезли бы за края фрейма. */
-.ghpd-triple {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 0;
-}
-
-.ghpd-triple[hidden] { display: none; }
-
-.ghpd-triple-item {
-  display: flex;
-  flex: 1 1 0;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
 }
 
 /* Место под подпись каждого кадра — на неё запаса нужно чуть больше. */
 .ghpd-triple .ghpd-canvas {
   max-height: calc(100vh - var(--ghpd-bar-height, 40px) - var(--ghpd-reserve, 90px) - 20px);
-}
-
-.ghpd-triple-label {
-  flex: none;
-  font-size: 11px;
-  color: var(--fgColor-muted, #59636e);
 }
