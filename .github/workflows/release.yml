@@ -1,22 +1,46 @@
-# Релиз по тегу: собирает архивы и выкладывает их на страницу релизов.
+# Релиз: версия, тег, архивы, магазины.
 #
-# Версия берётся из манифеста и сверяется с тегом — иначе в релизе окажется
-# архив с версией, которой никто не ждал.
+# Версию считает release-please по заголовкам коммитов и держит открытым
+# пул-реквест с ней; слияние этого пул-реквеста создаёт тег и релиз. Всё
+# остальное — в том же запуске: события, порождённые GITHUB_TOKEN, чужие
+# workflow не запускают, поэтому «по тегу» здесь ничего ждать нельзя.
 name: Релиз
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  release:
-    name: Сборка и публикация
+  version:
+    name: Релизный пул-реквест
+    runs-on: ubuntu-latest
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # Пул-реквест создаёт штатный GITHUB_TOKEN, и порождённое им событие
+      # не запускает проверки. А main их требует, поэтому на релизном
+      # пул-реквесте нужно один раз нажать Close и сразу Reopen: событие
+      # породит человек, и проверки пойдут как на любом другом.
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  archives:
+    name: Архивы
+    needs: version
+    if: needs.version.outputs.created == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.tag }}
 
       - uses: actions/setup-node@v7
         with:
@@ -24,66 +48,28 @@ jobs:
 
       - run: npm ci --no-audit --no-fund
 
-      - name: Сверить версию с тегом
-        run: |
-          manifest="$(node -p "require('./src/manifest.json').version")"
-          tag="${GITHUB_REF_NAME#v}"
-          if [ "$manifest" != "$tag" ]; then
-            echo "Тег $GITHUB_REF_NAME не совпадает с версией манифеста $manifest" >&2
-            exit 1
-          fi
-          echo "version=$manifest" >> "$GITHUB_ENV"
+      - run: scripts/package.sh
 
-      - name: Собрать архивы
-        run: scripts/package.sh
-
-      - name: Опубликовать
+      - name: Приложить к релизу
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
-          # Что изменилось — из CHANGELOG, раздел ровно этой версии.
-          node - <<'JS' > notes.md
-          const { readFileSync } = require('node:fs');
-          const version = process.env.version;
-          const changelog = readFileSync('CHANGELOG.md', 'utf8');
-          const section = changelog.split(/^## /m).find((part) => part.startsWith(`[${version}]`));
-          if (section) {
-            console.log(section.replace(/^\[.*?\].*$/m, "## What's changed").trimEnd());
-            console.log();
-          }
-          JS
-          cat >> notes.md <<'NOTES'
-          ## Installation
+          set -euo pipefail
+          gh release upload "$TAG" dist/release/*.zip dist/release/checksums.txt
 
-          **Chrome, Edge, any Chromium** — download `gh-pixel-diff-chrome-*.zip`,
-          unpack it, open `chrome://extensions`, turn on "Developer mode" and
-          press "Load unpacked" → the unpacked folder.
+          # Заметки собраны из заголовков коммитов; как это ставить — там нет,
+          # а вопрос первый. Дописываем в конец, не трогая собранное.
+          gh release view "$TAG" --json body -q .body > notes.md
+          printf '\n' >> notes.md
+          cat .github/release-install.md >> notes.md
+          gh release edit "$TAG" --notes-file notes.md
 
-          **Firefox** — download `gh-pixel-diff-firefox-*.zip`, open
-          `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" →
-          pick the archive. It lives until the browser restarts: a permanent
-          install requires signing on addons.mozilla.org.
-
-          **Safari, macOS and iOS** — download `gh-pixel-diff-safari-*.zip`,
-          unpack it and follow `SAFARI-INSTALL.txt` inside. Xcode and your own
-          certificate are required: without a signature macOS won't register the
-          extension.
-
-          After installing, open the extension popup and grant access to
-          `viewscreen.githubusercontent.com` — that is the domain GitHub serves
-          image previews from.
-
-          SHA-256 sums for every archive are in `checksums.txt`.
-          NOTES
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
-            --notes-file notes.md \
-            dist/release/*.zip dist/release/checksums.txt
-
-  # Магазины подхватывают тот же тег: сначала архивы на странице релизов —
-  # они нужны и тем, кто ставит расширение руками, — потом витрины.
   stores:
     name: Магазины
-    needs: release
+    needs: [version, archives]
+    if: needs.version.outputs.created == 'true'
     uses: ./.github/workflows/publish.yml
+    with:
+      ref: ${{ needs.version.outputs.tag }}
     secrets: inherit
