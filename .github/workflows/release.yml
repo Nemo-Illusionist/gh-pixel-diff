@@ -22,13 +22,13 @@ jobs:
       created: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
     steps:
-      # Свой токен, а не GITHUB_TOKEN: созданный им пул-реквест не запускает
-      # проверки, а main защищён и требует их — такой пул-реквест повис бы
-      # навсегда, и слить его не смог бы никто.
+      # Пул-реквест создаёт штатный GITHUB_TOKEN, и порождённое им событие
+      # не запускает проверки. А main их требует, поэтому на релизном
+      # пул-реквесте нужно один раз нажать Close и сразу Reopen: событие
+      # породит человек, и проверки пойдут как на любом другом.
       - uses: googleapis/release-please-action@v5
         id: release
         with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 

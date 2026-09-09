@@ -211,6 +211,28 @@ Releases run themselves, from the commit subjects. Those follow
 changelog and in the release notes, which are read by the same people the README
 is written for. The body of the commit is free-form.
 
+Prefixes, and what each one does:
+
+| Prefix | Version | Changelog |
+| --- | --- | --- |
+| `feat:` | minor | **Features** |
+| `fix:` | patch | **Bug Fixes** |
+| `perf:` | patch | **Performance** |
+| `docs:` | patch | **Documentation** |
+| `refactor:` | patch | **Refactors** |
+| `chore:` `ci:` `build:` `test:` `style:` | patch | hidden |
+| any of them with `!` | **major** | highlighted |
+
+Pick by what the change does for whoever uses the extension, not by how it felt
+to write: a one-line change that fixes broken behaviour is `fix:`, a large
+refactor nobody can observe is `refactor:`. Nothing validates the prefix — a
+wrong one is silent, and by the time it is merged the version and the changelog
+line are already made from it.
+
+The repository squash-merges, and the pull request title becomes that single
+commit. So the title is not a summary dashed off before merging; it is the
+release note.
+
 release-please reads them, works out the next version and keeps a pull request
 open with it: the version bumped in `package.json` and the manifest, the
 changelog written. Merging that pull request creates the tag and the release;
@@ -220,9 +242,12 @@ on by a repository variable, so a fork never tries to publish in someone else's
 name — see [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 It has to happen in one run: events created by `GITHUB_TOKEN` do not start other
-workflows, so nothing here can wait for a tag to appear. For the same reason
-release-please runs on a personal token — a release pull request opened by
-`GITHUB_TOKEN` would never get its checks, and `main` requires them.
+workflows, so nothing here can wait for a tag to appear.
+
+The same rule costs one manual step. The release pull request is opened by
+`GITHUB_TOKEN`, so its checks never start on their own — and `main` requires
+them. Press **Close** on that pull request and then **Reopen**: the event now
+comes from a person, the checks run, and it merges like any other.
 
 Tests come in four levels. `tests/parse.spec.js` checks URL parsing, the
 repository fallback and the search for the changed area, without touching the
