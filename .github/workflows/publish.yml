@@ -10,6 +10,12 @@ name: Магазины
 
 on:
   workflow_call:
+    inputs:
+      ref:
+        description: 'Что публиковать: тег релиза. Пусто — текущий main.'
+        type: string
+        required: false
+        default: ''
   workflow_dispatch:
 
 permissions:
@@ -24,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: actions/setup-node@v7
         with:
@@ -96,6 +104,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: actions/setup-node@v7
         with:

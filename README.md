@@ -205,14 +205,24 @@ changes, not ours, and shouldn't block a pull request.
 lands through a pull request with both checks green, and history stays linear
 (squash merges only).
 
-A release therefore comes in two steps. `npm run release -- 0.6.0` opens a pull
-request that bumps the version in `package.json` and the manifest; once it is
-merged, tagging `v0.6.0` on `main` builds the archives, checks the tag against
-the manifest version and publishes them to the releases page. The same tag then
-pushes the build to the Chrome Web Store and to addons.mozilla.org — each store
-is switched on by a repository variable, so a fork never tries to publish in
-someone else's name. Setting that up is described in
-[docs/PUBLISHING.md](docs/PUBLISHING.md).
+Releases run themselves, from the commit subjects. Those follow
+[conventional commits](https://www.conventionalcommits.org/) — `feat:`, `fix:`,
+`docs:`, `refactor:`, `ci:`, `chore:` — in English, since they end up in the
+changelog and in the release notes, which are read by the same people the README
+is written for. The body of the commit is free-form.
+
+release-please reads them, works out the next version and keeps a pull request
+open with it: the version bumped in `package.json` and the manifest, the
+changelog written. Merging that pull request creates the tag and the release;
+the same workflow run then builds the archives, attaches them, and pushes the
+build to the Chrome Web Store and to addons.mozilla.org. Each store is switched
+on by a repository variable, so a fork never tries to publish in someone else's
+name — see [docs/PUBLISHING.md](docs/PUBLISHING.md).
+
+It has to happen in one run: events created by `GITHUB_TOKEN` do not start other
+workflows, so nothing here can wait for a tag to appear. For the same reason
+release-please runs on a personal token — a release pull request opened by
+`GITHUB_TOKEN` would never get its checks, and `main` requires them.
 
 Tests come in four levels. `tests/parse.spec.js` checks URL parsing, the
 repository fallback and the search for the changed area, without touching the

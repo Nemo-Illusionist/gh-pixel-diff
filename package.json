@@ -12,11 +12,9 @@
     "icons": "scripts/icons.sh",
     "install:macos": "scripts/install-macos.sh",
     "package": "scripts/package.sh",
-    "release": "scripts/release.sh",
     "run:ios": "scripts/run-ios-sim.sh",
     "screenshots": "scripts/screenshots.sh",
-    "test": "scripts/test.sh",
-    "version": "node scripts/sync-version.mjs && git add src/manifest.json"
+    "test": "scripts/test.sh"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

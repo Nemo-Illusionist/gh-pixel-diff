@@ -1,10 +1,8 @@
 # Changelog
 
-All notable changes to this project are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
-adheres to [semantic versioning](https://semver.org/).
-
-## [Unreleased]
+Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
+release-please from commit subjects, which is why the style changes partway
+down. The project follows [semantic versioning](https://semver.org/).
 
 ## [0.9.0]
 
@@ -244,7 +242,6 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.0...v0.7.1
