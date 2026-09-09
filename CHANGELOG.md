@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0]
+
 ### Added
 
 - **GitLab.** The mode now sits in GitLab's own row of image modes too, in merge
@@ -242,7 +244,8 @@ adheres to [semantic versioning](https://semver.org/).
 Initial release: the Pixel Diff mode in GitHub's image viewer, builds for
 Chrome, Firefox and Safari.
 
-[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.6.1...v0.7.0
