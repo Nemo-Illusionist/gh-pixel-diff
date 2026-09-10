@@ -11,11 +11,15 @@
     "128": "icons/icon-128.png"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "scripting"
   ],
   "host_permissions": [
     "https://viewscreen.githubusercontent.com/*",
     "https://gitlab.com/*"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
   ],
   "content_scripts": [
     {
@@ -78,7 +82,7 @@
     }
   },
   "options_ui": {
-    "page": "popup/popup.html",
-    "open_in_tab": false
+    "page": "options/options.html",
+    "open_in_tab": true
   }
 }

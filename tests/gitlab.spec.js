@@ -22,10 +22,15 @@ const scripts = manifest.content_scripts.find((entry) =>
 
 const PAGE = 'https://gitlab.com/owner/repo/-/merge_requests/1/diffs';
 
-async function openPage(page) {
-  await page.route('https://gitlab.com/owner/repo/-/merge_requests/**', (route) =>
-    route.fulfill({ contentType: 'text/html; charset=utf-8', body: read('fixtures/gitlab.html') }),
-  );
+async function openPage(page, { gitlab = true } = {}) {
+  await page.route('https://gitlab.com/owner/repo/-/merge_requests/**', (route) => {
+    // Без `data-page` это страница с похожими классами, но не GitLab: ровно
+    // то, во что упрётся человек, ошибившийся адресом своего сервера.
+    const body = read('fixtures/gitlab.html')
+      .toString('utf8')
+      .replace(gitlab ? '' : ' data-page="projects:merge_requests:show"', '');
+    return route.fulfill({ contentType: 'text/html; charset=utf-8', body });
+  });
   // Картинки на своём домене: CORS не нужен, куки нужны — ровно так же, как
   // их отдаёт GitLab в закрытом проекте.
   for (const [path, name] of [
@@ -102,6 +107,17 @@ async function waitForResult(page) {
 test.beforeEach(async ({ page }) => {
   await openPage(page);
   await injectExtension(page);
+});
+
+test('на чужой странице не делает ничего', async ({ page }) => {
+  // Доступ к своему серверу человек выдаёт руками и может ошибиться адресом.
+  // Классы `.diff-viewer` и `.view-modes-menu` слишком общие, чтобы по ним
+  // одним лезть в чужую разметку: без пометки GitLab не трогаем ничего.
+  await openPage(page, { gitlab: false });
+  await injectExtension(page);
+
+  await expect.poll(() => modes(page)).toHaveLength(3);
+  expect(await page.locator('.ghpd-mode-item').count()).toBe(0);
 });
 
 test('встаёт четвёртым пунктом, родные не трогает', async ({ page }) => {

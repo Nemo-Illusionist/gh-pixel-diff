@@ -222,5 +222,47 @@
   },
   "siteResult": {
     "message": "Разница"
+  },
+  "popupSettings": {
+    "message": "Настройки"
+  },
+  "optionsAccess": {
+    "message": "Доступ"
+  },
+  "optionsGitlab": {
+    "message": "Свои серверы GitLab"
+  },
+  "optionsGitlabLead": {
+    "message": "Кроме <code>gitlab.com</code> расширение умеет работать и на своём сервере GitLab — но его адрес манифесту заранее не известен. Добавьте его здесь: браузер спросит про доступ, и режим появится в просмотрщике картинок этого сервера."
+  },
+  "optionsHostHint": {
+    "message": "gitlab.example.com"
+  },
+  "optionsAdd": {
+    "message": "Добавить"
+  },
+  "optionsRemove": {
+    "message": "Убрать"
+  },
+  "optionsEmpty": {
+    "message": "Пока ни одного."
+  },
+  "optionsAdded": {
+    "message": "Добавлено. Если сервер уже открыт, перезагрузите вкладку."
+  },
+  "optionsDenied": {
+    "message": "Доступ не выдан — режим там не появится."
+  },
+  "optionsHostBad": {
+    "message": "Это не похоже на адрес. Ожидается что-то вроде gitlab.example.com."
+  },
+  "optionsHostCovered": {
+    "message": "Этот адрес и так работает — добавлять его не нужно."
+  },
+  "optionsUnsupported": {
+    "message": "Этот браузер не умеет регистрировать скрипты на лету, поэтому свои серверы здесь недоступны."
+  },
+  "optionsFailed": {
+    "message": "Что-то не вышло; в списке выше — то, что на самом деле есть у браузера."
   }
 }

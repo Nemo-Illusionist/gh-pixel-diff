@@ -206,5 +206,47 @@
   },
   "siteResult": {
     "message": "Difference"
+  },
+  "popupSettings": {
+    "message": "Settings"
+  },
+  "optionsAccess": {
+    "message": "Access"
+  },
+  "optionsGitlab": {
+    "message": "Self-hosted GitLab"
+  },
+  "optionsGitlabLead": {
+    "message": "Beyond <code>gitlab.com</code>, the extension can work on a GitLab of your own — but its address is not something a manifest can know in advance. Add it here: the browser will ask whether to grant access, and the mode will appear in that instance’s image viewer."
+  },
+  "optionsHostHint": {
+    "message": "gitlab.example.com"
+  },
+  "optionsAdd": {
+    "message": "Add"
+  },
+  "optionsRemove": {
+    "message": "Remove"
+  },
+  "optionsEmpty": {
+    "message": "No instances added yet."
+  },
+  "optionsAdded": {
+    "message": "Added. Reload the tab if the instance is already open."
+  },
+  "optionsDenied": {
+    "message": "Access was not granted, so the mode will not appear there."
+  },
+  "optionsHostBad": {
+    "message": "That does not look like an address. Expected something like gitlab.example.com."
+  },
+  "optionsHostCovered": {
+    "message": "This address already works — no need to add it."
+  },
+  "optionsUnsupported": {
+    "message": "This browser cannot register content scripts at runtime, so instances of your own are unavailable here."
+  },
+  "optionsFailed": {
+    "message": "Something went wrong; the list above shows what the browser actually has."
   }
 }
