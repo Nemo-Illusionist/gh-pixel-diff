@@ -9,7 +9,7 @@
 // в docs/, а не в dist/: сборка чистит dist целиком, а витрину переснимают
 // куда реже, чем собирают.
 import { chromium } from '@playwright/test';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -177,9 +177,14 @@ try {
   const canvas = await context.newPage();
   await canvas.setViewportSize({ width: 1280, height: 800 });
 
-  await rm(store, { recursive: true, force: true });
+  // Чистим только свои кадры: рядом в той же папке лежат рекламные картинки
+  // витрины, и делает их другой скрипт — снести их заодно означало бы
+  // потерять их молча, до первой же выкладки.
   await mkdir(store, { recursive: true });
   await mkdir(shots, { recursive: true });
+  for (const name of await readdir(store)) {
+    if (name.startsWith('screenshot-')) await rm(join(store, name));
+  }
 
   for (const [name, buffer] of Object.entries(written)) {
     await writeFile(join(shots, `${name}.png`), buffer);
