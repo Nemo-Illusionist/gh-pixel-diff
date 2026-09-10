@@ -129,7 +129,8 @@ npm run package        # архивы в dist/release
 `CHROME_REFRESH_TOKEN`.
 
 **10. Обоснования разрешений.** Витрина → **Privacy practices**. Каждое
-разрешение из манифеста требует объяснения; тексты — в конце этой страницы.
+разрешение из манифеста требует объяснения; готовые тексты — в разделе
+«Ответы на вопросы Chrome о разрешениях» в конце этой страницы.
 
 ### Что делает автоматика
 
@@ -196,52 +197,6 @@ in pending review, ready to publish, or deleted status." }]
 
 ---
 
-## Обоснования разрешений
-
-Chrome Web Store → витрина товара → **Privacy practices**. Спрашивают про
-каждое разрешение из манифеста; здесь — то, что вписано, чтобы не сочинять
-заново.
-
-**`storage`**
-
-```
-Remembers the comparison threshold, whether the changed area is outlined,
-which frame was shown last, and whether the before / after / diff switcher is
-visible. Settings only — no user data, no page content, nothing about the
-images themselves.
-```
-
-**`scripting`**
-
-```
-Self-hosted GitLab lives at an address that cannot be known in advance and so
-cannot be listed in the manifest. When the user adds such an address on the
-settings page and grants access to it, the extension registers its own,
-already shipped GitLab content script for that one host with
-scripting.registerContentScripts. No code is fetched or injected from
-anywhere else, and nothing runs on hosts the user has not added.
-```
-
-**Host permissions** (`viewscreen.githubusercontent.com`, `gitlab.com`)
-
-```
-GitHub renders image diffs inside a frame on viewscreen.githubusercontent.com
-and GitLab renders them on gitlab.com. The extension adds its comparison mode
-to that viewer and reads the two images the site has already loaded. It has no
-access to github.com pages at all.
-```
-
-**Broad host permissions** (необязательные, `*://*/*`)
-
-```
-Never requested on install and never requested by the extension on its own.
-The pattern exists only so that the user can name their own GitLab server on
-the settings page; the browser then asks about that single host. Access is
-revoked from the same page or from Chrome's extension settings.
-```
-
-**Remote code** — нет: всё, что выполняется, лежит в пакете.
-
 ---
 
 ## Тексты витрины
@@ -257,20 +212,20 @@ GitHub Pixel Diff
 **Краткое описание** (Chrome — до 132 знаков, AMO — до 250)
 
 ```
-Adds a pixel-level image diff to GitHub's image viewer — next to 2-up, Swipe and Onion Skin.
+Adds a pixel-level image diff to the image viewer on GitHub and GitLab — next to 2-up, Swipe and Onion Skin.
 ```
 
 **Полное описание**
 
 ```
-GitHub's image viewer shows you two pictures. It does not show you what
-changed between them.
+GitHub and GitLab both show you two versions of an image. Neither shows you
+what changed between them.
 
-Pixel Diff adds a fourth mode next to 2-up, Swipe and Onion Skin. It compares
-the two images pixel by pixel, paints every difference red, and crops the
-result to the area that actually changed — so a three-pixel shift in a long
-screenshot is a three-pixel shift you can see, not a picture you have to hunt
-through.
+Pixel Diff adds a fourth mode next to 2-up, Swipe and Onion Skin — in GitHub's
+image viewer and in GitLab's merge requests. It compares the two images pixel
+by pixel, paints every difference red, and crops the result to the area that
+actually changed — so a three-pixel shift in a long screenshot is a
+three-pixel shift you can see, not a picture you have to hunt through.
 
 - A threshold slider: raise it to ignore compression noise, lower it to catch
   everything.
@@ -278,7 +233,12 @@ through.
   crop.
 - Images that changed size are aligned and compared anyway.
 - SVG and other vector images are rasterised before comparison.
-- Works on the images GitHub already loaded — nothing is uploaded anywhere.
+- Works on the images the site has already loaded — nothing is uploaded
+  anywhere.
+- A GitLab of your own: add its address on the settings page, grant access,
+  and the mode appears in that instance too.
+- No merge request at hand? Two images of your own compare the same way at
+  https://nemo-illusionist.github.io/gh-pixel-diff/
 
 The comparison runs in your browser, in a background thread. The extension has
 no server, collects nothing, and sends nothing.
@@ -289,7 +249,11 @@ Open source: https://github.com/Nemo-Illusionist/gh-pixel-diff
 **Категория:** Developer Tools (Chrome) · Developer tools (AMO)
 
 **Политика конфиденциальности:**
-`https://github.com/Nemo-Illusionist/gh-pixel-diff/blob/main/docs/PRIVACY.md`
+`https://nemo-illusionist.github.io/gh-pixel-diff/privacy.html`
+
+Именно страница на сайте, а не `docs/PRIVACY.md` в репозитории: на неё же
+ссылается экран согласия Google, а `github.com` в Authorized domains не
+добавить.
 
 ### Ответы на вопросы Chrome о разрешениях
 
@@ -298,8 +262,8 @@ Open source: https://github.com/Nemo-Illusionist/gh-pixel-diff
 **Single purpose**
 
 ```
-Comparing the two images shown in GitHub's image diff viewer, pixel by pixel,
-and displaying the difference.
+Comparing the two images shown in an image diff viewer on GitHub and GitLab,
+pixel by pixel, and displaying the difference.
 ```
 
 **storage**
@@ -310,12 +274,33 @@ around changes is drawn, which frame was shown last, and whether the
 before/after/diff switcher is visible. No user data of any kind is stored.
 ```
 
-**Host permission — https://viewscreen.githubusercontent.com/***
+**Host permissions — https://viewscreen.githubusercontent.com/\*, https://gitlab.com/\***
 
 ```
-This is the frame GitHub renders image diffs in. The extension adds its mode to
+GitHub renders image diffs inside a frame on viewscreen.githubusercontent.com,
+and GitLab renders them on gitlab.com itself. The extension adds its mode to
 that viewer and reads the two images already loaded there in order to compare
-them. It runs nowhere else.
+them. It has no access to github.com pages at all.
+```
+
+**scripting**
+
+```
+Self-hosted GitLab lives at an address that cannot be known in advance and so
+cannot be listed in the manifest. When the user adds such an address on the
+settings page and grants access to it, the extension registers its own,
+already shipped GitLab content script for that one host with
+scripting.registerContentScripts. No code is fetched or injected from
+anywhere else, and nothing runs on hosts the user has not added.
+```
+
+**Broad host permissions — необязательные, `*://*/*`**
+
+```
+Never requested on install, and never requested by the extension on its own.
+The pattern exists only so that the user can name their own GitLab server on
+the settings page; the browser then asks about that single host. Access is
+revoked from the same page or from the browser's extension settings.
 ```
 
 **Remote code:** No — everything the extension executes ships inside the
