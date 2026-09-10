@@ -58,21 +58,39 @@ npm run package        # архивы в dist/release
    блок **App domain** оставить пустым — иначе Google потребует подтвердить
    владение `github.com` через Search Console, а это невозможно.
 4. **Data Access** → добавить область `https://www.googleapis.com/auth/chromewebstore`.
-5. **Audience** → **Publish app**, чтобы перевести приложение в состояние
+   Google кладёт её в **sensitive scopes** — не пугайтесь, проверку проходить
+   не нужно, см. ниже.
+5. **Branding** → заполнить **Application home page** и **Application privacy
+   policy link**, а в **Authorized domains** добавить домен, на котором они
+   лежат. Без ссылки на политику кнопка **Publish app** не разблокируется.
+
+   У нас это `nemo-illusionist.github.io` — страница
+   `.../gh-pixel-diff/privacy.html`. Домен на `github.io` Google принимает без
+   подтверждения через Search Console; `github.com` добавить не даст, поэтому
+   ссылаться на `docs/PRIVACY.md` в репозитории здесь нельзя.
+
+   Логотип на этой же странице лучше убрать: загруженный логотип требует
+   верификации бренда при переводе в production, а без него ничего подавать не
+   нужно.
+6. **Audience** → **Publish app**, чтобы перевести приложение в состояние
    **In production**.
 
    **Важно.** Пока приложение в **Testing**, Google протухает refresh-токен
    через семь дней, и публикация начнёт падать через неделю после настройки.
-   Проверку Google при этом не потребует: область доступа к магазину не
-   считается чувствительной.
-
    Пока приложение в Testing, экран согласия пускает только тех, кто внесён в
    **Test users** — включая владельца проекта. Это годится как временная мера,
    но не как решение.
-6. **Clients** → **Create OAuth client** → тип **Desktop app**. Консоль
+
+   После перевода в production консоль повесит баннер «Your app requires
+   verification»: область магазина считается чувствительной. Подавать на
+   проверку не нужно — экран согласия у неверифицированного приложения
+   проходится через **Advanced → Go to … (unsafe)**, а согласие здесь даёт
+   один человек, владелец товара, один раз в жизни. Верификация нужна лишь для
+   того, чтобы этот экран не пугал посторонних; посторонних тут нет.
+7. **Clients** → **Create OAuth client** → тип **Desktop app**. Консоль
    предложит скачать JSON с ключами — он и нужен дальше; посмотреть секрет
    второй раз она не даст.
-7. Получить refresh-токен:
+8. Получить refresh-токен:
 
    ```
    npm run chrome:token -- ~/Downloads/client_secret_….json
@@ -107,8 +125,11 @@ npm run package        # архивы в dist/release
    `prompt=consent` обязателен: без него Google при повторной выдаче вернёт
    только access-токен, а `refresh_token` молча не пришлёт.
 
-**8. Секреты репозитория:** `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`,
+**9. Секреты репозитория:** `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`,
 `CHROME_REFRESH_TOKEN`.
+
+**10. Обоснования разрешений.** Витрина → **Privacy practices**. Каждое
+разрешение из манифеста требует объяснения; тексты — в конце этой страницы.
 
 ### Что делает автоматика
 
@@ -116,6 +137,27 @@ npm run package        # архивы в dist/release
 `ITEM_PENDING_REVIEW` — нормальный: версия принята и ждёт проверки. Тексты и
 кадры витрины автоматика не трогает — их правят руками, и они переживают
 обновления.
+
+### Товар занят проверкой
+
+```
+"uploadState": "FAILURE",
+"itemError": [{ "error_detail": "The item cannot be updated now because it is
+in pending review, ready to publish, or deleted status." }]
+```
+
+Магазин держит один черновик на товар: пока предыдущая версия на проверке,
+новую он не примет. Флага «поверх» в API нет.
+
+Выхода два. Дождаться конца проверки и повторить выкладку без нового тега —
+**Actions → Магазины → Run workflow**, выбрать тег. Либо отменить проверку:
+консоль разработчика → страница товара → **⋮** → **Cancel review**; товар
+вернётся в черновик, и следующая выкладка пройдёт. Отменять можно до шести
+раз в сутки на издателя, и ускорения проверки это не даёт — только право
+подсунуть версию посвежее.
+
+Ошибка эта тем вероятнее, чем чаще релизы: проверка идёт часами, а тег можно
+поставить за минуту.
 
 ---
 
@@ -151,6 +193,54 @@ npm run package        # архивы в dist/release
 Остаётся ручным: App Store требует платного аккаунта Apple (99 $ в год) и
 проекта Xcode. Способ установки описан в README и в `SAFARI-INSTALL.txt`
 внутри архива.
+
+---
+
+## Обоснования разрешений
+
+Chrome Web Store → витрина товара → **Privacy practices**. Спрашивают про
+каждое разрешение из манифеста; здесь — то, что вписано, чтобы не сочинять
+заново.
+
+**`storage`**
+
+```
+Remembers the comparison threshold, whether the changed area is outlined,
+which frame was shown last, and whether the before / after / diff switcher is
+visible. Settings only — no user data, no page content, nothing about the
+images themselves.
+```
+
+**`scripting`**
+
+```
+Self-hosted GitLab lives at an address that cannot be known in advance and so
+cannot be listed in the manifest. When the user adds such an address on the
+settings page and grants access to it, the extension registers its own,
+already shipped GitLab content script for that one host with
+scripting.registerContentScripts. No code is fetched or injected from
+anywhere else, and nothing runs on hosts the user has not added.
+```
+
+**Host permissions** (`viewscreen.githubusercontent.com`, `gitlab.com`)
+
+```
+GitHub renders image diffs inside a frame on viewscreen.githubusercontent.com
+and GitLab renders them on gitlab.com. The extension adds its comparison mode
+to that viewer and reads the two images the site has already loaded. It has no
+access to github.com pages at all.
+```
+
+**Broad host permissions** (необязательные, `*://*/*`)
+
+```
+Never requested on install and never requested by the extension on its own.
+The pattern exists only so that the user can name their own GitLab server on
+the settings page; the browser then asks about that single host. Access is
+revoked from the same page or from Chrome's extension settings.
+```
+
+**Remote code** — нет: всё, что выполняется, лежит в пакете.
 
 ---
 
