@@ -1,6 +1,10 @@
 # Privacy Policy
 
-**GitHub Pixel Diff** — last updated 8 September 2026.
+**GitHub Pixel Diff** — last updated 10 September 2026.
+
+The same text, as the public page Google and the stores link to:
+<https://nemo-illusionist.github.io/gh-pixel-diff/privacy.html>. Both are edited
+together.
 
 ## What the extension collects
 
@@ -23,13 +27,18 @@ No image, file name, repository name, URL, or account information is stored.
 
 ## What it accesses
 
-The extension runs on one address: `https://viewscreen.githubusercontent.com/diff/img`,
-the frame GitHub uses to display image diffs. Inside that frame it reads the
-two images GitHub has already loaded and compares them in your browser. It does
-not run on `github.com` pages, does not read your repositories, and does not
-touch any other site.
+The extension runs on two addresses:
+`https://viewscreen.githubusercontent.com/diff/img`, the frame GitHub uses to
+display image diffs, and `https://gitlab.com`, where GitLab renders them on the
+page itself. There it reads the two images the site has already loaded and
+compares them in your browser. It does not run on `github.com` pages, does not
+read your repositories, and does not touch any other site.
 
 The comparison happens entirely on your machine. The images never leave it.
+
+The comparison page on this site works the same way: the images you drop there
+are read by the browser and never uploaded. There is no server behind the page —
+it is a static file on GitHub Pages.
 
 ## Third parties
 

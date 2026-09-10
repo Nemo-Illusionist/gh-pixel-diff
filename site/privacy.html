@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — GitHub Pixel Diff</title>
+<meta name="description" content="What GitHub Pixel Diff collects (nothing), what it stores and what it accesses.">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+<!-- Страница без скриптов и без локалей: её читают редко, а требуется она
+     ссылкой — в витрине магазина и в экране согласия Google. Текст тот же,
+     что в docs/PRIVACY.md; правки нужны в обоих местах. -->
+<style>
+  .legal { max-width: 720px; margin: 32px auto 0; }
+  .legal h2 { margin: 32px 0 8px; font-size: 17px; }
+  .legal p, .legal li { color: var(--fgColor-default); }
+  .legal ul { padding-left: 20px; }
+  .legal li { margin: 8px 0; }
+  .legal .updated { color: var(--fgColor-muted); }
+</style>
+</head>
+<body>
+<header class="head">
+  <img class="head-mark" src="icon.svg" alt="" width="44" height="44">
+  <div>
+    <h1>Privacy Policy</h1>
+    <p class="head-note">GitHub Pixel Diff</p>
+  </div>
+  <a class="head-link" href="./">Back to the page</a>
+</header>
+
+<main class="legal">
+  <p class="updated">Last updated 10 September 2026.</p>
+
+  <h2>What the extension collects</h2>
+  <p>Nothing. It has no analytics, no telemetry, no crash reporting, and no
+  server of its own. Nothing about you or the pages you visit is sent
+  anywhere.</p>
+
+  <h2>What it stores</h2>
+  <p>Two kinds of settings, and only settings:</p>
+  <ul>
+    <li><strong>Your preferences</strong> — the diff threshold, whether the
+    outline is drawn, which frame was shown last, and whether the before /
+    after / diff switcher is visible. They are kept by the browser's own
+    extension storage. If you are signed into the browser and have extension
+    sync turned on, the browser may sync them across your devices; that is the
+    browser's mechanism, not ours.</li>
+    <li><strong>The permission you grant</strong> — held by the browser itself,
+    and revocable at any time from the browser's extension settings.</li>
+  </ul>
+  <p>No image, file name, repository name, URL, or account information is
+  stored.</p>
+
+  <h2>What it accesses</h2>
+  <p>The extension runs on two addresses:
+  <code>https://viewscreen.githubusercontent.com/diff/img</code>, the frame
+  GitHub uses to display image diffs, and <code>https://gitlab.com</code>,
+  where GitLab renders them on the page itself. There it reads the two images
+  the site has already loaded and compares them in your browser. It does not
+  run on <code>github.com</code> pages, does not read your repositories, and
+  does not touch any other site.</p>
+  <p>The comparison happens entirely on your machine. The images never leave
+  it.</p>
+
+  <h2>This page</h2>
+  <p>The comparison page on this site works the same way: the images you drop
+  there are read by the browser and never uploaded. There is no server behind
+  the page — it is a static file on GitHub Pages.</p>
+
+  <h2>Third parties</h2>
+  <p>None. No data is shared, sold, or transferred to anyone, and no code is
+  loaded from a remote server — everything the extension runs ships inside the
+  package.</p>
+
+  <h2>Contact</h2>
+  <p>Questions and reports:
+  <a href="https://github.com/Nemo-Illusionist/gh-pixel-diff/issues">the issue
+  tracker</a>.</p>
+</main>
+</body>
+</html>
