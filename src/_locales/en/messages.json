@@ -183,6 +183,9 @@
   "sitePrivacy": {
     "message": "Nothing leaves your browser. The images are not uploaded anywhere, and there is no server behind this page — it is a static file on GitHub Pages."
   },
+  "sitePrivacyLink": {
+    "message": "Privacy policy"
+  },
   "siteExtensionPitch": {
     "message": "Want the same thing inside pull requests?"
   },
