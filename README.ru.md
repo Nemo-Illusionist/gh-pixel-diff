@@ -2,6 +2,10 @@
 
 **Русский** · [English](README.md)
 
+[**Поставить из Chrome Web Store**][store] ·
+[**Сравнить две картинки прямо сейчас, ничего не устанавливая**][site] ·
+[Firefox Add-ons][amo] (на проверке)
+
 GitHub и GitLab умеют показывать две версии картинки рядом, шторкой и
 наложением, но не умеют главного: сказать, **что именно** изменилось. На снимке
 страницы высотой в три тысячи пикселей правка занимает четыре строки — и найти
@@ -53,13 +57,17 @@ GitHub и GitLab умеют показывать две версии карти�
 
 ## Установка
 
-Готовые архивы — на странице
+**Chrome, Edge, любой Chromium** — [в Chrome Web Store][store]. Одна кнопка,
+и обновления приходят сами.
+
+Всё, что ниже, — для остальных браузеров и для тех, кто предпочитает ставить
+свою сборку. Готовые архивы — на странице
 [релизов](https://github.com/Nemo-Illusionist/gh-pixel-diff/releases). Их
 собирает GitHub из этого же репозитория; суммы SHA-256 лежат рядом в
 `checksums.txt`. Из исходников — `npm run build`, дальше те же шаги, только
 вместо распакованного архива берётся папка `dist/`.
 
-### Chrome, Edge, любой Chromium
+### Chrome, Edge, любой Chromium — из архива
 
 1. Скачать и распаковать `gh-pixel-diff-chrome-*.zip`.
 2. Открыть `chrome://extensions` и включить «Режим разработчика».
@@ -67,12 +75,15 @@ GitHub и GitLab умеют показывать две версии карти�
 
 ### Firefox
 
+Дополнение отправлено на [addons.mozilla.org][amo] и ждёт проверки — пока она
+не прошла, страница не открывается, и остаётся архив:
+
 1. Скачать `gh-pixel-diff-firefox-*.zip` (распаковывать не нужно).
 2. Открыть `about:debugging#/runtime/this-firefox`.
 3. «Загрузить временное дополнение» → выбрать архив.
 
-Временное дополнение живёт до перезапуска браузера. Для постоянной установки
-расширение нужно подписать на addons.mozilla.org.
+Временное дополнение живёт до перезапуска браузера: постоянное Firefox поставит
+только подписанное, а подписью проверка как раз и заканчивается.
 
 ### Safari, macOS
 
@@ -275,3 +286,7 @@ addons.mozilla.org. Каждая витрина включается своей 
 
 MIT — см. [LICENSE](LICENSE). В составе — [pixelmatch](src/vendor/pixelmatch.js)
 под лицензией ISC, © Mapbox.
+
+[store]: https://chromewebstore.google.com/detail/kddgddagklbfhikmlbailnempmndcngi
+[site]: https://nemo-illusionist.github.io/gh-pixel-diff/
+[amo]: https://addons.mozilla.org/firefox/addon/github-pixel-diff/
