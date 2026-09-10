@@ -148,6 +148,9 @@
   "popupNote": {
     "message": "GitHub shows images in a frame from <code>viewscreen.githubusercontent.com</code>, GitLab shows them on <code>gitlab.com</code> — those are the two domains the access is for. The extension never reads <code>github.com</code> pages."
   },
+  "popupSite": {
+    "message": "Compare two images of your own — on a page of its own"
+  },
   "popupReport": {
     "message": "Report a problem"
   },
