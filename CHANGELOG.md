@@ -4,6 +4,18 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.11.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.10.1...v0.11.0) (2026-09-10)
+
+
+### Features
+
+* a settings page, and a GitLab of your own on it ([#32](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/32)) ([7597c42](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/7597c429c8f66b147717d8540d86e414a87fe697))
+
+
+### Documentation
+
+* what the Chrome Web Store setup actually asks for ([#34](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/34)) ([e53afe3](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/e53afe3b1042bcd35ca0a4bf4c72248b1aa2754d))
+
 ## [0.10.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.10.0...v0.10.1) (2026-09-10)
 
 
