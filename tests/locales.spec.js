@@ -21,6 +21,8 @@ function requestedKeys() {
   const sources = [
     ...readdirSync(file('../src/content')).map((name) => read(`../src/content/${name}`)),
     read('../src/popup/popup.js'),
+    read('../src/shared/page.js'),
+    read('../src/options/options.js'),
     // Отдельная страница берёт строки из тех же локалей.
     ...readdirSync(file('../site'))
       .filter((name) => name.endsWith('.js'))
@@ -29,8 +31,14 @@ function requestedKeys() {
 
   for (const [, key] of sources.matchAll(/\bt\(\s*'([a-zA-Z]+)'/g)) keys.add(key);
   // Разметка окна и страницы просит строки атрибутами.
-  for (const html of ['../src/popup/popup.html', '../site/index.html']) {
-    for (const [, key] of read(html).matchAll(/data-i18n(?:-rich)?="([^"]+)"/g)) keys.add(key);
+  for (const html of [
+    '../src/popup/popup.html',
+    '../src/options/options.html',
+    '../site/index.html',
+  ]) {
+    for (const [, key] of read(html).matchAll(/data-i18n(?:-rich|-placeholder)?="([^"]+)"/g)) {
+      keys.add(key);
+    }
   }
   // Формы множественного числа собираются из имени: у русского их больше.
   for (const [, key] of sources.matchAll(/\bplural\(\s*'([a-zA-Z]+)'/g)) {

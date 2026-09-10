@@ -35,7 +35,7 @@ runs in your browser.
 - A before / after / diff / **3-up** switcher under the frame: any one version,
   or all three side by side — always in the same scale and the same crop as the
   difference, which the native 2-up and Swipe cannot do. The choice is
-  remembered, and the switcher can be turned off in the extension's window.
+  remembered, and the switcher can be turned off on the settings page.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame
@@ -146,20 +146,38 @@ Safari does not, because a site permission there does not extend to
 cross-origin frames, and the images live exactly in such a frame.
 
 Access is requested from the extension's own window: click its button in the
-toolbar and press **Grant access**. The same window shows whether access is
-already there.
+toolbar and press **Grant access**. The window is only that — the state of the
+access and a row of links; everything else lives on the settings page.
 
 ![The extension popup](docs/screenshots/popup.png)
 
-The same window opens from Safari's settings: Settings → Extensions → GitHub
-Pixel Diff → **Settings**. Next to it sits Safari's own **Edit websites…**
-button, which grants access without any window: set
-`viewscreen.githubusercontent.com` to "Allow".
+The settings page opens from the same window, by the **Settings** link — and in
+Safari from Settings → Extensions → GitHub Pixel Diff → **Settings**. Next to it
+sits Safari's own **Edit websites…** button, which grants access without any
+window: set `viewscreen.githubusercontent.com` to "Allow".
 
-Nothing else is requested. There are no permissions for `github.com` pages at
-all, so the extension cannot see your repositories or your session. Nothing is
-collected and nothing is sent anywhere — see the
+Nothing else is requested up front. There are no permissions for `github.com`
+pages at all, so the extension cannot see your repositories or your session.
+Nothing is collected and nothing is sent anywhere — see the
 [privacy policy](docs/PRIVACY.md).
+
+### A GitLab of your own
+
+Self-hosted GitLab lives at an address no manifest can know in advance, so it
+cannot be asked for at install time. Instead it is added by hand, on the
+settings page: type the host — `gitlab.example.com` — and press **Add**. The
+browser asks whether to grant access to that one address; once it is granted,
+the extension registers its content script for the instance and the mode appears
+in its image viewer. Reload the tab if the instance is already open.
+
+The list on that page shows what has been granted, and **Remove** takes both the
+permission and the registration back. The list is not ours to keep: it is read
+from the browser every time the page opens, so a permission revoked in the
+browser's own settings disappears from it too.
+
+On a page that is not GitLab the extension does nothing at all, whatever address
+was granted: it looks for GitLab's own `data-page` marker before touching the
+markup.
 
 ## What has been verified
 

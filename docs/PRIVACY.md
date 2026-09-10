@@ -36,6 +36,12 @@ read your repositories, and does not touch any other site.
 
 The comparison happens entirely on your machine. The images never leave it.
 
+If you add a GitLab of your own on the settings page, that instance's address
+joins the list — you grant it by hand, one host at a time, and revoke it from
+the same page or from the browser's own settings. The extension behaves there
+exactly as it does on `gitlab.com`, and on a page that is not GitLab it does
+nothing at all.
+
 The comparison page on this site works the same way: the images you drop there
 are read by the browser and never uploaded. There is no server behind the page —
 it is a static file on GitHub Pages.

@@ -357,7 +357,22 @@
     }).observe(menu, { childList: true });
   }
 
+  /**
+   * Правда ли перед нами GitLab.
+   *
+   * Доступ к своему серверу человек выдаёт руками, а `.diff-viewer` и
+   * `.view-modes-menu` — классы общие: ошибиться адресом легко, и на чужой
+   * странице расширение не должно трогать ничего. `data-page` — рельсовый
+   * идентификатор страницы; он есть на каждой странице GitLab, своей и
+   * витринной, а картинки в диффе бывают только в разделе `projects:`.
+   */
+  function isGitLab() {
+    return Boolean(document.body?.dataset?.page?.startsWith('projects:'));
+  }
+
   async function mount() {
+    if (!isGitLab()) return;
+
     const showViews = await readShowViews();
     await loadSettings();
 

@@ -8,13 +8,14 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const popup = readFileSync(
-  fileURLToPath(new URL('../src/popup/popup.js', import.meta.url)),
+const page = readFileSync(
+  fileURLToPath(new URL('../src/shared/page.js', import.meta.url)),
   'utf8',
 );
 
-// Берём из окна только разбор разметки: остальное завязано на API браузера.
-const setRich = popup.slice(popup.indexOf('const TAGS'), popup.indexOf('for (const node of'));
+// Берём из общего модуля только разбор разметки: остальное завязано на API
+// браузера.
+const setRich = page.slice(page.indexOf('const TAGS'), page.indexOf('/** Проставляет'));
 
 test.beforeEach(async ({ page }) => {
   await page.setContent('<!doctype html><title>fixture</title><p id="out"></p>');
