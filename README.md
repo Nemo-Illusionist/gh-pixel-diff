@@ -35,7 +35,7 @@ runs in your browser.
 - A before / after / diff / **3-up** switcher under the frame: any one version,
   or all three side by side — always in the same scale and the same crop as the
   difference, which the native 2-up and Swipe cannot do. The choice is
-  remembered, and the switcher can be turned off in the extension's window.
+  remembered, and the switcher can be turned off on the settings page.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame
@@ -146,8 +146,8 @@ Safari does not, because a site permission there does not extend to
 cross-origin frames, and the images live exactly in such a frame.
 
 Access is requested from the extension's own window: click its button in the
-toolbar and press **Grant access**. The same window shows whether access is
-already there.
+toolbar and press **Grant access**. The window is only that — the state of the
+access and a row of links; everything else lives on the settings page.
 
 ![The extension popup](docs/screenshots/popup.png)
 

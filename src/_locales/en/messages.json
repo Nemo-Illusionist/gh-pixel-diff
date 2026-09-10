@@ -148,9 +148,6 @@
   "popupNote": {
     "message": "GitHub shows images in a frame from <code>viewscreen.githubusercontent.com</code>, GitLab shows them on <code>gitlab.com</code> — those are the two domains the access is for. The extension never reads <code>github.com</code> pages."
   },
-  "popupSite": {
-    "message": "Compare two images of your own — on a page of its own"
-  },
   "popupReport": {
     "message": "Report a problem"
   },
@@ -248,5 +245,14 @@
   },
   "optionsFailed": {
     "message": "Something went wrong; the list above shows what the browser actually has."
+  },
+  "popupSiteShort": {
+    "message": "Two images of your own"
+  },
+  "optionsPanel": {
+    "message": "The panel"
+  },
+  "optionsShowViewsHint": {
+    "message": "The switcher sits under the frame and shows either version on its own, or all three side by side — always in the same scale and crop as the difference."
   }
 }

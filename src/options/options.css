@@ -16,6 +16,17 @@ h2 { margin: 0 0 12px; font-size: 15px; }
 
 section { margin: 0 0 32px; }
 
+.lead { margin: -12px 0 24px; color: color-mix(in srgb, canvastext 70%, transparent); }
+
+.setting {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.setting input { margin: 2px 0 0; }
+
 .status {
   margin: 0 0 12px;
   padding: 8px 10px;

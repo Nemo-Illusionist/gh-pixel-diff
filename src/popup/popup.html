@@ -6,31 +6,20 @@
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
+    <!-- Окно — про действие, а не про рассказ о расширении: состояние
+         доступа, кнопка и ссылки. Объяснения, что это вообще такое, и всё
+         редкое — на странице настроек. -->
     <h1>GitHub Pixel Diff</h1>
-    <!-- Текст подставляет popup.js из _locales: язык окна следует за браузером. -->
-    <p class="lead" data-i18n-rich="popupLead"></p>
 
     <p id="status" class="status status-checking" data-i18n="popupChecking"></p>
 
     <button id="grant" type="button" hidden data-i18n="popupGrant"></button>
 
-    <label class="setting">
-      <input id="show-views" type="checkbox" checked>
-      <span data-i18n="popupShowViews"></span>
-    </label>
-
-    <p class="note" data-i18n-rich="popupNote"></p>
-
-    <!-- Страница на GitHub Pages: то же сравнение для двух своих файлов,
-         когда пул-реквеста под рукой нет. -->
-    <p class="site">
-      <a href="https://nemo-illusionist.github.io/gh-pixel-diff/"
-         target="_blank" rel="noreferrer" data-i18n="popupSite"></a>
-    </p>
-
     <p class="report">
       <span id="version"></span> ·
       <a id="settings" href="#" data-i18n="popupSettings"></a> ·
+      <a href="https://nemo-illusionist.github.io/gh-pixel-diff/"
+         target="_blank" rel="noreferrer" data-i18n="popupSiteShort"></a> ·
       <a id="report" href="https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/new"
          target="_blank" rel="noreferrer" data-i18n="popupReport"></a>
     </p>

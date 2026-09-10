@@ -1,7 +1,9 @@
+/* Окно узкое и короткое: в нём состояние доступа, кнопка и строка ссылок.
+   Всё, что длиннее строки, живёт на странице настроек. */
 :root { color-scheme: light dark; }
 
 body {
-  width: 300px;
+  width: 260px;
   margin: 0;
   padding: 16px;
   font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -9,8 +11,7 @@ body {
   background: canvas;
 }
 
-h1 { margin: 0 0 8px; font-size: 15px; }
-.lead { margin: 0 0 14px; }
+h1 { margin: 0 0 12px; font-size: 15px; }
 
 .status {
   margin: 0 0 12px;
@@ -35,37 +36,13 @@ button {
 
 button:hover { background: color-mix(in srgb, canvastext 14%, transparent); }
 
-.setting {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin: 12px 0 0;
-  cursor: pointer;
-}
-
-.setting input { margin: 2px 0 0; }
-
-.note {
-  margin: 12px 0 0;
-  color: color-mix(in srgb, canvastext 60%, transparent);
-}
-
-code { font-size: 11px; word-break: break-all; }
-
-.site { margin: 12px 0 0; }
-
-.site a { color: inherit; }
-
-
+/* Ссылки внизу — служебные: версия, настройки, страница, отчёт об ошибке.
+   Приглушены, чтобы не спорить с кнопкой. */
 .report {
   margin: 12px 0 0;
   color: color-mix(in srgb, canvastext 60%, transparent);
   font-variant-numeric: tabular-nums;
 }
 
-.report a {
-  color: inherit;
-  opacity: 0.7;
-}
-
+.report a { color: inherit; opacity: 0.7; }
 .report a:hover { opacity: 1; }

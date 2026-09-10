@@ -164,9 +164,6 @@
   "popupNote": {
     "message": "GitHub показывает картинки во фрейме с <code>viewscreen.githubusercontent.com</code>, GitLab — на <code>gitlab.com</code>; доступ нужен к этим двум адресам. Страницы <code>github.com</code> расширение не читает."
   },
-  "popupSite": {
-    "message": "Сравнить две свои картинки — на отдельной странице"
-  },
   "popupReport": {
     "message": "Сообщить о проблеме"
   },
@@ -264,5 +261,14 @@
   },
   "optionsFailed": {
     "message": "Что-то не вышло; в списке выше — то, что на самом деле есть у браузера."
+  },
+  "popupSiteShort": {
+    "message": "Свои картинки"
+  },
+  "optionsPanel": {
+    "message": "Панель"
+  },
+  "optionsShowViewsHint": {
+    "message": "Переключатель стоит под кадром и показывает любую из версий поодиночке или все три рядом — всегда в том же масштабе и той же обрезке, что и разница."
   }
 }

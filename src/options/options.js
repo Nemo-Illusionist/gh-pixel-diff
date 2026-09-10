@@ -10,6 +10,22 @@ const { api, t, translate, wireAccess, ORIGINS } = self.GhPixelDiffPage;
 translate();
 wireAccess(document.querySelector('#status'), document.querySelector('#grant'));
 
+// Переключатель кадров в панели: показывать или нет. По умолчанию да.
+// Он оказался удобнее, чем ожидалось, и выключают его редко — потому и здесь.
+const showViews = document.querySelector('#show-views');
+
+// Отказ хранилища не должен уносить с собой остальную страницу: ниже — то,
+// ради чего её открывают.
+Promise.resolve(api.storage.sync.get({ showViews: true }))
+  .then(({ showViews: value }) => {
+    showViews.checked = value !== false;
+  })
+  .catch(() => {});
+
+showViews.addEventListener('change', () => {
+  Promise.resolve(api.storage.sync.set({ showViews: showViews.checked })).catch(() => {});
+});
+
 const form = document.querySelector('#add');
 const input = document.querySelector('#host');
 const message = document.querySelector('#message');

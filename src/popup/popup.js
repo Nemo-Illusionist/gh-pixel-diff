@@ -1,7 +1,4 @@
-// Окно расширения: состояние доступа, переключатель кадров и ссылки.
-//
-// Всё редкое — на странице настроек: своими серверами GitLab занимаются раз
-// в жизни, а окно открывают, чтобы выдать доступ и идти дальше.
+// Окно расширения: состояние доступа и ссылки. Всё остальное — в настройках.
 const { api, translate, wireAccess } = self.GhPixelDiffPage;
 const REPOSITORY = 'https://github.com/Nemo-Illusionist/gh-pixel-diff';
 
@@ -22,19 +19,4 @@ document.querySelector('#report').href =
 document.querySelector('#settings').addEventListener('click', (event) => {
   event.preventDefault();
   api.runtime.openOptionsPage();
-});
-
-// Переключатель кадров в панели: показывать или нет. По умолчанию да.
-const showViews = document.querySelector('#show-views');
-
-// Отказ хранилища не должен уносить с собой остальное окно: выше — кнопка
-// выдачи доступа, ради которой окно и существует.
-Promise.resolve(api.storage.sync.get({ showViews: true }))
-  .then(({ showViews: value }) => {
-    showViews.checked = value !== false;
-  })
-  .catch(() => {});
-
-showViews.addEventListener('change', () => {
-  Promise.resolve(api.storage.sync.set({ showViews: showViews.checked })).catch(() => {});
 });
