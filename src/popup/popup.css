@@ -52,6 +52,10 @@ button:hover { background: color-mix(in srgb, canvastext 14%, transparent); }
 
 code { font-size: 11px; word-break: break-all; }
 
+.site { margin: 12px 0 0; }
+
+.site a { color: inherit; }
+
 
 .report {
   margin: 12px 0 0;

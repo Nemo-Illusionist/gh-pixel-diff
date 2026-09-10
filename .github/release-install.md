@@ -1,14 +1,17 @@
 ## Installation
 
-**Chrome, Edge, any Chromium** — download `gh-pixel-diff-chrome-*.zip`, unpack
-it, open `chrome://extensions`, turn on "Developer mode" and press "Load
+**Chrome, Edge, any Chromium** — the extension is in the
+[Chrome Web Store](https://chromewebstore.google.com/detail/kddgddagklbfhikmlbailnempmndcngi).
+To try this build instead, download `gh-pixel-diff-chrome-*.zip`, unpack it,
+open `chrome://extensions`, turn on "Developer mode" and press "Load
 unpacked" → the unpacked folder.
 
 **Firefox** — the add-on is on
-[addons.mozilla.org](https://addons.mozilla.org/addon/github-pixel-diff/). To
-try this build instead, download `gh-pixel-diff-firefox-*.zip`, open
-`about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" → pick the
-archive. It lives until the browser restarts.
+[addons.mozilla.org](https://addons.mozilla.org/firefox/addon/github-pixel-diff/),
+waiting for review. Until it is approved, download
+`gh-pixel-diff-firefox-*.zip`, open `about:debugging#/runtime/this-firefox` →
+"Load Temporary Add-on" → pick the archive. It lives until the browser
+restarts.
 
 **Safari, macOS and iOS** — download `gh-pixel-diff-safari-*.zip`, unpack it and
 follow `SAFARI-INSTALL.txt` inside. Xcode and your own certificate are required:

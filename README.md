@@ -2,6 +2,10 @@
 
 [Русский](README.ru.md) · **English**
 
+[**Install from the Chrome Web Store**][store] ·
+[**Compare two images right now, without installing anything**][site] ·
+[Firefox Add-ons][amo] (under review)
+
 GitHub and GitLab can both show two versions of an image side by side, behind a
 swipe handle and as an overlay — but not the one thing that matters: **what
 actually changed**. On a three-thousand-pixel page screenshot an edit takes up
@@ -54,13 +58,17 @@ runs in your browser.
 
 ## Installation
 
-Prebuilt archives live on the
+**Chrome, Edge, any Chromium** — [in the Chrome Web Store][store]. One button,
+and updates arrive on their own.
+
+Everything below is for the other browsers, and for anyone who would rather
+install a build of their own. Prebuilt archives live on the
 [releases page](https://github.com/Nemo-Illusionist/gh-pixel-diff/releases).
 GitHub builds them from this very repository; SHA-256 sums sit next to them in
 `checksums.txt`. To build from source run `npm run build` and follow the same
 steps, using the `dist/` folder instead of an unpacked archive.
 
-### Chrome, Edge, any Chromium
+### Chrome, Edge, any Chromium — from an archive
 
 1. Download and unpack `gh-pixel-diff-chrome-*.zip`.
 2. Open `chrome://extensions` and turn on "Developer mode".
@@ -68,12 +76,17 @@ steps, using the `dist/` folder instead of an unpacked archive.
 
 ### Firefox
 
+The add-on has been submitted to [addons.mozilla.org][amo] and is waiting for
+review — until it is approved the page won't open, and the archive is the only
+way in:
+
 1. Download `gh-pixel-diff-firefox-*.zip` (no need to unpack it).
 2. Open `about:debugging#/runtime/this-firefox`.
 3. "Load Temporary Add-on" → pick the archive.
 
-A temporary add-on lives until the browser restarts. A permanent install
-requires the extension to be signed on addons.mozilla.org.
+A temporary add-on lives until the browser restarts: Firefox installs a
+permanent one only if it is signed, and signing is exactly what the review ends
+with.
 
 ### Safari, macOS
 
@@ -286,3 +299,7 @@ carries two extra plural forms, which `Intl.PluralRules` picks by itself.
 
 MIT — see [LICENSE](LICENSE). Bundled:
 [pixelmatch](src/vendor/pixelmatch.js) under the ISC license, © Mapbox.
+
+[store]: https://chromewebstore.google.com/detail/kddgddagklbfhikmlbailnempmndcngi
+[site]: https://nemo-illusionist.github.io/gh-pixel-diff/
+[amo]: https://addons.mozilla.org/firefox/addon/github-pixel-diff/
