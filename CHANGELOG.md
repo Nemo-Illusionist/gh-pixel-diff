@@ -4,6 +4,13 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.10.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.9.0...v0.10.0) (2026-09-10)
+
+
+### Features
+
+* links to the Chrome Web Store, AMO and the standalone page ([#28](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/28)) ([6f36077](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/6f36077bb45a9a0ed03f67485d4394ce5fe7ac76))
+
 ## [0.9.0]
 
 ### Added
