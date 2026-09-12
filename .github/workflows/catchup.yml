@@ -1,0 +1,97 @@
+# Догонялка: если в Chrome Web Store версия старее последнего релиза — выложить.
+#
+# Магазин держит один черновик на товар: пока предыдущая версия на проверке,
+# новую он не принимает, и релизная выкладка падает. Проверка идёт часами, а
+# то и сутками, поэтому повтор — не редкость, а норма. Раз в сутки этим
+# занимается расписание, а не человек с записью в календаре.
+#
+# Ничего не делает молча и вхолостую: сначала спрашивает у магазина версию
+# черновика и сравнивает с последним тегом.
+name: Догнать магазин
+
+on:
+  schedule:
+    # Раз в сутки, ночью по Москве. Точное время неважно, важно, что не в
+    # круглый час: в них у GitHub очередь длиннее всего.
+    - cron: '43 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Сверить версии
+    # Пока товара нет, догонять нечего — и форки не должны пытаться.
+    if: vars.CHROME_EXTENSION_ID != ''
+    runs-on: ubuntu-latest
+    outputs:
+      behind: ${{ steps.compare.outputs.behind }}
+      tag: ${{ steps.compare.outputs.tag }}
+    steps:
+      - id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          ITEM_ID: ${{ vars.CHROME_EXTENSION_ID }}
+          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CLIENT_ID:-}" ] || [ -z "${CLIENT_SECRET:-}" ] || [ -z "${REFRESH_TOKEN:-}" ]; then
+            echo "Нет ключей доступа к магазину — догонять нечем." >&2
+            exit 1
+          fi
+
+          tag="$(gh release view --repo "$REPOSITORY" --json tagName -q .tagName)"
+          latest="${tag#v}"
+
+          token="$(curl -sS --fail-with-body -X POST https://oauth2.googleapis.com/token \
+            -d client_id="$CLIENT_ID" \
+            -d client_secret="$CLIENT_SECRET" \
+            -d refresh_token="$REFRESH_TOKEN" \
+            -d grant_type=refresh_token | jq -r '.access_token // empty')"
+          if [ -z "$token" ]; then
+            echo "Магазин не выдал токен: проверьте секреты." >&2
+            exit 1
+          fi
+
+          # projection=DRAFT — версия того пакета, который магазин видит
+          # последним: опубликованного или ждущего проверки.
+          item="$(curl -sS --fail-with-body \
+            -H "Authorization: Bearer $token" \
+            -H "x-goog-api-version: 2" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/$ITEM_ID?projection=DRAFT")"
+          store="$(jq -r '.crxVersion // empty' <<<"$item")"
+
+          if [ -z "$store" ]; then
+            echo "Магазин не назвал версию черновика:" >&2
+            echo "$item" >&2
+            exit 1
+          fi
+
+          echo "Магазин: $store · последний релиз: $latest"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+          if [ "$store" = "$latest" ]; then
+            echo "behind=false" >> "$GITHUB_OUTPUT"
+            echo "Догонять нечего."
+          else
+            echo "behind=true" >> "$GITHUB_OUTPUT"
+            echo "Отстал — пробуем выложить $tag."
+          fi
+
+  publish:
+    name: Выложить
+    needs: check
+    if: needs.check.outputs.behind == 'true'
+    uses: ./.github/workflows/publish.yml
+    with:
+      ref: ${{ needs.check.outputs.tag }}
+      # AMO ту же версию второй раз не примет, да и уехала она туда сразу.
+      only-chrome: true
+      # Занятый проверкой товар — обычное дело: молча зайдём завтра.
+      quiet-when-busy: true
+    secrets: inherit

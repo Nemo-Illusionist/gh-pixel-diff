@@ -16,6 +16,16 @@ on:
         type: string
         required: false
         default: ''
+      only-chrome:
+        description: 'Только Chrome: ту же версию AMO второй раз не примет.'
+        type: boolean
+        required: false
+        default: false
+      quiet-when-busy:
+        description: 'Товар занят проверкой — не ошибка, а «зайдём позже».'
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
 
 permissions:
@@ -50,6 +60,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          QUIET_WHEN_BUSY: ${{ inputs.quiet-when-busy }}
         run: |
           set -euo pipefail
 
@@ -82,7 +93,13 @@ jobs:
             # версии, магазин держит один черновик. Сообщение об этом стоит
             # прочесть здесь, а не искать причину в ответе.
             if grep -q 'pending review' <<<"$upload"; then
-              echo "Товар занят проверкой предыдущей версии: магазин держит один черновик." >&2
+              echo "Товар занят проверкой предыдущей версии: магазин держит один черновик."
+              if [ "${QUIET_WHEN_BUSY:-false}" = "true" ]; then
+                # Ежедневная догонялка: занятый товар — обычное дело, зайдём
+                # завтра. Красный крестик каждую ночь никто читать не станет.
+                echo "Зайдём в следующий раз."
+                exit 0
+              fi
               echo "Дождитесь её конца и повторите без нового тега:" >&2
               echo "  Actions → Магазины → Run workflow, выбрать тег." >&2
               echo "Либо отмените проверку: консоль разработчика → товар → ⋮ → Cancel review." >&2
@@ -109,7 +126,7 @@ jobs:
     name: Firefox Add-ons
     # Идентификатор дополнения web-ext берёт из манифеста, поэтому здесь нужен
     # только выключатель: публиковать или нет.
-    if: vars.PUBLISH_AMO == 'true'
+    if: vars.PUBLISH_AMO == 'true' && inputs.only-chrome != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
