@@ -47,6 +47,7 @@
           changed: result.changed,
           ratio: result.ratio,
           bounds: result.bounds,
+          clusters: result.clusters,
           sizeChanged: prepared.sizeChanged,
           mask: result.mask.data.buffer,
         },

@@ -68,6 +68,23 @@
   text-underline-offset: 2px;
 }
 
+/* Переходы между местами изменений: стрелки по бокам от «2 из 5». */
+.ghpd-cluster-step {
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--fgColor-accent, #0969da);
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.ghpd-cluster-step:focus-visible {
+  outline: 2px solid var(--fgColor-accent, #0969da);
+  outline-offset: 1px;
+}
+
 /* Ползунок порога — повторяет вид дорожки Onion Skin. */
 .ghpd-controls {
   display: flex;

@@ -19,6 +19,8 @@
   const OUTLINE_COLOR = '#bf8700';
   /** Насколько бледной становится подложка под разницей. */
   const UNDERLAY_ALPHA = 0.35;
+  /** Насколько бледнее рамки вокруг тех мест, которые сейчас не выбраны. */
+  const OTHER_OUTLINE_ALPHA = 0.4;
   /**
    * Предел увеличения. Шестнадцать — это когда пиксель кадра занимает на
    * экране заметный квадрат: дальше смотреть уже не на что, а промахнуться
@@ -55,12 +57,18 @@
 
   const clamp = (value, low, high) => Math.min(Math.max(value, low), high);
 
-  /** Прямоугольник, который занимал бы кадр без увеличения. */
-  function baseRect(result, cropped) {
-    if (!cropped || !result.bounds) {
+  /**
+   * Прямоугольник, который занимал бы кадр без увеличения.
+   *
+   * В обрезке это выбранное место изменений, а не общий прямоугольник:
+   * когда правки в разных концах кадра, общий — это весь кадр, и обрезать
+   * по нему нечего. Пока место одно, разницы никакой.
+   */
+  function baseRect(result, cropped, focus) {
+    const box = focus ?? result.bounds;
+    if (!cropped || !box) {
       return { x: 0, y: 0, width: result.width, height: result.height };
     }
-    const box = result.bounds;
     const x = Math.max(0, box.x - CROP_PADDING);
     const y = Math.max(0, box.y - CROP_PADDING);
     return {
@@ -108,12 +116,13 @@
    *               заново на каждую отрисовку значит тратить десятки мегабайт
    *               при каждом движении ползунка
    * @param result результат сравнения
-   * @param cropped обрезать ли по изменениям
-   * @param outline рисовать ли рамку вокруг найденного
-   * @param shownFrame 'before' | 'after' | 'diff' | 'overlay'
-   * @param zoom   состояние увеличения из createZoom; без него — единица
+   * @param view   что показываем: { frame, cropped, outline, zoom, focus }.
+   *               frame — 'before' | 'after' | 'diff' | 'overlay';
+   *               focus — выбранное место изменений, если их несколько
    */
-  function drawCrop(canvas, full, result, cropped, outline, shownFrame, zoom) {
+  function drawCrop(canvas, full, result, view) {
+    const { cropped, outline, zoom, focus } = view;
+    const shownFrame = view.frame;
     full.width = result.width;
     full.height = result.height;
     const source = full.getContext('2d');
@@ -154,7 +163,7 @@
       );
     }
 
-    const base = baseRect(result, cropped);
+    const base = baseRect(result, cropped, focus);
     const shown = shownRect(base, zoom);
     // Тот, кто ловит колесо и перетаскивание, должен знать, что сейчас под
     // курсором. Знает это только здесь — значит отсюда и говорим.
@@ -183,22 +192,30 @@
     // не мешает: на мелком снимке она закрывает половину кадра. В обрезанном
     // кадре рамки нет: там и так видно только изменение.
     if (!cropped && result.bounds && outline) {
-      const box = result.bounds;
       const margin = Math.max(6, Math.round(Math.max(result.width, result.height) / 120));
       const factor = canvas.width / shown.width;
+      const line = Math.max(2, Math.round(Math.max(result.width, result.height) / 400));
+      // Мест изменений может быть несколько, и обвести надо все: иначе
+      // переход «дальше» уводит туда, где на кадре ничего не отмечено.
+      // Выбранное — в полную силу, остальные бледнее: видно и где мы сейчас,
+      // и что есть ещё.
+      const boxes = result.clusters?.length ? result.clusters : [result.bounds];
       ctx.save();
       // Рамка живёт в координатах кадра; увеличение переносит её сюда тем же
       // преобразованием, что и картинку.
       ctx.scale(factor, factor);
       ctx.translate(-shown.x, -shown.y);
       ctx.strokeStyle = OUTLINE_COLOR;
-      ctx.lineWidth = Math.max(2, Math.round(Math.max(result.width, result.height) / 400)) / factor;
-      ctx.strokeRect(
-        box.x - margin,
-        box.y - margin,
-        box.width + margin * 2,
-        box.height + margin * 2,
-      );
+      ctx.lineWidth = line / factor;
+      for (const box of boxes) {
+        ctx.globalAlpha = !focus || box === focus ? 1 : OTHER_OUTLINE_ALPHA;
+        ctx.strokeRect(
+          box.x - margin,
+          box.y - margin,
+          box.width + margin * 2,
+          box.height + margin * 2,
+        );
+      }
       ctx.restore();
     }
 
@@ -266,6 +283,12 @@
           }
         }
         onChange();
+      },
+      /** Наводит увеличение на прямоугольник кадра; без увеличения — ничего. */
+      lookAt(box) {
+        if (this.scale === 1 || !box) return;
+        this.x = box.x + box.width / 2;
+        this.y = box.y + box.height / 2;
       },
       /** Сдвигает показанный кусок на столько пикселей кадра. */
       panBy(dx, dy) {

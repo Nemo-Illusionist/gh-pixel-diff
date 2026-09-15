@@ -290,5 +290,25 @@
       }
     },
     "description": "Кнопка в подписи: сбросить увеличение."
+  },
+  "clusterPosition": {
+    "message": "изменение $index$ из $total$",
+    "placeholders": {
+      "index": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    },
+    "description": "Подпись переходов между местами изменений."
+  },
+  "clusterPrev": {
+    "message": "предыдущее изменение",
+    "description": "Кнопка «‹» в подписи."
+  },
+  "clusterNext": {
+    "message": "следующее изменение",
+    "description": "Кнопка «›» в подписи."
   }
 }

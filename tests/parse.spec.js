@@ -91,6 +91,59 @@ test('находит прямоугольник с различиями', async 
   expect(bounds).toEqual({ x: 3, y: 5, width: 2, height: 2 });
 });
 
+test('разные концы кадра — разные места изменений', async ({ page }) => {
+  // Обрезка по общему прямоугольнику для двух правок в разных углах — это
+  // весь кадр: обрезать нечего. Поэтому места считаются отдельно, по ним
+  // можно ходить, и порядок у них читательский — сверху вниз.
+  const found = await page.evaluate(() => {
+    const width = 200;
+    const height = 120;
+    const mask = new Uint8ClampedArray(width * height * 4);
+    const mark = (x, y) => {
+      mask[(y * width + x) * 4 + 3] = 255;
+    };
+    // Внизу слева — пятно из двух кусочков с просветом: так выглядит буква,
+    // и разваливать её на два места нельзя.
+    for (let x = 10; x < 18; x++) mark(x, 100);
+    for (let x = 23; x < 30; x++) mark(x, 104);
+    // Вверху справа — отдельная правка, далеко от первой.
+    for (let y = 10; y < 14; y++) mark(180, y);
+    return self.GhPixelDiff.findChanges(mask, width, height);
+  });
+
+  expect(found.clusters).toEqual([
+    { x: 180, y: 10, width: 1, height: 4, changed: 4 },
+    { x: 10, y: 100, width: 20, height: 5, changed: 15 },
+  ]);
+  // Общий прямоугольник остаётся общим: «показать кадр целиком» опирается
+  // на него, и потерять в нём хоть одно изменение нельзя.
+  expect(found.bounds).toEqual({ x: 10, y: 10, width: 171, height: 95 });
+});
+
+test('мест изменений не бывает больше сорока', async ({ page }) => {
+  // Пересжатый JPEG даёт тысячи крошечных пятен, и переходы по ним
+  // бесполезны. Остаются самые крупные — и в том же порядке чтения.
+  const clusters = await page.evaluate(() => {
+    const width = 1000;
+    const height = 1000;
+    const mask = new Uint8ClampedArray(width * height * 4);
+    // Сто пятен по сетке, далеко друг от друга; чем ниже, тем пятно крупнее.
+    for (let n = 0; n < 100; n++) {
+      const x = (n % 10) * 100 + 10;
+      const y = Math.floor(n / 10) * 100 + 10;
+      for (let dx = 0; dx <= Math.floor(n / 10); dx++) {
+        mask[(y * width + x + dx) * 4 + 3] = 255;
+      }
+    }
+    return self.GhPixelDiff.findChanges(mask, width, height).clusters;
+  });
+
+  expect(clusters).toHaveLength(40);
+  // Отобрали крупные — это нижние ряды, — а показываем сверху вниз.
+  expect(clusters[0].y).toBeLessThan(clusters.at(-1).y);
+  expect(clusters.every((box) => box.changed >= 7)).toBe(true);
+});
+
 test('без различий прямоугольника нет', async ({ page }) => {
   const bounds = await page.evaluate(() => {
     // Прозрачная маска: не совпало ничего.

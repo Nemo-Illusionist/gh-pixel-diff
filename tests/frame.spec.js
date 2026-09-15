@@ -47,6 +47,20 @@ function svgPair(size) {
   return { before: svg('#c9d1d9'), after: svg('#f85149') };
 }
 
+/**
+ * Пара с двумя правками в разных концах кадра: вверху и внизу.
+ * Общий прямоугольник для такой пары — почти весь кадр, и обрезка по нему
+ * бессмысленна; ради этого случая и считаются отдельные места.
+ */
+function svgTwoSpots() {
+  const frame = (top, bottom) =>
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300">' +
+    '<rect width="200" height="300" fill="#0d1117"/>' +
+    `<rect x="20" y="20" width="60" height="20" fill="${top}"/>` +
+    `<rect x="110" y="250" width="80" height="34" fill="${bottom}"/></svg>`;
+  return { before: frame('#c9d1d9', '#c9d1d9'), after: frame('#f85149', '#f85149') };
+}
+
 /** Вектор заданного размера с полоской посередине. */
 function svgSized(width, height) {
   return (
@@ -931,6 +945,80 @@ test('увеличение работает с клавиатуры, и сбро
   await page.click('.ghpd-zoom-reset');
 
   expect(await canvasState(page)).toEqual(было);
+});
+
+test('по двум правкам в разных концах кадра можно ходить', async ({ page }) => {
+  // Пока правка одна, обрезка по ней и есть ответ. Когда их две, общий
+  // прямоугольник растягивается на весь кадр — и обрезка перестаёт что-либо
+  // показывать. Поэтому обрезаем по выбранному месту, а между местами ходим.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgTwoSpots());
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  await expect(page.locator('.ghpd-meta')).toContainText('change 1 of 2');
+  const первое = await canvasState(page);
+
+  await page.click('.ghpd-cluster-step[aria-label="next change"]');
+
+  await expect(page.locator('.ghpd-meta')).toContainText('change 2 of 2');
+  const второе = await canvasState(page);
+  expect(второе.отпечаток).not.toBe(первое.отпечаток);
+
+  // Ходим по кругу: после последнего — снова первое.
+  await page.click('.ghpd-cluster-step[aria-label="next change"]');
+
+  await expect(page.locator('.ghpd-meta')).toContainText('change 1 of 2');
+  expect(await canvasState(page)).toEqual(первое);
+
+  // И назад — тоже по кругу.
+  await page.click('.ghpd-cluster-step[aria-label="previous change"]');
+
+  await expect(page.locator('.ghpd-meta')).toContainText('change 2 of 2');
+});
+
+test('в полном кадре обведены все места, а не только выбранное', async ({ page }) => {
+  // Переход «дальше» уводит туда, где на кадре ничего не отмечено, — если
+  // обвести только выбранное место. Поэтому обводим все, выбранное ярче.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgTwoSpots());
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-crop-toggle');
+
+  const половины = await page.evaluate((selector) => {
+    const canvas = document.querySelector(selector);
+    const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    const found = { верх: 0, низ: 0 };
+    for (let i = 0; i < data.length; i += 4) {
+      // Янтарный узнаём по порядку составляющих: красного больше зелёного,
+      // зелёного больше синего. Так он узнаётся и бледным — рамки вокруг
+      // невыбранных мест рисуются полупрозрачными. Цвета самой разницы этому
+      // не отвечают: у красного (209, 36, 47) зелёного меньше, чем синего.
+      if (data[i] > data[i + 1] && data[i + 1] > data[i + 2] && data[i] - data[i + 2] > 40) {
+        const y = Math.floor(i / 4 / canvas.width);
+        if (y < canvas.height / 2) found.верх++;
+        else found.низ++;
+      }
+    }
+    return found;
+  }, FRAME_CANVAS);
+
+  expect(половины.верх).toBeGreaterThan(0);
+  expect(половины.низ).toBeGreaterThan(0);
+});
+
+test('одна правка — переходов нет', async ({ page }) => {
+  // Стрелки «‹ 1 из 1 ›» никуда не ведут и только занимают место в подписи.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  await expect(page.locator('.ghpd-cluster-step')).toHaveCount(0);
 });
 
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {
