@@ -13,9 +13,9 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { drawCrop } = global.GhPixelDiffRender;
+  const { attachZoom, createZoom, drawCrop, zoomLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
-  const { t, plural } = global.GhPixelDiffI18n;
+  const { t, plural, locale } = global.GhPixelDiffI18n;
   const api = global.browser ?? global.chrome;
 
   /** Что показано: один из кадров или все три сразу. */
@@ -107,6 +107,7 @@
     const panel = el('div', 'ghpd-panel');
     const shell = el('div', 'ghpd-shell');
     const canvas = el('canvas', 'ghpd-canvas');
+    canvas.title = t('zoomHint');
     const triple = el('div', 'ghpd-triple');
     const meta = el('p', 'ghpd-meta', t('computing'));
     const full = document.createElement('canvas');
@@ -122,8 +123,10 @@
 
     const cropToggle = el('button', 'ghpd-crop-toggle');
     const outlineToggle = el('button', 'ghpd-outline-toggle');
+    const zoomReset = el('button', 'ghpd-zoom-reset');
     cropToggle.type = 'button';
     outlineToggle.type = 'button';
+    zoomReset.type = 'button';
 
     const controls = el('div', 'ghpd-controls');
     const slider = el('input', 'ghpd-slider');
@@ -152,6 +155,13 @@
     let cropped = true;
     let shownFrame = FRAMES[readSetting(FRAME_KEY)] ? readSetting(FRAME_KEY) : 'diff';
     let outline = readSetting(OUTLINE_KEY) !== 'off';
+    // Увеличение, в отличие от порога и рамки, не запоминается: это не
+    // настройка, а взгляд на конкретное место конкретного кадра.
+    const zoom = createZoom(() => {
+      if (result) render();
+    });
+    attachZoom(canvas, zoom);
+    zoomReset.addEventListener('click', () => zoom.reset());
 
     const viewButtons = new Map();
     for (const [name, key] of Object.entries(FRAMES)) {
@@ -179,7 +189,8 @@
 
       let box;
       if (single) {
-        box = drawCrop(canvas, full, result, cropped, outline, shownFrame);
+        box = drawCrop(canvas, full, result, cropped, outline, shownFrame, zoom);
+        canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
       } else {
         for (const [name, target] of tripleCanvases) {
           box = drawCrop(target, full, result, cropped, outline, name);
@@ -197,6 +208,12 @@
       // Цвет теперь значит направление правки, и сказать об этом надо там
       // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
       if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
+      // Увеличение видно по кадру, но не видно, насколько оно велико и как
+      // вернуться обратно, — поэтому говорим об этом в подписи.
+      if (single && zoom.scale > 1) {
+        zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
+        meta.append(' · ', zoomReset);
+      }
       if (result.bounds) {
         cropToggle.textContent = cropped
           ? t('showFullFrame', box.width, box.height)

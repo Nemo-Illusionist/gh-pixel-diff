@@ -6,8 +6,8 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { drawCrop } = global.GhPixelDiffRender;
-  const { t, plural } = global.GhPixelDiffI18n;
+  const { attachZoom, createZoom, drawCrop, zoomLabel } = global.GhPixelDiffRender;
+  const { t, plural, locale } = global.GhPixelDiffI18n;
 
   const FRAMES = {
     before: 'viewBefore',
@@ -59,8 +59,19 @@
 
   const cropToggle = el('button', 'ghpd-crop-toggle');
   const outlineToggle = el('button', 'ghpd-outline-toggle');
+  const zoomReset = el('button', 'ghpd-zoom-reset');
   cropToggle.type = 'button';
   outlineToggle.type = 'button';
+  zoomReset.type = 'button';
+
+  // Увеличение живёт ровно столько, сколько показанная пара: это не
+  // настройка, а взгляд на конкретное место конкретного кадра.
+  const zoom = createZoom(() => {
+    if (result) render();
+  });
+  canvas.title = t('zoomHint');
+  attachZoom(canvas, zoom);
+  zoomReset.addEventListener('click', () => zoom.reset());
 
   const tripleCanvases = ['before', 'after', 'diff'].map((name) => {
     const item = el('div', 'ghpd-triple-item');
@@ -95,7 +106,8 @@
 
     let box;
     if (single) {
-      box = drawCrop(canvas, full, result, cropped, outline, shownFrame);
+      box = drawCrop(canvas, full, result, cropped, outline, shownFrame, zoom);
+    canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
     } else {
       for (const [name, target] of tripleCanvases) {
         box = drawCrop(target, full, result, cropped, outline, name);
@@ -113,6 +125,12 @@
     // Цвет теперь значит направление правки, и сказать об этом надо там
     // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
     if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
+    // Увеличение видно по кадру, но не видно, насколько оно велико и как
+    // вернуться обратно, — поэтому говорим об этом в подписи.
+    if (single && zoom.scale > 1) {
+      zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
+      meta.append(' · ', zoomReset);
+    }
     if (result.bounds) {
       cropToggle.textContent = cropped
         ? t('showFullFrame', box.width, box.height)
@@ -312,9 +330,11 @@
     box.querySelector('.drop-clear').hidden = false;
     box.classList.add('filled');
 
-    // Пара сменилась — прежний расчёт больше не о ней.
+    // Пара сменилась — прежний расчёт больше не о ней, и увеличение тоже:
+    // оно показывало место на прошлой картинке.
     session = null;
     result = null;
+    zoom.reset();
     compare();
   }
 

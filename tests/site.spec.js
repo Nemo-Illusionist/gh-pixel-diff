@@ -162,6 +162,43 @@ test('одну и ту же половину можно заменить', async
   await expect(page.locator('#panel')).toBeVisible();
 });
 
+test('увеличение работает и на странице, и сбрасывается новой картинкой', async ({ page }) => {
+  // Увеличение живёт в общем с расширением коде — здесь проверяется, что
+  // страница его подключила, а не что оно вообще считает.
+  await load(page);
+  await expect(meta(page)).toContainText(/pixels?/);
+
+  const отпечаток = () =>
+    page.evaluate(() => {
+      const canvas = document.querySelector('#canvas');
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      let sum = 0;
+      for (let i = 0; i < data.length; i += 4) sum = (sum * 31 + data[i]) % 1e9;
+      return sum;
+    });
+
+  const было = await отпечаток();
+  await page.evaluate(() => {
+    const canvas = document.querySelector('#canvas');
+    const box = canvas.getBoundingClientRect();
+    canvas.dispatchEvent(new WheelEvent('wheel', {
+      clientX: box.left + box.width / 2,
+      clientY: box.top + box.height / 2,
+      deltaY: -600,
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    }));
+  });
+
+  await expect(meta(page)).toContainText('zoom');
+  expect(await отпечаток()).not.toBe(было);
+
+  // Новая картинка — новое место: держать на ней прежнее увеличение незачем.
+  await page.setInputFiles('.drop[data-slot=after] input', fixture('before.png'));
+  await expect(meta(page)).not.toContainText('zoom');
+});
+
 test('строки не пропадают, даже если window.chrome защищён от записи', async ({ page }) => {
   // Ровно та поломка, из-за которой страница вышла в свет без единой надписи:
   // страница присваивала window.chrome, а это имя принадлежит браузеру. Там,

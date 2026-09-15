@@ -261,5 +261,18 @@
   },
   "diffLegend": {
     "message": "red — darker, blue — lighter"
+  },
+  "zoomHint": {
+    "message": "Ctrl + scroll or pinch to zoom, drag to move, double-click to reset",
+    "description": "Подсказка на холсте: как пользоваться увеличением."
+  },
+  "zoomReset": {
+    "message": "zoom $level$ — reset",
+    "placeholders": {
+      "level": {
+        "content": "$1"
+      }
+    },
+    "description": "Кнопка в подписи: сбросить увеличение."
   }
 }

@@ -799,6 +799,140 @@ test('три кадра показывают разные картинки', asy
   expect(colors[2]).not.toBe(colors[0]);
 });
 
+/** Одиночный кадр панели — тот, который увеличивают. */
+const FRAME_CANVAS = '.ghpd-view > .ghpd-shell > .ghpd-canvas';
+
+/** Что сейчас на холсте: размер, угловой пиксель и отпечаток содержимого. */
+const canvasState = (page) =>
+  page.evaluate((selector) => {
+    const canvas = document.querySelector(selector);
+    const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 4) sum = (sum * 31 + data[i] + data[i + 1] * 3) % 1e9;
+    return {
+      ширина: canvas.width,
+      высота: canvas.height,
+      угол: [...data.slice(0, 3)].join(','),
+      отпечаток: sum,
+    };
+  }, FRAME_CANVAS);
+
+/** Колесо над кадром: с Ctrl — увеличение, без него — обычная прокрутка. */
+const wheelOver = (page, { ctrl, deltaY, at = 'corner' }) =>
+  page.evaluate(
+    ({ selector, ctrl, deltaY, at }) => {
+      const canvas = document.querySelector(selector);
+      const box = canvas.getBoundingClientRect();
+      const event = new WheelEvent('wheel', {
+        clientX: at === 'corner' ? box.left + 1 : box.left + box.width / 2,
+        clientY: at === 'corner' ? box.top + 1 : box.top + box.height / 2,
+        deltaY,
+        ctrlKey: ctrl,
+        bubbles: true,
+        cancelable: true,
+      });
+      canvas.dispatchEvent(event);
+      // Отменённое событие — то, которое мы забрали себе у прокрутки.
+      return event.defaultPrevented;
+    },
+    { selector: FRAME_CANVAS, ctrl, deltaY, at },
+  );
+
+test('щипок увеличивает кадр, а обычная прокрутка остаётся прокруткой', async ({ page }) => {
+  // Щипок на трекпаде приходит в браузер колесом с Ctrl — им и увеличиваем.
+  // Простое колесо принадлежит странице: кадр живёт посреди неё, и отнимать
+  // у человека прокрутку ради увеличения нечестно.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const было = await canvasState(page);
+
+  expect(await wheelOver(page, { ctrl: false, deltaY: -300 })).toBe(false);
+  expect(await canvasState(page)).toEqual(было);
+  expect(await page.textContent('.ghpd-meta')).not.toContain('zoom');
+
+  expect(await wheelOver(page, { ctrl: true, deltaY: -300 })).toBe(true);
+  const стало = await canvasState(page);
+
+  expect(стало.отпечаток).not.toBe(было.отпечаток);
+  expect(await page.textContent('.ghpd-meta')).toContain('zoom');
+});
+
+test('увеличение не меняет размер холста, а только то, что в нём', async ({ page }) => {
+  // Размер холста — это размер коробки на экране: браузер берёт его из
+  // пикселей. Уменьшив холст ради увеличения, мы съёжили бы картинку вместо
+  // того, чтобы её приблизить.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const было = await canvasState(page);
+  await wheelOver(page, { ctrl: true, deltaY: -600 });
+  const стало = await canvasState(page);
+
+  expect(стало.ширина).toBe(было.ширина);
+  expect(стало.высота).toBe(было.высота);
+  // Увеличивали от левого верхнего угла — он и остаётся на месте.
+  expect(стало.угол).toBe(было.угол);
+});
+
+test('кадр можно тянуть, а двойной щелчок возвращает как было', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const было = await canvasState(page);
+  await wheelOver(page, { ctrl: true, deltaY: -600, at: 'centre' });
+  const увеличено = await canvasState(page);
+
+  const box = await page.locator(FRAME_CANVAS).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 - 60, box.y + box.height / 2 - 40, { steps: 4 });
+  await page.mouse.up();
+
+  const сдвинуто = await canvasState(page);
+  expect(сдвинуто.отпечаток).not.toBe(увеличено.отпечаток);
+  expect(await page.locator(FRAME_CANVAS).getAttribute('class')).toContain('ghpd-zoomed');
+
+  await page.dblclick(FRAME_CANVAS);
+
+  expect(await canvasState(page)).toEqual(было);
+  expect(await page.textContent('.ghpd-meta')).not.toContain('zoom');
+});
+
+test('увеличение работает с клавиатуры, и сброс есть в подписи', async ({ page }) => {
+  // Мышь есть не у всех: увеличение, доступное только колесом, — это
+  // увеличение, которого нет у тех, кому оно нужнее всего.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const было = await canvasState(page);
+  await page.focus(FRAME_CANVAS);
+  for (let i = 0; i < 4; i++) await page.keyboard.press('+');
+
+  expect((await canvasState(page)).отпечаток).not.toBe(было.отпечаток);
+
+  const увеличено = await canvasState(page);
+  await page.keyboard.press('ArrowRight');
+
+  expect((await canvasState(page)).отпечаток).not.toBe(увеличено.отпечаток);
+
+  await page.click('.ghpd-zoom-reset');
+
+  expect(await canvasState(page)).toEqual(было);
+});
+
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {
   // Высоту фрейма задаёт родительская страница, и делает это, когда меняется
   // её собственный режим. Восстановишь свой раньше — окно внутри остаётся
