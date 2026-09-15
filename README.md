@@ -2,9 +2,10 @@
 
 [Русский](README.ru.md) · **English**
 
-[**Install from the Chrome Web Store**][store] ·
-[**Compare two images right now, without installing anything**][site] ·
-[Firefox Add-ons][amo] (under review)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/kddgddagklbfhikmlbailnempmndcngi?logo=googlechrome&logoColor=white&label=Chrome%20Web%20Store&color=1a73e8)][store]
+[![Firefox Add-ons](https://img.shields.io/amo/v/github-pixel-diff?logo=firefoxbrowser&logoColor=white&label=Firefox%20Add-ons&color=ff7139)][amo]
+[![Safari](https://img.shields.io/badge/Safari-manual-006CFF?logo=safari&logoColor=white)](#safari-macos)
+[![Two images of your own](https://img.shields.io/badge/Two%20images%20of%20your%20own-compare%20online-2da44e?logo=github&logoColor=white)][site]
 
 GitHub and GitLab can both show two versions of an image side by side, behind a
 swipe handle and as an overlay — but not the one thing that matters: **what
@@ -80,17 +81,16 @@ steps, using the `dist/` folder instead of an unpacked archive.
 
 ### Firefox
 
-The add-on has been submitted to [addons.mozilla.org][amo] and is waiting for
-review — until it is approved the page won't open, and the archive is the only
-way in:
+The add-on is on [addons.mozilla.org][amo] — signed, and it updates itself.
+
+To try a build of your own instead:
 
 1. Download `gh-pixel-diff-firefox-*.zip` (no need to unpack it).
 2. Open `about:debugging#/runtime/this-firefox`.
 3. "Load Temporary Add-on" → pick the archive.
 
-A temporary add-on lives until the browser restarts: Firefox installs a
-permanent one only if it is signed, and signing is exactly what the review ends
-with.
+Such an add-on lives until the browser restarts: unsigned, Firefox installs it
+no other way.
 
 ### Safari, macOS
 

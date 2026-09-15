@@ -2,9 +2,10 @@
 
 **Русский** · [English](README.md)
 
-[**Поставить из Chrome Web Store**][store] ·
-[**Сравнить две картинки прямо сейчас, ничего не устанавливая**][site] ·
-[Firefox Add-ons][amo] (на проверке)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/kddgddagklbfhikmlbailnempmndcngi?logo=googlechrome&logoColor=white&label=Chrome%20Web%20Store&color=1a73e8)][store]
+[![Firefox Add-ons](https://img.shields.io/amo/v/github-pixel-diff?logo=firefoxbrowser&logoColor=white&label=Firefox%20Add-ons&color=ff7139)][amo]
+[![Safari](https://img.shields.io/badge/Safari-%D0%B2%D1%80%D1%83%D1%87%D0%BD%D1%83%D1%8E-006CFF?logo=safari&logoColor=white)](#safari-macos)
+[![Свои картинки](https://img.shields.io/badge/%D0%A1%D0%B2%D0%BE%D0%B8%20%D0%BA%D0%B0%D1%80%D1%82%D0%B8%D0%BD%D0%BA%D0%B8-%D1%81%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D1%82%D1%8C%20%D0%BE%D0%BD%D0%BB%D0%B0%D0%B9%D0%BD-2da44e?logo=github&logoColor=white)][site]
 
 GitHub и GitLab умеют показывать две версии картинки рядом, шторкой и
 наложением, но не умеют главного: сказать, **что именно** изменилось. На снимке
@@ -79,15 +80,16 @@ GitHub и GitLab умеют показывать две версии карти�
 
 ### Firefox
 
-Дополнение отправлено на [addons.mozilla.org][amo] и ждёт проверки — пока она
-не прошла, страница не открывается, и остаётся архив:
+Дополнение лежит на [addons.mozilla.org][amo] — подписанное, и обновляется само.
+
+Если хочется поставить свою сборку:
 
 1. Скачать `gh-pixel-diff-firefox-*.zip` (распаковывать не нужно).
 2. Открыть `about:debugging#/runtime/this-firefox`.
 3. «Загрузить временное дополнение» → выбрать архив.
 
-Временное дополнение живёт до перезапуска браузера: постоянное Firefox поставит
-только подписанное, а подписью проверка как раз и заканчивается.
+Такое дополнение живёт до перезапуска браузера: неподписанное Firefox иначе не
+поставит.
 
 ### Safari, macOS
 
