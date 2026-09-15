@@ -11,7 +11,12 @@
      ссылкой — в витрине магазина и в экране согласия Google. Текст тот же,
      что в docs/PRIVACY.md; правки нужны в обоих местах. -->
 <style>
-  .legal { max-width: 720px; margin: 32px auto 0; }
+  /* Колонка у этой страницы своя, уже основной: сплошной текст в 1100
+     пикселей не читается. Ширину задаём телу, а не только тексту, — иначе
+     шапка тянется на всю страницу, а текст под ней стоит с отступом. */
+  body { max-width: 760px; }
+
+  .legal { margin: 32px 0 0; }
   .legal h2 { margin: 32px 0 8px; font-size: 17px; }
   .legal p, .legal li { color: var(--fgColor-default); }
   .legal ul { padding-left: 20px; }
