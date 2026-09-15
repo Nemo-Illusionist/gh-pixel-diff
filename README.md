@@ -28,8 +28,13 @@ runs in your browser.
 
 - Sits as a fourth button in the native row of modes — no separate panel.
 - Opens on the changed fragment; the full frame is one link away in the caption,
-  with the changed area outlined in red — the outline can be turned off, and the
+  with the changed areas outlined — the outline can be turned off, and the
   choice is remembered.
+- **Changes in different corners are separate places, and you can walk between
+  them**: `‹ change 2 of 5 ›` in the caption crops to one place at a time, in
+  reading order. A single fragment holding two distant edits is the whole frame
+  again — which is the same as no crop at all. In the full frame every place is
+  outlined, the current one brighter.
 - Counts how many pixels changed and what share of the frame that is.
 - A threshold slider — from "catch even anti-aliasing" to "only what the eye
   sees" — styled like the Onion Skin one.

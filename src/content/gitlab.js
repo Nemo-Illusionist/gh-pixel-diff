@@ -127,6 +127,15 @@
     cropToggle.type = 'button';
     outlineToggle.type = 'button';
     zoomReset.type = 'button';
+    // Переходы между местами изменений: правки часто в разных концах кадра,
+    // и обрезка по всем сразу — это опять весь кадр.
+    const prevChange = el('button', 'ghpd-cluster-step', '‹');
+    const nextChange = el('button', 'ghpd-cluster-step', '›');
+    for (const [button, key] of [[prevChange, 'clusterPrev'], [nextChange, 'clusterNext']]) {
+      button.type = 'button';
+      button.title = t(key);
+      button.setAttribute('aria-label', t(key));
+    }
 
     const controls = el('div', 'ghpd-controls');
     const slider = el('input', 'ghpd-slider');
@@ -162,6 +171,22 @@
     });
     attachZoom(canvas, zoom);
     zoomReset.addEventListener('click', () => zoom.reset());
+    // Какое из мест изменений выбрано. Номер, а не сам прямоугольник: при
+    // каждом пересчёте порога места считаются заново.
+    let focusIndex = 0;
+
+    /** Переход к соседнему месту изменений — по кругу. */
+    const stepChange = (delta) => {
+      const total = result?.clusters?.length ?? 0;
+      if (total < 2) return;
+      focusIndex = (focusIndex + delta + total) % total;
+      // В полном кадре переход не меняет обрезку — значит должен навести
+      // увеличение, иначе нажатие выглядит как ничего не делающее.
+      zoom.lookAt(result.clusters[focusIndex]);
+      render();
+    };
+    prevChange.addEventListener('click', () => stepChange(-1));
+    nextChange.addEventListener('click', () => stepChange(1));
 
     const viewButtons = new Map();
     for (const [name, key] of Object.entries(FRAMES)) {
@@ -187,13 +212,18 @@
       canvas.hidden = !single;
       triple.hidden = single;
 
+      const clusters = result.clusters ?? [];
+      if (focusIndex >= clusters.length) focusIndex = 0;
+      // Пока место одно, выбирать не из чего — и обрезка остаётся прежней.
+      const focus = clusters.length > 1 ? clusters[focusIndex] : null;
+
       let box;
       if (single) {
-        box = drawCrop(canvas, full, result, cropped, outline, shownFrame, zoom);
+        box = drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus });
         canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
       } else {
         for (const [name, target] of tripleCanvases) {
-          box = drawCrop(target, full, result, cropped, outline, name);
+          box = drawCrop(target, full, result, { frame: name, cropped, outline, focus });
         }
       }
 
@@ -208,6 +238,14 @@
       // Цвет теперь значит направление правки, и сказать об этом надо там
       // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
       if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
+      if (clusters.length > 1) {
+        meta.append(
+          ' · ',
+          prevChange,
+          ` ${t('clusterPosition', focusIndex + 1, clusters.length)} `,
+          nextChange,
+        );
+      }
       // Увеличение видно по кадру, но не видно, насколько оно велико и как
       // вернуться обратно, — поэтому говорим об этом в подписи.
       if (single && zoom.scale > 1) {

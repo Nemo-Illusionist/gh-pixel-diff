@@ -222,6 +222,15 @@
     outlineToggle.type = 'button';
     const zoomReset = el('button', 'ghpd-zoom-reset');
     zoomReset.type = 'button';
+    // Переходы между местами изменений: на снимке страницы правки часто в
+    // разных концах кадра, и обрезка по всем сразу — это опять весь кадр.
+    const prevChange = el('button', 'ghpd-cluster-step', '‹');
+    const nextChange = el('button', 'ghpd-cluster-step', '›');
+    for (const [button, key] of [[prevChange, 'clusterPrev'], [nextChange, 'clusterNext']]) {
+      button.type = 'button';
+      button.title = t(key);
+      button.setAttribute('aria-label', t(key));
+    }
 
     shell.append(canvas, triple, meta);
     view.append(shell);
@@ -246,15 +255,23 @@
     const zoom = createZoom(() => {
       if (result) render();
     });
+    // Какое из мест изменений выбрано. Номер, а не сам прямоугольник: при
+    // каждом пересчёте порога места считаются заново.
+    let focusIndex = 0;
 
     const render = () => {
       const single = shownFrame !== 'triple';
       canvas.hidden = !single;
       triple.hidden = single;
 
+      const clusters = result.clusters ?? [];
+      if (focusIndex >= clusters.length) focusIndex = 0;
+      // Пока место одно, выбирать не из чего — и обрезка остаётся прежней.
+      const focus = clusters.length > 1 ? clusters[focusIndex] : null;
+
       const box = single
-        ? drawCrop(canvas, full, result, cropped, outline, shownFrame, zoom)
-        : drawTriple();
+        ? drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus })
+        : drawTriple(focus);
       fitCanvas(canvas);
       canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
       const percent = result.ratio * 100;
@@ -269,6 +286,14 @@
       // Цвет теперь значит направление правки, и сказать об этом надо там
       // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
       if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
+      if (clusters.length > 1) {
+        meta.append(
+          ' · ',
+          prevChange,
+          ` ${t('clusterPosition', focusIndex + 1, clusters.length)} `,
+          nextChange,
+        );
+      }
       // Увеличение видно по самому кадру, но не видно, насколько оно велико и
       // как вернуться обратно, — поэтому говорим об этом в подписи.
       if (single && zoom.scale > 1) {
@@ -303,10 +328,10 @@
     };
 
     /** Рисует все три кадра сразу; размер возвращаем по разнице — она общая. */
-    const drawTriple = () => {
+    const drawTriple = (focus) => {
       let box = null;
       for (const [name, target] of tripleCanvases) {
-        box = drawCrop(target, full, result, cropped, outline, name);
+        box = drawCrop(target, full, result, { frame: name, cropped, outline, focus });
       }
       return box;
     };
@@ -318,6 +343,19 @@
 
     zoomReset.addEventListener('click', () => zoom.reset());
     attachZoom(canvas, zoom);
+
+    /** Переход к соседнему месту изменений — по кругу. */
+    const stepChange = (delta) => {
+      const total = result?.clusters?.length ?? 0;
+      if (total < 2) return;
+      focusIndex = (focusIndex + delta + total) % total;
+      // В полном кадре переход не меняет обрезку — значит должен навести
+      // увеличение, иначе нажатие выглядит как ничего не делающее.
+      zoom.lookAt(result.clusters[focusIndex]);
+      render();
+    };
+    prevChange.addEventListener('click', () => stepChange(-1));
+    nextChange.addEventListener('click', () => stepChange(1));
 
     outlineToggle.addEventListener('click', () => {
       outline = !outline;
