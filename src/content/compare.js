@@ -3,6 +3,19 @@
 (function (global) {
   'use strict';
 
+  /**
+   * Чем красим разницу. Цвет кодирует направление правки: pixelmatch считает,
+   * стало в этом месте темнее или светлее, и просит на это два цвета.
+   *
+   * Красный — «стало темнее»: так выглядит появившийся текст или элемент на
+   * светлом фоне, самый частый случай на снимках интерфейса, и цвет для него
+   * остаётся прежним. Синий — «стало светлее»: что-то исчезло или посветлело.
+   * Пара красный / синий выбрана ещё и потому, что различима при самом
+   * распространённом виде дальтонизма, в отличие от красного с зелёным.
+   */
+  const DARKER = [209, 36, 47];
+  const LIGHTER = [9, 105, 218];
+
   const t = (key, ...substitutions) =>
     global.GhPixelDiffI18n?.t(key, ...substitutions) || '';
 
@@ -157,7 +170,7 @@
    * (у серого r = g = b, так что спутать нельзя). Значит, границы считаются
    * по тому же порогу, что и число пикселей, — и одним проходом вместо двух.
    */
-  function boundsOfChanges(diff, width, height) {
+  function boundsOfChanges(mask, width, height) {
     let minX = width;
     let minY = height;
     let maxX = -1;
@@ -167,7 +180,10 @@
       const row = y * width * 4;
       for (let x = 0; x < width; x++) {
         const i = row + x * 4;
-        if (diff[i] === 255 && diff[i + 1] === 0 && diff[i + 2] === 0) {
+        // В маске закрашены только изменившиеся пиксели, остальное прозрачно:
+        // непрозрачность и есть признак изменения, каким бы цветом его ни
+        // покрасили.
+        if (mask[i + 3] !== 0) {
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
@@ -225,18 +241,26 @@
    */
   function diffPrepared(prepared, options = {}) {
     const { width, height } = prepared;
-    const diff = new ImageData(width, height);
+    const mask = new ImageData(width, height);
 
     const changed = global.pixelmatch(
       prepared.dataBefore.data,
       prepared.dataAfter.data,
-      diff.data,
+      mask.data,
       width,
       height,
       {
         threshold: options.threshold ?? 0.1,
         includeAA: options.includeAA ?? false,
-        alpha: options.alpha ?? 0.35,
+        // Маска, а не готовый кадр: подложку под неё выбирает тот, кто рисует.
+        // Для «разницы» это обесцвеченное «до», для «наложения» — цветное
+        // «после». Считать ради двух видов дважды было бы расточительно.
+        diffMask: true,
+        // Цвет кодирует направление правки: pixelmatch различает, стало в
+        // этом месте темнее или светлее. Раньше всё красилось красным, и
+        // «текст появился» выглядело так же, как «текст исчез».
+        diffColor: LIGHTER,
+        diffColorAlt: DARKER,
       },
     );
 
@@ -246,8 +270,8 @@
       scale: prepared.scale ?? 1,
       changed,
       ratio: changed / (width * height),
-      bounds: boundsOfChanges(diff.data, width, height),
-      diff,
+      bounds: boundsOfChanges(mask.data, width, height),
+      mask,
       before: prepared.before,
       after: prepared.after,
       sizeChanged: prepared.sizeChanged,

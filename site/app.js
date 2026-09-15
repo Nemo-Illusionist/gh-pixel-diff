@@ -9,7 +9,13 @@
   const { drawCrop } = global.GhPixelDiffRender;
   const { t, plural } = global.GhPixelDiffI18n;
 
-  const FRAMES = { before: 'viewBefore', after: 'viewAfter', diff: 'viewDiff', triple: 'viewTriple' };
+  const FRAMES = {
+    before: 'viewBefore',
+    after: 'viewAfter',
+    diff: 'viewDiff',
+    overlay: 'viewOverlay',
+    triple: 'viewTriple',
+  };
   /** Сколько ждём ответа от потока, прежде чем считать сами. */
   const WORKER_TIMEOUT = 5000;
   /** Задержка после движения ползунка: пересчёт дорогой, а тянут его подряд. */
@@ -104,6 +110,9 @@
       el('strong', null, plural('pixels', result.changed)),
       ` · ${t('shareOfFrame', shown)}`,
     );
+    // Цвет теперь значит направление правки, и сказать об этом надо там
+    // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
+    if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
     if (result.bounds) {
       cropToggle.textContent = cropped
         ? t('showFullFrame', box.width, box.height)
@@ -242,9 +251,9 @@
 
       result = { ...computed, before: session.prepared.before, after: session.prepared.after };
       // Из потока разница приходит буфером — обратно в ImageData её собираем здесь.
-      if (computed.diff instanceof ArrayBuffer) {
-        result.diff = new ImageData(
-          new Uint8ClampedArray(computed.diff),
+      if (computed.mask instanceof ArrayBuffer) {
+        result.mask = new ImageData(
+          new Uint8ClampedArray(computed.mask),
           computed.width,
           computed.height,
         );

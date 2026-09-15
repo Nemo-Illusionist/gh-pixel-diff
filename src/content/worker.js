@@ -48,9 +48,9 @@
           ratio: result.ratio,
           bounds: result.bounds,
           sizeChanged: prepared.sizeChanged,
-          diff: result.diff.data.buffer,
+          mask: result.mask.data.buffer,
         },
-        [result.diff.data.buffer],
+        [result.mask.data.buffer],
       );
     }
   };
