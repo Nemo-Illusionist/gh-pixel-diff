@@ -402,6 +402,57 @@
     });
   }
 
+  /**
+   * Сохраняет показанный кадр картинкой.
+   *
+   * Сохраняем именно холст, а не пересобранный кадр: на экране уже выбрано
+   * всё, что нужно, — какой кадр, обрезка, увеличение, рамки. Человек просит
+   * «вот эту картинку», а не «что-нибудь похожее».
+   *
+   * Холст не «грязный»: чужие картинки загружаются с CORS, свои и так со
+   * своего домена. Иначе toBlob отказал бы — и это единственный случай, когда
+   * сохранение не сработает, поэтому отказ сообщаем вызывающему.
+   */
+  function saveCanvas(canvas, name, onError) {
+    try {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          onError?.();
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = name;
+        // Ссылка должна быть в документе: в Firefox нажатие на оторванный от
+        // документа элемент ничего не скачивает.
+        document.body.append(link);
+        link.click();
+        link.remove();
+        // Адрес держит blob в памяти вкладки, пока его не отпустят; ждать
+        // конца загрузки не нужно — браузер уже взял данные себе.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      }, 'image/png');
+    } catch {
+      onError?.();
+    }
+  }
+
+  /**
+   * Имя файла: от имени самой картинки, с приписанным видом кадра.
+   * `shot.png` в режиме разницы станет `shot.diff.png` — по имени видно и
+   * откуда это, и что именно на нём.
+   */
+  function frameFileName(source, frame) {
+    const base =
+      String(source ?? '')
+        .split(/[?#]/)[0]
+        .split('/')
+        .pop()
+        .replace(/\.[^.]+$/, '') || 'pixel-diff';
+    return `${base}.${frame}.png`;
+  }
+
   /** Как показать увеличение человеку: «2,5×», а не «2.4999999×». */
   function zoomLabel(scale, locale) {
     return `${Number(scale.toFixed(1)).toLocaleString(locale ?? 'en')}×`;
@@ -409,6 +460,8 @@
 
   global.GhPixelDiffRender = {
     drawCrop,
+    saveCanvas,
+    frameFileName,
     createZoom,
     attachZoom,
     zoomLabel,

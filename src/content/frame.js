@@ -10,7 +10,8 @@
   const { diffPrepared, preparePair, readImagePair } = global.GhPixelDiff;
   const api = global.browser ?? global.chrome;
   const { locale, plural, t } = global.GhPixelDiffI18n;
-  const { attachZoom, createZoom, drawCrop, zoomLabel } = global.GhPixelDiffRender;
+  const { attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
+    global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
 
   const MODE = 'pixel-diff';
@@ -224,6 +225,9 @@
     zoomReset.type = 'button';
     // Переходы между местами изменений: на снимке страницы правки часто в
     // разных концах кадра, и обрезка по всем сразу — это опять весь кадр.
+    const save = el('button', 'ghpd-save');
+    save.type = 'button';
+    save.textContent = t('saveFrame');
     const prevChange = el('button', 'ghpd-cluster-step', '‹');
     const nextChange = el('button', 'ghpd-cluster-step', '›');
     for (const [button, key] of [[prevChange, 'clusterPrev'], [nextChange, 'clusterNext']]) {
@@ -313,6 +317,9 @@
       }
       // У вектора собственного размера может не быть: сказать, в чём считали,
       // честнее, чем показывать проценты от неизвестно чего.
+      // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
+      // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
+      if (single) meta.append(' · ', save);
       if (result.scale > 1) {
         meta.append(` · ${t('rasterized', result.width, result.height)}`);
       }
@@ -354,6 +361,12 @@
       zoom.lookAt(result.clusters[focusIndex]);
       render();
     };
+    save.addEventListener('click', () => {
+      saveCanvas(canvas, frameFileName(pair.path, shownFrame), () => {
+        meta.append(` · ${t('saveFailed')}`);
+      });
+    });
+
     prevChange.addEventListener('click', () => stepChange(-1));
     nextChange.addEventListener('click', () => stepChange(1));
 

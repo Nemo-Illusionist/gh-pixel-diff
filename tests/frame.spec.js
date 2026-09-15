@@ -1021,6 +1021,75 @@ test('одна правка — переходов нет', async ({ page }) => 
   await expect(page.locator('.ghpd-cluster-step')).toHaveCount(0);
 });
 
+test('показанный кадр сохраняется картинкой', async ({ page }) => {
+  // Сохраняется именно то, что на экране: выбранный кадр, обрезка, увеличение.
+  // Имя файла — от имени картинки, чтобы в папке загрузок было видно, откуда
+  // это и что именно на нём.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('.ghpd-save'),
+  ]);
+
+  expect(download.suggestedFilename()).toBe('shot.diff.png');
+
+  // Файл должен быть настоящим PNG, а не пустышкой: подпись формата стоит
+  // в первых восьми байтах.
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  const bytes = Buffer.concat(chunks);
+
+  expect([...bytes.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  // Размер записан в заголовке PNG — сверяем с холстом: так видно, что
+  // сохранился показанный кадр, а не что-нибудь другое.
+  const холст = await page.evaluate(
+    (selector) => {
+      const node = document.querySelector(selector);
+      return { ширина: node.width, высота: node.height };
+    },
+    FRAME_CANVAS,
+  );
+
+  expect(bytes.readUInt32BE(16)).toBe(холст.ширина);
+  expect(bytes.readUInt32BE(20)).toBe(холст.высота);
+});
+
+test('имя файла говорит, какой кадр сохранён', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  // Второй кадр переключателя — «после».
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(2)');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('.ghpd-save'),
+  ]);
+
+  expect(download.suggestedFilename()).toBe('shot.after.png');
+});
+
+test('три кадра рядом не сохраняются одной картинкой', async ({ page }) => {
+  // Их три холста, и «эта картинка» перестаёт быть одной картинкой: кнопка
+  // обещала бы то, чего сделать не может.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+
+  await expect(page.locator('.ghpd-save')).toHaveCount(0);
+});
+
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {
   // Высоту фрейма задаёт родительская страница, и делает это, когда меняется
   // её собственный режим. Восстановишь свой раньше — окно внутри остаётся
