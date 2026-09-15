@@ -84,6 +84,10 @@
   "viewDiff": {
     "message": "diff"
   },
+  "viewOverlay": {
+    "message": "overlay",
+    "description": "Кнопка переключателя: разница поверх кадра «после»."
+  },
   "viewTriple": {
     "message": "3-up",
     "description": "Кнопка переключателя: все три кадра сразу."
@@ -254,5 +258,8 @@
   },
   "optionsShowViewsHint": {
     "message": "The switcher sits under the frame and shows either version on its own, or all three side by side — always in the same scale and crop as the difference."
+  },
+  "diffLegend": {
+    "message": "red — darker, blue — lighter"
   }
 }

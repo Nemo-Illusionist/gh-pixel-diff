@@ -69,34 +69,33 @@ test('подменяет репозиторий в адресе картинки
 });
 
 test('находит прямоугольник с различиями', async ({ page }) => {
-  // Границы берутся из готового диффа: pixelmatch красит изменившийся пиксель
-  // в чистый красный, поэтому искать нужно именно его.
+  // Границы берутся из маски: закрашены в ней только изменившиеся пиксели,
+  // остальное прозрачно. Цвет при этом любой — он кодирует направление
+  // правки, и искать по нему значит однажды потерять половину изменений.
   const bounds = await page.evaluate(() => {
     const width = 8;
     const height = 8;
-    const diff = new Uint8ClampedArray(width * height * 4);
-    // Серый фон — то, чем pixelmatch рисует совпавшие пиксели.
-    for (let i = 0; i < diff.length; i += 4) {
-      diff[i] = diff[i + 1] = diff[i + 2] = 128;
-      diff[i + 3] = 255;
-    }
-    const mark = (x, y) => {
+    const mask = new Uint8ClampedArray(width * height * 4);
+    const mark = (x, y, color) => {
       const i = (y * width + x) * 4;
-      diff[i] = 255;
-      diff[i + 1] = 0;
-      diff[i + 2] = 0;
+      mask[i] = color[0];
+      mask[i + 1] = color[1];
+      mask[i + 2] = color[2];
+      mask[i + 3] = 255;
     };
-    mark(3, 5);
-    return self.GhPixelDiff.boundsOfChanges(diff, width, height);
+    mark(3, 5, [209, 36, 47]);
+    mark(4, 6, [9, 105, 218]);
+    return self.GhPixelDiff.boundsOfChanges(mask, width, height);
   });
 
-  expect(bounds).toEqual({ x: 3, y: 5, width: 1, height: 1 });
+  expect(bounds).toEqual({ x: 3, y: 5, width: 2, height: 2 });
 });
 
 test('без различий прямоугольника нет', async ({ page }) => {
   const bounds = await page.evaluate(() => {
-    const diff = new Uint8ClampedArray(4 * 4 * 4).fill(128);
-    return self.GhPixelDiff.boundsOfChanges(diff, 4, 4);
+    // Прозрачная маска: не совпало ничего.
+    const mask = new Uint8ClampedArray(4 * 4 * 4);
+    return self.GhPixelDiff.boundsOfChanges(mask, 4, 4);
   });
 
   expect(bounds).toBeNull();
@@ -184,4 +183,54 @@ test('формы множественного числа берутся по я�
 
   expect(forms.ru).toEqual(['1 пиксель', '2 пикселя', '5 пикселей', '21 пиксель']);
   expect(forms.en.slice(0, 2)).toEqual(['1 pixel', '2 pixels']);
+});
+
+test('цвет разницы говорит, потемнело или посветлело', async ({ page }) => {
+  // Одного красного мало: «текст появился» и «текст исчез» — разные события,
+  // и на кадре они должны выглядеть по-разному.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const colors = await page.evaluate(() => {
+    const width = 2;
+    const height = 1;
+    const before = new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 255]);
+    const after = new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]);
+
+    const result = self.GhPixelDiff.diffPrepared({
+      width,
+      height,
+      dataBefore: new ImageData(before, width, height),
+      dataAfter: new ImageData(after, width, height),
+    });
+
+    const at = (x) => [...result.mask.data.slice(x * 4, x * 4 + 4)];
+    return { darker: at(0), lighter: at(1), changed: result.changed };
+  });
+
+  expect(colors.changed).toBe(2);
+  // Белое стало чёрным — красный; чёрное стало белым — синий.
+  expect(colors.darker).toEqual([209, 36, 47, 255]);
+  expect(colors.lighter).toEqual([9, 105, 218, 255]);
+});
+
+test('совпавшие пиксели в маске прозрачны', async ({ page }) => {
+  // Маска — только изменения: подложку под них выбирает тот, кто рисует.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const pixel = await page.evaluate(() => {
+    const same = () => new ImageData(new Uint8ClampedArray([12, 34, 56, 255]), 1, 1);
+    const result = self.GhPixelDiff.diffPrepared({
+      width: 1,
+      height: 1,
+      dataBefore: same(),
+      dataAfter: same(),
+    });
+    return { alpha: result.mask.data[3], changed: result.changed };
+  });
+
+  expect(pixel).toEqual({ alpha: 0, changed: 0 });
 });

@@ -15,7 +15,13 @@
 
   const MODE = 'pixel-diff';
   /** Что показано: один из кадров или все три сразу. */
-  const FRAMES = { before: 'viewBefore', after: 'viewAfter', diff: 'viewDiff', triple: 'viewTriple' };
+  const FRAMES = {
+    before: 'viewBefore',
+    after: 'viewAfter',
+    diff: 'viewDiff',
+    overlay: 'viewOverlay',
+    triple: 'viewTriple',
+  };
   const FRAME_KEY = 'ghpd:frame';
   /** Порог pixelmatch: 0 — ловит даже сглаживание, 0.5 — только явные отличия. */
   const THRESHOLD_MAX = 0.5;
@@ -196,7 +202,9 @@
     triple.hidden = true;
     const tripleCanvases = new Map();
     for (const [name, key] of Object.entries(FRAMES)) {
-      if (name === 'triple') continue;
+      // Триптих остаётся тройкой: наложение — вариант разницы, и четвёртым
+      // кадром рядом оно только сузит остальные три.
+      if (name === 'triple' || name === 'overlay') continue;
       const item = el('div', 'ghpd-triple-item');
       const tripleCanvas = el('canvas', 'ghpd-canvas');
       tripleCanvas.setAttribute('role', 'img');
@@ -248,6 +256,9 @@
         el('strong', null, plural('pixels', result.changed)),
         ` · ${t('shareOfFrame', shown)}`,
       );
+      // Цвет теперь значит направление правки, и сказать об этом надо там
+      // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
+      if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
       if (result.bounds) {
         cropToggle.textContent = cropped
           ? t('showFullFrame', box.width, box.height)
@@ -343,9 +354,9 @@
         result = { ...computed, before: session.prepared.before, after: session.prepared.after };
         // Из потока разница приходит буфером — обратно в картинку её
         // собирает тот, кто рисует.
-        if (computed.diff instanceof ArrayBuffer) {
-          result.diff = new ImageData(
-            new Uint8ClampedArray(computed.diff),
+        if (computed.mask instanceof ArrayBuffer) {
+          result.mask = new ImageData(
+            new Uint8ClampedArray(computed.mask),
             computed.width,
             computed.height,
           );

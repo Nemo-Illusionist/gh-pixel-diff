@@ -32,10 +32,14 @@ runs in your browser.
 - Counts how many pixels changed and what share of the frame that is.
 - A threshold slider — from "catch even anti-aliasing" to "only what the eye
   sees" — styled like the Onion Skin one.
-- A before / after / diff / **3-up** switcher under the frame: any one version,
-  or all three side by side — always in the same scale and the same crop as the
-  difference, which the native 2-up and Swipe cannot do. The choice is
-  remembered, and the switcher can be turned off on the settings page.
+- The colour says which way the edit went: red where the picture got darker —
+  text or an element appeared — and blue where it got lighter. One red for
+  everything made "added" and "removed" look the same.
+- A before / after / diff / **overlay** / **3-up** switcher under the frame:
+  any one version, all three side by side, or the difference painted straight
+  onto the new version in full colour — always in the same scale and the same
+  crop, which the native 2-up and Swipe cannot do. The choice is remembered,
+  and the switcher can be turned off on the settings page.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame

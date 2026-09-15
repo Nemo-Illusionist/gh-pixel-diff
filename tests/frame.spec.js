@@ -207,7 +207,9 @@ const outlinePixels = (page) =>
     const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
     let found = 0;
     for (let i = 0; i < data.length; i += 4) {
-      if (data[i] === 209 && data[i + 1] === 36 && data[i + 2] === 47) found++;
+      // Янтарный — цвет рамки. Красный и синий не годятся: ими покрашено
+      // само изменение, и считать их значит считать находку вместо указателя.
+      if (data[i] === 191 && data[i + 1] === 135 && data[i + 2] === 0) found++;
     }
     return found;
   });
@@ -515,7 +517,38 @@ test('переключает «до», «после» и разницу', async 
 
   expect(await page.evaluate(() =>
     [...document.querySelectorAll('.ghpd-views .ghpd-view-button')].map((n) => n.textContent),
-  )).toEqual(['before', 'after', 'diff', '3-up']);
+  )).toEqual(['before', 'after', 'diff', 'overlay', '3-up']);
+});
+
+test('наложение показывает разницу поверх цветного «после»', async ({ page }) => {
+  // Разница и наложение — одна маска на разной подложке. Проверяем именно
+  // подложку: под разницей серый призрак «до», под наложением — «после» как
+  // оно есть, и правку видно в настоящем окружении.
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-crop-toggle');
+
+  // Точка вдали от изменений: там подложка видна в чистом виде.
+  const pixel = () =>
+    page.evaluate(() => {
+      const canvas = document.querySelector('.ghpd-canvas');
+      const [r, g, b] = canvas.getContext('2d').getImageData(5, 5, 1, 1).data;
+      return [r, g, b];
+    });
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(2)');
+  const after = await pixel();
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(4)');
+  expect(await pixel()).toEqual(after);
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(3)');
+  const [r, g, b] = await pixel();
+  // Под разницей — обесцвеченное и выбеленное «до»: серый, а не цвет кадра.
+  expect(r).toBe(g);
+  expect(g).toBe(b);
 });
 
 test('выбранный кадр помнится между картинками', async ({ page }) => {
@@ -523,7 +556,7 @@ test('выбранный кадр помнится между картинкам
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
-  await page.click('.ghpd-views .ghpd-view-button:nth-child(4)');
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
 
   expect(store['ghpd:frame']).toBe('triple');
 
@@ -719,7 +752,7 @@ test('три кадра рядом влезают по ширине', async ({ p
   // Второй наш пункт в ряду — три кадра рядом.
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
-  await page.click('.ghpd-views .ghpd-view-button:nth-child(4)');
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
 
   const layout = await page.evaluate(() => {
     const canvases = [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')];
@@ -751,7 +784,7 @@ test('три кадра показывают разные картинки', asy
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
   await page.click('.ghpd-crop-toggle');
-  await page.click('.ghpd-views .ghpd-view-button:nth-child(4)');
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
 
   // Полоска, которая и отличается: в «до» серая, в «после» красная.
   const colors = await page.evaluate(() =>
