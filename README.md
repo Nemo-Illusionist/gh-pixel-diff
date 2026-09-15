@@ -4,6 +4,7 @@
 
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/kddgddagklbfhikmlbailnempmndcngi?logo=googlechrome&logoColor=white&label=Chrome%20Web%20Store&color=1a73e8)][store]
 [![Firefox Add-ons](https://img.shields.io/amo/v/github-pixel-diff?logo=firefoxbrowser&logoColor=white&label=Firefox%20Add-ons&color=ff7139)][amo]
+[![Safari](https://img.shields.io/badge/Safari-manual-006CFF?logo=safari&logoColor=white)](#safari-macos)
 [![Two images of your own](https://img.shields.io/badge/Two%20images%20of%20your%20own-compare%20online-2da44e?logo=github&logoColor=white)][site]
 
 GitHub and GitLab can both show two versions of an image side by side, behind a
