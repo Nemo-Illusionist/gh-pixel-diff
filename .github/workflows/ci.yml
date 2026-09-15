@@ -13,33 +13,93 @@ permissions:
   contents: read
 
 jobs:
+  scope:
+    name: Что изменилось
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.check.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Нужна история: сравниваем с тем, от чего ветка отошла.
+          fetch-depth: 0
+
+      - id: check
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Не с чем сравнивать — значит проверяем всё. Так безопаснее: лучше
+          # лишний прогон, чем невыполненная проверка на новой ветке.
+          if [ -z "${BASE:-}" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "Не с чем сравнивать — проверяем всё."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed="$(git diff --name-only "$BASE" "$HEAD")"
+          echo "Изменено:"
+          echo "$changed" | sed 's/^/  /'
+
+          # Документация — это любые .md, всё в docs/ (там же и снимки) и
+          # лицензия. Всё остальное — код, даже если правка выглядит мелкой.
+          if [ -n "$changed" ] && ! grep -qvE '(^|/)[^/]+\.md$|^docs/|^LICENSE$' <<<"$changed"; then
+            echo "Менялась только документация."
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          fi
+
   tests:
     name: Тесты
+    needs: scope
     runs-on: ubuntu-latest
     container: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
+      # Задание не пропускается целиком, а пустеет: пропущенное задание не
+      # присылает результат, и защита ветки ждёт его вечно.
+      - if: needs.scope.outputs.code != 'true'
+        run: echo "Менялась только документация — гонять нечего."
+
       - uses: actions/checkout@v7
+        if: needs.scope.outputs.code == 'true'
       - run: npm ci --no-audit --no-fund
+        if: needs.scope.outputs.code == 'true'
       - run: node scripts/build.mjs
+        if: needs.scope.outputs.code == 'true'
       - run: node scripts/build-site.mjs
-      # Живой тест ходит на github.com и вынесен в отдельный запуск: он ломается
-      # от чужих изменений, а не от наших, и не должен блокировать пул-реквест.
-      - run: >
-          npx playwright test
-          tests/parse.spec.js tests/frame.spec.js
-          tests/locales.spec.js tests/popup.spec.js
-          tests/site.spec.js tests/gitlab.spec.js
+        if: needs.scope.outputs.code == 'true'
+
+      # Список собирается из папки, а не пишется руками: набор растёт, и
+      # забытый в перечне файл — это тест, которого в CI просто нет.
+      #
+      # Живой тест ходит на github.com и вынесен в отдельный запуск: он
+      # ломается от чужих изменений, а не от наших, и не должен блокировать
+      # пул-реквест.
+      - if: needs.scope.outputs.code == 'true'
+        run: npx playwright test $(ls tests/*.spec.js | grep -v '/live\.spec\.js$')
 
   lint:
     name: Проверка манифеста Firefox
+    needs: scope
     runs-on: ubuntu-latest
     steps:
+      - if: needs.scope.outputs.code != 'true'
+        run: echo "Менялась только документация — проверять нечего."
+
       - uses: actions/checkout@v7
+        if: needs.scope.outputs.code == 'true'
       - uses: actions/setup-node@v7
+        if: needs.scope.outputs.code == 'true'
         with:
           node-version: 22
       - run: npm ci --no-audit --no-fund
+        if: needs.scope.outputs.code == 'true'
       - run: node scripts/build.mjs
+        if: needs.scope.outputs.code == 'true'
       # Без --self-hosted: дополнение подаётся на витрину, и проверять его
       # надо по тем же правилам, по которым его примет addons.mozilla.org.
       - run: npx --yes web-ext@8 lint --source-dir dist/firefox
+        if: needs.scope.outputs.code == 'true'
