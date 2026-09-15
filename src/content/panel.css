@@ -36,6 +36,17 @@
   border-radius: 4px;
 }
 
+/* Увеличенный кадр можно таскать — и курсор должен об этом сказать. */
+.ghpd-canvas.ghpd-zoomed { cursor: grab; }
+.ghpd-canvas.ghpd-panning { cursor: grabbing; }
+
+/* Холст теперь останавливает табуляцию: с него работают клавиши
+   увеличения, и фокус на нём должен быть виден. */
+.ghpd-canvas:focus-visible {
+  outline: 2px solid var(--fgColor-accent, #0969da);
+  outline-offset: 2px;
+}
+
 .ghpd-meta {
   margin: 0;
   flex: none;
@@ -45,7 +56,8 @@
 }
 
 .ghpd-crop-toggle,
-.ghpd-outline-toggle {
+.ghpd-outline-toggle,
+.ghpd-zoom-reset {
   font: inherit;
   color: var(--fgColor-accent, #0969da);
   background: none;

@@ -9,8 +9,8 @@
 
   const { diffPrepared, preparePair, readImagePair } = global.GhPixelDiff;
   const api = global.browser ?? global.chrome;
-  const { plural, t } = global.GhPixelDiffI18n;
-  const { drawCrop } = global.GhPixelDiffRender;
+  const { locale, plural, t } = global.GhPixelDiffI18n;
+  const { attachZoom, createZoom, drawCrop, zoomLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
 
   const MODE = 'pixel-diff';
@@ -194,6 +194,7 @@
     const shell = el('div', 'ghpd-shell');
     const canvas = el('canvas', 'ghpd-canvas');
     canvas.setAttribute('role', 'img');
+    canvas.title = t('zoomHint');
     const full = document.createElement('canvas');
 
     // Три кадра рядом: те же данные, другая раскладка. Заводим сразу, чтобы
@@ -219,6 +220,8 @@
     cropToggle.type = 'button';
     const outlineToggle = el('button', 'ghpd-outline-toggle');
     outlineToggle.type = 'button';
+    const zoomReset = el('button', 'ghpd-zoom-reset');
+    zoomReset.type = 'button';
 
     shell.append(canvas, triple, meta);
     view.append(shell);
@@ -237,6 +240,12 @@
     // пикселей на уменьшенном кадре не найти. Но на мелком снимке она сама
     // закрывает картинку, поэтому её можно убрать, и выбор запоминается.
     let outline = readSetting(OUTLINE_KEY) !== 'off';
+    // Увеличение, в отличие от порога и рамки, не запоминается: это не
+    // настройка, а взгляд на конкретное место конкретного кадра — на
+    // следующей картинке там уже ничего нет.
+    const zoom = createZoom(() => {
+      if (result) render();
+    });
 
     const render = () => {
       const single = shownFrame !== 'triple';
@@ -244,9 +253,10 @@
       triple.hidden = single;
 
       const box = single
-        ? drawCrop(canvas, full, result, cropped, outline, shownFrame)
+        ? drawCrop(canvas, full, result, cropped, outline, shownFrame, zoom)
         : drawTriple();
       fitCanvas(canvas);
+      canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
       const percent = result.ratio * 100;
       // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
       const shown = result.changed === 0 ? '0' : percent >= 0.01 ? percent.toFixed(2) : '<0.01';
@@ -259,6 +269,12 @@
       // Цвет теперь значит направление правки, и сказать об этом надо там
       // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
       if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
+      // Увеличение видно по самому кадру, но не видно, насколько оно велико и
+      // как вернуться обратно, — поэтому говорим об этом в подписи.
+      if (single && zoom.scale > 1) {
+        zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
+        meta.append(' · ', zoomReset);
+      }
       if (result.bounds) {
         cropToggle.textContent = cropped
           ? t('showFullFrame', box.width, box.height)
@@ -299,6 +315,9 @@
       cropped = !cropped;
       render();
     });
+
+    zoomReset.addEventListener('click', () => zoom.reset());
+    attachZoom(canvas, zoom);
 
     outlineToggle.addEventListener('click', () => {
       outline = !outline;

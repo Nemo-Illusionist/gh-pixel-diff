@@ -36,6 +36,11 @@ runs in your browser.
 - The colour says which way the edit went: red where the picture got darker —
   text or an element appeared — and blue where it got lighter. One red for
   everything made "added" and "removed" look the same.
+- **Zoom and pan**: Ctrl + scroll (or a trackpad pinch) magnifies the frame,
+  dragging moves it, a double click jumps in and back, and the keyboard does the
+  same with `+`, `-`, `0` and the arrows. Magnified pixels stay square rather
+  than blurred — a one-pixel shift is a thing you can actually look at. Plain
+  scrolling still belongs to the page.
 - A before / after / diff / **overlay** / **3-up** switcher under the frame:
   any one version, all three side by side, or the difference painted straight
   onto the new version in full colour — always in the same scale and the same
