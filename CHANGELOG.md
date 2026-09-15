@@ -4,6 +4,25 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.12.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.11.0...v0.12.0) (2026-09-15)
+
+
+### Features
+
+* colour says which way the edit went, and an overlay frame ([#42](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/42)) ([4bce364](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/4bce364052ec1a24264fa89d3ff3fb084ecb84f6))
+
+
+### Bug Fixes
+
+* **site:** the privacy page reads as one column ([#38](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/38)) ([80f3678](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/80f36783d1029bf340a103b401324cc61baae668))
+
+
+### Documentation
+
+* badges instead of a line of links ([#40](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/40)) ([3312c7b](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/3312c7b8a5ba766b2ffd286613af73f930850b89))
+* store texts speak of GitLab too ([#37](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/37)) ([8c71c50](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/8c71c503faf8ec97e03e96a7469daec1e0b94202))
+* why the Firefox minimum stays at 128 ([#36](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/36)) ([abaf3b6](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/abaf3b6f5eca04dcbbc544b616decd13a548bbf1))
+
 ## [0.11.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.10.1...v0.11.0) (2026-09-10)
 
 
