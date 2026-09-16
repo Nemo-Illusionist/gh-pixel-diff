@@ -57,7 +57,8 @@
 
 .ghpd-crop-toggle,
 .ghpd-outline-toggle,
-.ghpd-zoom-reset {
+.ghpd-zoom-reset,
+.ghpd-save {
   font: inherit;
   color: var(--fgColor-accent, #0969da);
   background: none;

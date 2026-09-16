@@ -294,5 +294,13 @@
   "clusterNext": {
     "message": "next change",
     "description": "Кнопка «›» в подписи."
+  },
+  "saveFrame": {
+    "message": "save as PNG",
+    "description": "Кнопка в подписи: сохранить показанный кадр картинкой."
+  },
+  "saveFailed": {
+    "message": "the browser did not let the frame be saved",
+    "description": "Отказ сохранения: «грязный» холст или запрет загрузки."
   }
 }
