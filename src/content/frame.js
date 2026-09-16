@@ -10,7 +10,7 @@
   const { diffPrepared, preparePair, readImagePair } = global.GhPixelDiff;
   const api = global.browser ?? global.chrome;
   const { locale, plural, t } = global.GhPixelDiffI18n;
-  const { attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
     global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
 
@@ -217,6 +217,9 @@
 
     const meta = el('p', 'ghpd-meta');
     meta.setAttribute('aria-live', 'polite');
+    // Пиксель под курсором. Живой области здесь не место: строка меняется на
+    // каждое движение мыши, и озвучивать это значит забить речь целиком.
+    const probe = el('p', 'ghpd-probe');
     const cropToggle = el('button', 'ghpd-crop-toggle');
     cropToggle.type = 'button';
     const outlineToggle = el('button', 'ghpd-outline-toggle');
@@ -236,7 +239,7 @@
       button.setAttribute('aria-label', t(key));
     }
 
-    shell.append(canvas, triple, meta);
+    shell.append(canvas, triple, meta, probe);
     view.append(shell);
 
     let result = null;
@@ -350,6 +353,7 @@
 
     zoomReset.addEventListener('click', () => zoom.reset());
     attachZoom(canvas, zoom);
+    attachProbe(canvas, probe, zoom, () => result);
 
     /** Переход к соседнему месту изменений — по кругу. */
     const stepChange = (delta) => {

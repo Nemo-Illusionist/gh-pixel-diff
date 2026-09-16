@@ -1090,6 +1090,53 @@ test('три кадра рядом не сохраняются одной кар
   await expect(page.locator('.ghpd-save')).toHaveCount(0);
 });
 
+test('под курсором видно, какой был пиксель и каким стал', async ({ page }) => {
+  // Разница отвечает «здесь изменилось», но не «на что»: красное пятно не
+  // говорит, какой оттенок был до правки. Без этого за ответом идут в
+  // сторонний редактор с пипеткой.
+  await page.setViewportSize({ width: 900, height: 700 });
+  // Вектор с известными цветами: было #c9d1d9, стало #f85149.
+  await openFrame(page, svgPair(true));
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const box = await page.locator(FRAME_CANVAS).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
+  const probe = page.locator('.ghpd-probe');
+  await expect(probe).toContainText('#c9d1d9');
+  await expect(probe).toContainText('#f85149');
+  // Координаты — в пикселях кадра, тем же числам верит и всё остальное.
+  await expect(probe).toContainText(/^\d+, \d+ · /);
+  // Цвета показаны не только словом, но и образцом: словом «#c9d1d9» цвет
+  // представляет себе не каждый.
+  await expect(page.locator('.ghpd-probe-swatch')).toHaveCount(2);
+
+  // Курсор ушёл с кадра — показывать нечего.
+  await page.mouse.move(box.x + box.width / 2, box.y - 20);
+
+  await expect(probe).toHaveText('');
+});
+
+test('строка пикселя не двигает кадр, когда появляется', async ({ page }) => {
+  // Кадр, подпрыгнувший в тот момент, когда в него всматриваются, уводит
+  // пиксель из-под курсора — и разглядывать приходится уже другой.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgPair(true));
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const до = await page.locator(FRAME_CANVAS).boundingBox();
+  await page.mouse.move(до.x + до.width / 2, до.y + до.height / 2);
+  await expect(page.locator('.ghpd-probe')).toContainText('#f85149');
+  const после = await page.locator(FRAME_CANVAS).boundingBox();
+
+  expect(после.y).toBeCloseTo(до.y, 0);
+  expect(после.height).toBeCloseTo(до.height, 0);
+});
+
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {
   // Высоту фрейма задаёт родительская страница, и делает это, когда меняется
   // её собственный режим. Восстановишь свой раньше — окно внутри остаётся
