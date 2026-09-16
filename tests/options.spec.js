@@ -82,3 +82,112 @@ test('ключи отказов есть в локалях', () => {
     }
   }
 });
+
+// Переключатель языка на самой странице настроек.
+//
+// Проверяется целиком, с разметкой и хранилищем: страница не только меняет
+// собственные надписи, но и раскладывает строки для панели сравнения — до
+// файла локали та не дотянется, она живёт на чужой странице.
+const SITE = 'https://options.test';
+
+/** Открывает страницу настроек с заглушкой API браузера. */
+async function openOptions(page) {
+  await page.route(`${SITE}/**`, (route) => {
+    const path = new URL(route.request().url()).pathname.slice(1);
+    const types = { js: 'text/javascript', css: 'text/css', html: 'text/html', json: 'application/json' };
+    try {
+      return route.fulfill({
+        contentType: `${types[path.split('.').pop()] ?? 'text/plain'}; charset=utf-8`,
+        body: readFileSync(file(`../src/${path}`)),
+      });
+    } catch {
+      return route.fulfill({ status: 404, body: 'not found' });
+    }
+  });
+
+  await page.addInitScript((messages) => {
+    const store = { sync: {}, local: {} };
+    // @ts-ignore — видно тесту: страница должна не только показать язык, но и
+    // положить строки для панели.
+    globalThis.ghpdStore = store;
+    const area = (name) => ({
+      get: async (defaults) => ({ ...defaults, ...store[name] }),
+      set: async (values) => Object.assign(store[name], values),
+      remove: async (key) => {
+        delete store[name][key];
+      },
+    });
+    // @ts-ignore
+    globalThis.chrome = {
+      i18n: {
+        getMessage: (key, substitutions = []) => {
+          const entry = messages[key];
+          if (!entry) return '';
+          let text = entry.message;
+          for (const [name, placeholder] of Object.entries(entry.placeholders ?? {})) {
+            text = text.replaceAll(`$${name}$`, String(substitutions[Number(placeholder.content.slice(1)) - 1] ?? ''));
+          }
+          return text;
+        },
+        getUILanguage: () => 'en',
+      },
+      runtime: {
+        getURL: (path) => `${location.origin}/${path}`,
+        getManifest: () => ({ content_scripts: [{ matches: ['https://gitlab.com/*'], js: [], css: [] }] }),
+      },
+      storage: { sync: area('sync'), local: area('local') },
+      permissions: {
+        contains: async () => true,
+        getAll: async () => ({ origins: [] }),
+      },
+    };
+  }, locales[0]);
+
+  await page.goto(`${SITE}/options/options.html`);
+}
+
+test('язык выбирается на странице настроек', async ({ page }) => {
+  await openOptions(page);
+
+  // Пока выбора нет, страница говорит на языке браузера.
+  await expect(page.locator('#language')).toHaveValue('');
+  await expect(page.locator('h2').first()).toHaveText('Language');
+
+  await page.selectOption('#language', 'ru');
+
+  await expect(page.locator('h2').first()).toHaveText('Язык');
+  // «Как в браузере» тоже переводится, а имена языков — нет: их узнают на них
+  // самих.
+  await expect(page.locator('#language option').first()).toHaveText('как в браузере');
+  await expect(page.locator('#language option').nth(2)).toHaveText('Русский');
+  expect(await page.getAttribute('html', 'lang')).toBe('ru');
+});
+
+test('строки выбранного языка кладутся для панели сравнения', async ({ page }) => {
+  // Панель сравнения живёт на чужой странице, и содержимое `_locales` ей
+  // недоступно. Донести до неё язык может только хранилище.
+  await openOptions(page);
+  await page.selectOption('#language', 'ru');
+
+  await expect
+    .poll(() => page.evaluate(() => globalThis.ghpdStore.local['ghpd:messages']?.language))
+    .toBe('ru');
+
+  expect(await page.evaluate(() => globalThis.ghpdStore.sync['ghpd:language'])).toBe('ru');
+  expect(
+    await page.evaluate(() => globalThis.ghpdStore.local['ghpd:messages'].messages.viewDiff.message),
+  ).toBe('разница');
+});
+
+test('возврат к языку браузера убирает и строки', async ({ page }) => {
+  await openOptions(page);
+  await page.selectOption('#language', 'ru');
+  await expect(page.locator('h2').first()).toHaveText('Язык');
+
+  await page.selectOption('#language', '');
+
+  await expect(page.locator('h2').first()).toHaveText('Language');
+  await expect
+    .poll(() => page.evaluate(() => globalThis.ghpdStore.local['ghpd:messages'] ?? null))
+    .toBeNull();
+});

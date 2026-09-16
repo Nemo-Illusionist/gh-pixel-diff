@@ -28,6 +28,7 @@
       ],
       "js": [
         "vendor/pixelmatch.js",
+        "shared/locale.js",
         "content/i18n.js",
         "content/compare.js",
         "content/render.js",
@@ -47,6 +48,7 @@
       ],
       "js": [
         "vendor/pixelmatch.js",
+        "shared/locale.js",
         "content/i18n.js",
         "content/compare.js",
         "content/render.js",

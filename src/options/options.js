@@ -6,9 +6,54 @@
 // scripting.registerContentScripts можно звать отсюда, и запись переживает
 // перезапуск браузера.
 const { api, t, translate, wireAccess, ORIGINS } = self.GhPixelDiffPage;
+const { LANGUAGES, apply: applyLanguage, choose: chooseLanguage } = self.GhPixelDiffLocale;
 
-translate();
-wireAccess(document.querySelector('#status'), document.querySelector('#grant'));
+const language = document.querySelector('#language');
+
+/** Наполняет список языков и подписывает «как в браузере» на нынешнем языке. */
+function fillLanguages(chosen) {
+  language.replaceChildren();
+  const auto = document.createElement('option');
+  auto.value = '';
+  auto.textContent = t('optionsLanguageAuto');
+  language.append(auto);
+  for (const item of LANGUAGES) {
+    const option = document.createElement('option');
+    option.value = item.code;
+    // Имя языка — на нём самом, и переводить его не нужно: так его узнают
+    // и те, кто открыл настройки на чужом языке.
+    option.textContent = item.name;
+    language.append(option);
+  }
+  language.value = chosen;
+}
+
+/** Расставляет надписи страницы: после смены языка — заново. */
+function retranslate(chosen) {
+  translate();
+  fillLanguages(chosen);
+  document.documentElement.lang = chosen || navigator.language.slice(0, 2);
+}
+
+// Надписи ждут языка: выбранный вручную приезжает из хранилища, то есть не
+// сразу, и расставить их раньше значит показать чужой язык и переписать.
+applyLanguage()
+  .catch(() => '')
+  .then((chosen) => {
+    retranslate(chosen);
+    wireAccess(document.querySelector('#status'), document.querySelector('#grant'));
+  });
+
+language.addEventListener('change', () => {
+  const chosen = language.value;
+  // Строки для панелей раскладывает эта страница: файл локали доступен
+  // только страницам расширения, а панель живёт на чужой.
+  chooseLanguage(chosen)
+    .then(() => retranslate(chosen))
+    .catch(() => {
+      language.value = '';
+    });
+});
 
 // Переключатель кадров в панели: показывать или нет. По умолчанию да.
 // Он оказался удобнее, чем ожидалось, и выключают его редко — потому и здесь.

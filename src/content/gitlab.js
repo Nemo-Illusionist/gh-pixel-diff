@@ -455,7 +455,8 @@
     if (!isGitLab()) return;
 
     const showViews = await readShowViews();
-    await loadSettings();
+    // Язык — до сборки панелей: иначе надписи моргнули бы браузерными.
+    await Promise.all([loadSettings(), global.GhPixelDiffLocale?.apply()]);
 
     const scan = () => {
       for (const viewer of document.querySelectorAll('.diff-viewer')) {

@@ -577,9 +577,9 @@
     addEventListener('resize', waitForHeight);
   }
 
-  // Настройки читаются до сборки панели: иначе ползунок и режим успели бы
-  // моргнуть значениями по умолчанию.
-  const started = loadSettings();
+  // Настройки и язык читаются до сборки панели: иначе ползунок, режим и
+  // надписи успели бы моргнуть значениями по умолчанию.
+  const started = Promise.all([loadSettings(), global.GhPixelDiffLocale?.apply()]);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => started.then(mount));
   } else {

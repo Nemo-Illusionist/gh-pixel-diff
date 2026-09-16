@@ -302,5 +302,14 @@
   "saveFailed": {
     "message": "the browser did not let the frame be saved",
     "description": "Отказ сохранения: «грязный» холст или запрет загрузки."
+  },
+  "optionsLanguage": {
+    "message": "Language"
+  },
+  "optionsLanguageAuto": {
+    "message": "same as the browser"
+  },
+  "optionsLanguageHint": {
+    "message": "Applies to the window, this page and the comparison panel. Pages already open keep the old language until they are reloaded."
   }
 }
