@@ -51,6 +51,10 @@ runs in your browser.
   onto the new version in full colour — always in the same scale and the same
   crop, which the native 2-up and Swipe cannot do. The choice is remembered,
   and the switcher can be turned off on the settings page.
+- **A pixel inspector**: point at the frame and the line under it says which
+  pixel that is and what colour it was before and after — swatches and hex
+  codes. "Is that really the same grey?" no longer needs an eyedropper in
+  another app.
 - **Save what you see as a PNG**: the chosen frame, the crop, the zoom, the
   outlines — whatever is on screen goes into `shot.diff.png`, ready to drop into
   a comment or a ticket.

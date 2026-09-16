@@ -6,7 +6,7 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
     global.GhPixelDiffRender;
   const { t, plural, locale } = global.GhPixelDiffI18n;
 
@@ -83,6 +83,7 @@
   });
   canvas.title = t('zoomHint');
   attachZoom(canvas, zoom);
+  attachProbe(canvas, document.querySelector('#probe'), zoom, () => result);
   zoomReset.addEventListener('click', () => zoom.reset());
 
   // Какое из мест изменений выбрано. Номер, а не сам прямоугольник: при

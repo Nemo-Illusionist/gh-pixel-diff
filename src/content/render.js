@@ -453,6 +453,105 @@
     return `${base}.${frame}.png`;
   }
 
+  /**
+   * Холст на один пиксель — им читаются цвета под курсором.
+   *
+   * Читать приходится из самих картинок: обе версии кадра отданы потоку
+   * сравнения во владение, и в основном потоке их пикселей больше нет.
+   * Рисовать ради одного цвета кадр целиком — это десятки мегабайт на каждое
+   * движение мыши, поэтому картинка сдвигается так, чтобы нужная точка
+   * попала в единственный пиксель холста.
+   */
+  let probeCanvas = null;
+
+  function samplePixel(image, x, y, scale) {
+    probeCanvas ??= document.createElement('canvas');
+    probeCanvas.width = 1;
+    probeCanvas.height = 1;
+    const ctx = probeCanvas.getContext('2d', { willReadFrequently: true });
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.drawImage(
+      image,
+      -x,
+      -y,
+      image.naturalWidth * scale,
+      image.naturalHeight * scale,
+    );
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    return { r, g, b, a };
+  }
+
+  /** Цвет строкой: «#f85149», как его пишут в любом редакторе. */
+  function hex({ r, g, b }) {
+    return `#${[r, g, b].map((part) => part.toString(16).padStart(2, '0')).join('')}`;
+  }
+
+  /**
+   * Показывает под кадром, что за пиксель под курсором и каким он был.
+   *
+   * Разница отвечает «здесь изменилось», но не «на что»: красное пятно не
+   * говорит, какой оттенок был до правки и какой стал. Один и тот же вопрос —
+   * «а это точно тот самый серый?» — иначе решается пипеткой в стороннем
+   * редакторе.
+   *
+   * @param canvas   кадр, по которому водят курсором
+   * @param node     куда писать; его высота держится постоянной, иначе кадр
+   *                 подпрыгивал бы при каждом входе курсора
+   * @param zoom     состояние увеличения: оно знает, какой кусок кадра виден
+   * @param getResult откуда брать нынешнее сравнение
+   */
+  function attachProbe(canvas, node, zoom, getResult) {
+    const t = (key, ...rest) => global.GhPixelDiffI18n?.t(key, ...rest) || '';
+
+    const clear = () => node.replaceChildren();
+
+    const swatch = (color) => {
+      const box = document.createElement('span');
+      box.className = 'ghpd-probe-swatch';
+      box.style.background = hex(color);
+      return box;
+    };
+
+    canvas.addEventListener('pointermove', (event) => {
+      const result = getResult();
+      const point = result && zoom.at(event, canvas);
+      if (!point) {
+        clear();
+        return;
+      }
+      const x = Math.floor(point.x);
+      const y = Math.floor(point.y);
+      if (x < 0 || y < 0 || x >= result.width || y >= result.height) {
+        clear();
+        return;
+      }
+
+      let before;
+      let after;
+      try {
+        before = samplePixel(result.before, x, y, result.scale);
+        after = samplePixel(result.after, x, y, result.scale);
+      } catch {
+        // «Грязный» холст — единственная причина отказа; молчим, а не ломаем
+        // панель: инспектор здесь не главное.
+        clear();
+        return;
+      }
+
+      node.replaceChildren(
+        `${x}, ${y} · `,
+        swatch(before),
+        ` ${t('viewBefore')} ${hex(before)} → `,
+        swatch(after),
+        ` ${t('viewAfter')} ${hex(after)}`,
+      );
+    });
+
+    // Курсор ушёл — показывать нечего; строка остаётся на месте пустой, чтобы
+    // кадр не прыгал.
+    canvas.addEventListener('pointerleave', clear);
+  }
+
   /** Как показать увеличение человеку: «2,5×», а не «2.4999999×». */
   function zoomLabel(scale, locale) {
     return `${Number(scale.toFixed(1)).toLocaleString(locale ?? 'en')}×`;
@@ -462,6 +561,7 @@
     drawCrop,
     saveCanvas,
     frameFileName,
+    attachProbe,
     createZoom,
     attachZoom,
     zoomLabel,

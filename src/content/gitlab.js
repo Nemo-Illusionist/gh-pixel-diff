@@ -13,7 +13,7 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
     global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
   const { t, plural, locale } = global.GhPixelDiffI18n;
@@ -111,6 +111,9 @@
     canvas.title = t('zoomHint');
     const triple = el('div', 'ghpd-triple');
     const meta = el('p', 'ghpd-meta', t('computing'));
+    // Пиксель под курсором. Живой области здесь не место: строка меняется на
+    // каждое движение мыши.
+    const probe = el('p', 'ghpd-probe');
     const full = document.createElement('canvas');
 
     triple.hidden = true;
@@ -158,7 +161,7 @@
     const views = el('div', 'ghpd-views');
     views.hidden = !showViews;
 
-    shell.append(canvas, triple, meta, controls, views);
+    shell.append(canvas, triple, meta, probe, controls, views);
     panel.append(shell);
 
     let result = null;
@@ -173,6 +176,7 @@
       if (result) render();
     });
     attachZoom(canvas, zoom);
+    attachProbe(canvas, probe, zoom, () => result);
     zoomReset.addEventListener('click', () => zoom.reset());
     // Какое из мест изменений выбрано. Номер, а не сам прямоугольник: при
     // каждом пересчёте порога места считаются заново.
