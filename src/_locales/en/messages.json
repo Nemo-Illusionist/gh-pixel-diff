@@ -393,10 +393,10 @@
   "optionsBeta": {
     "message": "Beta"
   },
-  "optionsAlign": {
-    "message": "stitch shifted rows"
+  "optionsBetaOn": {
+    "message": "stitch shifted rows, and do not count the edge"
   },
-  "optionsAlignHint": {
-    "message": "An element added at the top stops turning the whole frame red. On flat content the guess can miss and mark places where nothing changed."
+  "optionsBetaHint": {
+    "message": "An element added at the top stops turning the whole frame red, and the strip one version does not have stops counting. Both change the number in the caption; on flat content the stitching can also miss."
   }
 }

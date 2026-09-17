@@ -154,7 +154,7 @@ test('сдвинутые строки сшиваются, а не объявля
 
     const aligned = self.GhPixelDiff.diffPrepared(
       { width, height, dataBefore: before, dataAfter: after },
-      { align: true },
+      { beta: true },
     );
     // По умолчанию сшивания нет: это бета, и включают её в настройках.
     const plain = self.GhPixelDiff.diffPrepared({
@@ -270,11 +270,12 @@ test('без различий прямоугольника нет', async ({ pag
   expect(bounds).toBeNull();
 });
 
-test('край, которого нет у одной из версий, не считается изменением', async ({ page }) => {
+test('в бете край, которого нет у одной из версий, не считается изменением', async ({ page }) => {
   // Кадр стал короче — и недостающие строки, сравненные с пустотой, дают
   // сплошную полосу и десятки тысяч «изменившихся» пикселей. На настоящем
   // снимке это девять десятых всей находки: правка тонет в полосе, о которой
-  // и так сказано словами.
+  // и так сказано словами. Поправка пока под бетой, вместе со сшиванием:
+  // обе меняют само число в подписи.
   await page.addScriptTag({
     path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
   });
@@ -297,13 +298,16 @@ test('край, которого нет у одной из версий, не с
       return new ImageData(data, width, height);
     };
 
-    const diff = self.GhPixelDiff.diffPrepared({
-      width,
-      height,
-      dataBefore: fill(10),
-      dataAfter: fill(8),
-      common: { width, height: 8 },
-    });
+    const diff = self.GhPixelDiff.diffPrepared(
+      {
+        width,
+        height,
+        dataBefore: fill(10),
+        dataAfter: fill(8),
+        common: { width, height: 8 },
+      },
+      { beta: true },
+    );
 
     let half = 0;
     for (let i = 3; i < diff.mask.data.length; i += 4) if (diff.mask.data[i] === 128) half++;

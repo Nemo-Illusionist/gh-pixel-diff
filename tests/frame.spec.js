@@ -1331,7 +1331,7 @@ test('переехавшее вниз содержимое не краснеет
   // панель честно сообщает, что изменился весь кадр, — и этим не помогает.
   await page.setViewportSize({ width: 900, height: 700 });
   // Сшивание — бета: панель берёт его из настроек, а не включает сама.
-  await openFrame(page, svgShifted(), { align: true });
+  await openFrame(page, svgShifted(), { beta: true });
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);

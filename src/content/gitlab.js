@@ -96,13 +96,13 @@
   /** Цвета разницы: свои, если их поменяли в настройках. */
   const colors = { ...global.GhPixelDiff.COLORS };
   /** Сшивать ли сдвинутые строки — бета, по умолчанию выключено. */
-  const beta = { align: false };
+  const beta = { on: false };
 
   async function readColors() {
     try {
-      const stored = await api?.storage?.sync?.get({ colors: null, align: false });
+      const stored = await api?.storage?.sync?.get({ colors: null, beta: false });
       if (stored?.colors) Object.assign(colors, stored.colors);
-      beta.align = stored?.align === true;
+      beta.on = stored?.beta === true;
     } catch {
       // Хранилища нет — остаётся обычная пара и сравнение без сшивания.
     }
@@ -384,8 +384,8 @@
           session = await start();
         }
         const computed = session.ask
-          ? await session.ask({ type: 'diff', threshold, colors, align: beta.align })
-          : diffPrepared(session.prepared, { threshold, colors, align: beta.align });
+          ? await session.ask({ type: 'diff', threshold, colors, beta: beta.on })
+          : diffPrepared(session.prepared, { threshold, colors, beta: beta.on });
 
         result = { ...computed, before: session.prepared.before, after: session.prepared.after };
         // Из потока разница приходит буфером — в ImageData её собираем здесь.

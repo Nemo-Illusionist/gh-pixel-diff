@@ -667,7 +667,7 @@
     // можно как угодно. Кадр от этого не краснеет целиком, зато отметки
     // появляются там, где ничего не менялось, а это хуже честного «изменилось
     // всё». Поэтому пока включается руками, в настройках, и названо бетой.
-    const aligned = options.align
+    const aligned = options.beta
       ? alignRows(prepared.dataBefore.data, prepared.dataAfter.data, width, height)
       : null;
     const shifted =
@@ -714,7 +714,11 @@
     // правка тонет в полосе, которая и так названа словами в подписи.
     // Поэтому край отмечается вполсилы, как сглаживание: виден, но ни в счёт,
     // ни в границы, ни в места изменений не идёт.
-    const common = prepared.common ?? { width, height };
+    //
+    // Тоже под бетой, и вместе со сшиванием: обе поправки меняют само число в
+    // подписи, а число — то, на что смотрят в первую очередь. Пусть сначала
+    // поживут у тех, кто их включил нарочно.
+    const common = options.beta ? (prepared.common ?? { width, height }) : { width, height };
     let outside = 0;
     if (common.width < width || common.height < height) {
       for (let y = 0; y < height; y++) {

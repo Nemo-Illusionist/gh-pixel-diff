@@ -115,19 +115,20 @@ document.querySelector('#colors-reset').addEventListener('click', () => {
   saveColors();
 });
 
-// Сшивание сдвинутых строк. Пока бета: на однообразном содержимом — пустой
-// список, ровные поля — строки неразличимы, и сшить их можно как угодно.
-// Отметки тогда появляются там, где ничего не менялось.
-const align = document.querySelector('#align');
+// Бета: сшивание сдвинутых строк и край, которого у одной из версий нет.
+// Обе поправки меняют само число в подписи, а на однообразном содержимом —
+// пустой список, ровные поля — сшивание к тому же садится мимо. Поэтому
+// включается руками и одним переключателем на обе.
+const beta = document.querySelector('#beta');
 
-Promise.resolve(api.storage.sync.get({ align: false }))
-  .then(({ align: value }) => {
-    align.checked = value === true;
+Promise.resolve(api.storage.sync.get({ beta: false }))
+  .then(({ beta: value }) => {
+    beta.checked = value === true;
   })
   .catch(() => {});
 
-align.addEventListener('change', () => {
-  Promise.resolve(api.storage.sync.set({ align: align.checked })).catch(() => {});
+beta.addEventListener('change', () => {
+  Promise.resolve(api.storage.sync.set({ beta: beta.checked })).catch(() => {});
 });
 
 /**
