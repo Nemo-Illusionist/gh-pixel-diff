@@ -53,6 +53,24 @@
       <p id="empty" class="note" data-i18n="optionsEmpty"></p>
     </section>
 
+    <!-- Свой GitHub Enterprise. Устроено так же, как GitLab, но скрипт идёт и
+         во фреймы: картинки диффа GitHub рисует в отдельном окне. -->
+    <section id="enterprise">
+      <h2 data-i18n="optionsGithub"></h2>
+      <p class="note" data-i18n-rich="optionsGithubLead"></p>
+
+      <form id="add-github">
+        <input id="host-github" type="text" spellcheck="false" autocomplete="off"
+               data-i18n-placeholder="optionsGithubHint">
+        <button type="submit" data-i18n="optionsAdd"></button>
+      </form>
+
+      <p id="message-github" class="message" hidden></p>
+
+      <ul id="hosts-github" class="hosts"></ul>
+      <p id="empty-github" class="note" data-i18n="optionsEmpty"></p>
+    </section>
+
     <script src="../shared/locale.js"></script>
     <script src="../shared/page.js"></script>
     <script src="options.js"></script>

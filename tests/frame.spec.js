@@ -141,9 +141,22 @@ async function stubExtension(page, settings = {}, stored = {}) {
 
 /** Открывает заглушку фрейма с подменённой сетью и готовым API расширения. */
 async function openFrame(page, images = null, settings = {}, options = {}) {
-  await page.route('https://viewscreen.githubusercontent.com/**', (route) =>
-    route.fulfill({ contentType: 'text/html; charset=utf-8', body: read('fixtures/frame.html') }),
-  );
+  // Свой GitHub Enterprise рисует превью на своём же адресе — заглушка фрейма
+  // и файлы расширения должны находиться и там.
+  const origin = options.origin ?? 'https://viewscreen.githubusercontent.com';
+  await page.route(`${origin}/**`, (route) => {
+    const { pathname } = new URL(route.request().url());
+    if (pathname.startsWith('/__ext/')) {
+      return route.fulfill({
+        contentType: 'text/javascript',
+        body: read(`../src/${pathname.replace('/__ext/', '')}`),
+      });
+    }
+    return route.fulfill({
+      contentType: 'text/html; charset=utf-8',
+      body: read('fixtures/frame.html'),
+    });
+  });
   // raw.githubusercontent.com отдаёт картинки с доступом отовсюду — без этого
   // холст стал бы «грязным» и прочитать его было бы нельзя.
   for (const [url, name] of [[BEFORE, 'before.png'], [AFTER, 'after.png']]) {
@@ -186,7 +199,12 @@ async function openFrame(page, images = null, settings = {}, options = {}) {
     );
   }
 
-  await page.goto(images ? FRAME_URL_SVG : FRAME_URL);
+  await page.goto(
+    (images ? FRAME_URL_SVG : FRAME_URL).replace(
+      'https://viewscreen.githubusercontent.com',
+      origin,
+    ),
+  );
   return store;
 }
 
@@ -1173,6 +1191,25 @@ test('строки от другого языка не берутся', async ({
   await waitForResult(page);
 
   await expect(page.locator('.ghpd-meta')).toContainText('pixels');
+});
+
+test('на своём GitHub Enterprise режим встаёт так же', async ({ page }) => {
+  // Превью у своего сервера рисуется на его собственном адресе. Разметка и
+  // параметры — те же, что на github.com, значит и панель должна быть той же;
+  // сюда скрипт попадает по разрешению, выданному на странице настроек.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, null, {}, { origin: 'https://viewscreen.github.example.com' });
+  await injectExtension(page);
+
+  const modes = await page.evaluate(() =>
+    [...document.querySelectorAll('.js-view-mode-item')].map((item) => item.textContent.trim()),
+  );
+  expect(modes).toContain('Pixel Diff');
+
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  await expect(page.locator('.ghpd-meta')).toContainText(/pixels/);
 });
 
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {

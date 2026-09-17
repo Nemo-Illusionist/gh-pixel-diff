@@ -327,5 +327,14 @@
   },
   "optionsLanguageHint": {
     "message": "Касается окна, этой страницы и панели сравнения. Уже открытые страницы останутся на прежнем языке до перезагрузки."
+  },
+  "optionsGithub": {
+    "message": "Свой GitHub Enterprise"
+  },
+  "optionsGithubLead": {
+    "message": "Впишите адрес своего сервера — <code>github.example.com</code> — и режим появится в его просмотрщике картинок. Браузер спросит доступ к этому хосту и к его поддомену <code>viewscreen</code>, на котором GitHub рисует превью."
+  },
+  "optionsGithubHint": {
+    "message": "github.example.com"
   }
 }
