@@ -1,0 +1,358 @@
+{
+  "extName": {
+    "message": "GitHub Pixel Diff",
+    "description": "Название расширения в браузере и в магазине."
+  },
+  "extDescription": {
+    "message": "Adds a pixel-level image diff to the image viewer on GitHub and GitLab — next to 2-up, Swipe and Onion Skin."
+  },
+  "modeName": {
+    "message": "Pixel Diff"
+  },
+  "computing": {
+    "message": "Comparing…"
+  },
+  "failed": {
+    "message": "Failed: $reason$",
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
+  },
+  "loadFailed": {
+    "message": "could not load $url$",
+    "placeholders": {
+      "url": {
+        "content": "$1"
+      }
+    }
+  },
+  "emptyImage": {
+    "message": "the image has no size"
+  },
+  "pixelsOne": {
+    "message": "$count$ pixel",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "pixelsOther": {
+    "message": "$count$ pixels",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "shareOfFrame": {
+    "message": "$percent$% of the frame",
+    "placeholders": {
+      "percent": {
+        "content": "$1"
+      }
+    }
+  },
+  "showFullFrame": {
+    "message": "fragment $width$×$height$ — show the whole frame",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "showChangesOnly": {
+    "message": "show changes only"
+  },
+  "hideOutline": {
+    "message": "hide the outline"
+  },
+  "showOutline": {
+    "message": "show the outline"
+  },
+  "viewBefore": {
+    "message": "before"
+  },
+  "viewAfter": {
+    "message": "after"
+  },
+  "viewDiff": {
+    "message": "diff"
+  },
+  "viewOverlay": {
+    "message": "overlay",
+    "description": "Кнопка переключателя: разница поверх кадра «после»."
+  },
+  "viewTriple": {
+    "message": "3-up",
+    "description": "Кнопка переключателя: все три кадра сразу."
+  },
+  "popupShowViews": {
+    "message": "Show the before / after / diff switcher"
+  },
+  "sizeChanged": {
+    "message": "size changed: $before$ → $after$",
+    "placeholders": {
+      "before": {
+        "content": "$1"
+      },
+      "after": {
+        "content": "$2"
+      }
+    }
+  },
+  "rasterized": {
+    "message": "vector rendered at $width$×$height$",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "thresholdLabel": {
+    "message": "Comparison threshold"
+  },
+  "thresholdHint": {
+    "message": "Threshold: to the left even anti-aliasing counts, to the right only what the eye can see"
+  },
+  "popupLead": {
+    "message": "Adds a <b>Pixel Diff</b> mode next to 2-up, Swipe and Onion Skin — in GitHub's image viewer and in GitLab's."
+  },
+  "popupChecking": {
+    "message": "Checking access…"
+  },
+  "popupGranted": {
+    "message": "Access granted — the mode will appear in the image viewer."
+  },
+  "popupMissing": {
+    "message": "No access: without it the mode won't appear."
+  },
+  "popupGrant": {
+    "message": "Grant access"
+  },
+  "popupDenied": {
+    "message": "Access was not granted. You can also enable it in the extension settings, under \"Edit websites\"."
+  },
+  "popupCheckFailed": {
+    "message": "Could not check access: $reason$",
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupNote": {
+    "message": "Access is for <code>viewscreen.githubusercontent.com</code> and <code>gitlab.com</code>. Pages on <code>github.com</code> are never read."
+  },
+  "popupReport": {
+    "message": "Report a problem"
+  },
+  "siteTitle": {
+    "message": "GitHub Pixel Diff"
+  },
+  "siteTagline": {
+    "message": "Drop two images and see exactly what changed between them."
+  },
+  "siteRepository": {
+    "message": "Source on GitHub"
+  },
+  "siteDropHint": {
+    "message": "click, drop or paste an image"
+  },
+  "sitePasteHint": {
+    "message": "You can paste from the clipboard too: the first image becomes “before”, the second “after”."
+  },
+  "siteNeedBoth": {
+    "message": "Add both images — there is nothing to compare yet."
+  },
+  "siteNotImage": {
+    "message": "$name$ is not an image.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "sitePrivacy": {
+    "message": "Nothing leaves your browser. The images are not uploaded anywhere, and there is no server behind this page — it is a static file on GitHub Pages."
+  },
+  "sitePrivacyLink": {
+    "message": "Privacy policy"
+  },
+  "siteExtensionPitch": {
+    "message": "Want the same thing inside pull requests?"
+  },
+  "siteExtensionLink": {
+    "message": "Install the extension"
+  },
+  "siteSlotBefore": {
+    "message": "Before"
+  },
+  "siteSlotAfter": {
+    "message": "After"
+  },
+  "siteClear": {
+    "message": "Remove"
+  },
+  "siteClearAll": {
+    "message": "Start over"
+  },
+  "siteResult": {
+    "message": "Difference"
+  },
+  "popupSettings": {
+    "message": "Settings"
+  },
+  "optionsAccess": {
+    "message": "Access"
+  },
+  "optionsGitlab": {
+    "message": "Self-hosted GitLab"
+  },
+  "optionsGitlabLead": {
+    "message": "A GitLab of your own: add the host, and the browser asks for access to it."
+  },
+  "optionsHostHint": {
+    "message": "gitlab.example.com"
+  },
+  "optionsAdd": {
+    "message": "Add"
+  },
+  "optionsRemove": {
+    "message": "Remove"
+  },
+  "optionsEmpty": {
+    "message": "No instances added yet."
+  },
+  "optionsAdded": {
+    "message": "Added. Reload the tab if the instance is already open."
+  },
+  "optionsDenied": {
+    "message": "Access was not granted, so the mode will not appear there."
+  },
+  "optionsHostBad": {
+    "message": "That does not look like an address. Expected something like gitlab.example.com."
+  },
+  "optionsHostCovered": {
+    "message": "This address already works — no need to add it."
+  },
+  "optionsUnsupported": {
+    "message": "This browser cannot register content scripts at runtime, so instances of your own are unavailable here."
+  },
+  "optionsFailed": {
+    "message": "Something went wrong; the list above shows what the browser actually has."
+  },
+  "popupSiteShort": {
+    "message": "Two images of your own"
+  },
+  "optionsPanel": {
+    "message": "The panel"
+  },
+  "optionsShowViewsHint": {
+    "message": "Either version on its own, or all three side by side."
+  },
+  "zoomHint": {
+    "message": "Ctrl + scroll or pinch to zoom, drag to move, double-click to reset",
+    "description": "Подсказка на холсте: как пользоваться увеличением."
+  },
+  "zoomReset": {
+    "message": "zoom $level$ — reset",
+    "placeholders": {
+      "level": {
+        "content": "$1"
+      }
+    },
+    "description": "Кнопка в подписи: сбросить увеличение."
+  },
+  "clusterPosition": {
+    "message": "change $index$ of $total$",
+    "placeholders": {
+      "index": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    },
+    "description": "Подпись переходов между местами изменений."
+  },
+  "clusterPrev": {
+    "message": "previous change",
+    "description": "Кнопка «‹» в подписи."
+  },
+  "clusterNext": {
+    "message": "next change",
+    "description": "Кнопка «›» в подписи."
+  },
+  "saveFrame": {
+    "message": "save as PNG",
+    "description": "Кнопка в подписи: сохранить показанный кадр картинкой."
+  },
+  "saveFailed": {
+    "message": "the browser did not let the frame be saved",
+    "description": "Отказ сохранения: «грязный» холст или запрет загрузки."
+  },
+  "optionsLanguage": {
+    "message": "Language"
+  },
+  "optionsLanguageAuto": {
+    "message": "same as the browser"
+  },
+  "optionsLanguageHint": {
+    "message": "The window, this page and the panel. Open tabs change on reload."
+  },
+  "optionsColors": {
+    "message": "Colours of the difference"
+  },
+  "optionsColorsHint": {
+    "message": "Red gets lost on a red interface. Applies on the next page load."
+  },
+  "optionsColorLighter": {
+    "message": "got lighter"
+  },
+  "optionsColorsReset": {
+    "message": "back to the usual red"
+  },
+  "optionsGithub": {
+    "message": "A GitHub Enterprise of your own"
+  },
+  "optionsGithubLead": {
+    "message": "The host and its <code>viewscreen</code> subdomain, where GitHub draws the preview."
+  },
+  "optionsGithubHint": {
+    "message": "github.example.com"
+  },
+  "placesOne": {
+    "message": "$count$ changed place",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "placesOther": {
+    "message": "$count$ changed places",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "optionsColorMain": {
+    "message": "the difference"
+  },
+  "optionsDirection": {
+    "message": "colour says which way the edit went"
+  },
+  "optionsDirectionHint": {
+    "message": "The first colour marks what got darker, the second what got lighter."
+  }
+}

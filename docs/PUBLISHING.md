@@ -1,0 +1,355 @@
+# Публикация в магазины
+
+Памятка сопровождающему. Разовую настройку делают руками — магазины требуют
+живого человека с аккаунтом; дальше каждая новая версия уезжает на витрины
+сама, по тегу.
+
+## Как это работает после настройки
+
+```
+коммиты вида feat: / fix: в main
+       ↓
+release-please держит открытым пул-реквест «chore: release X.Y.Z»
+       ↓ Close → Reopen на нём, чтобы пошли проверки
+       ↓ мёрж
+тег и релиз создаются сами, дальше в том же запуске:
+       архивы на странице релизов
+       Chrome Web Store и Firefox Add-ons
+```
+
+Каждая витрина включается своей переменной репозитория. Пока переменная не
+задана, задание пропускается — это же спасает форки от попыток публиковать
+что-то от чужого имени.
+
+Если магазин отверг сборку и нужно повторить попытку без новой версии:
+**Actions → Магазины → Run workflow**, выбрать тег.
+
+---
+
+## Chrome Web Store
+
+### Разовая настройка
+
+**1. Аккаунт разработчика — 5 $ один раз, навсегда.**
+<https://chrome.google.com/webstore/devconsole>
+
+**2. Первая загрузка — руками.** Автоматика умеет обновлять товар, но не
+заводить его: у нового товара нет ни идентификатора, ни витрины.
+
+```
+npm run screenshots    # витринные кадры 1280×800 в docs/store
+npm run package        # архивы в dist/release
+```
+
+Загрузить `dist/release/gh-pixel-diff-chrome-*.zip`, заполнить витрину
+(тексты — в конце этой страницы), приложить кадры из `docs/store` и отправить
+на проверку. Первая проверка занимает от нескольких часов до пары недель.
+
+**3. Идентификатор товара.** Взять из адреса товара в консоли и положить в
+переменную репозитория `CHROME_EXTENSION_ID` (Settings → Secrets and variables
+→ Actions → Variables). Это не секрет: он виден в адресе магазина.
+
+**4. Ключи доступа к API.**
+
+1. <https://console.cloud.google.com> → создать проект.
+2. APIs & Services → Library → включить **Chrome Web Store API**.
+3. OAuth consent screen (в новой консоли — Google Auth Platform → **Branding**
+   и **Audience**) → тип **External**. Заполнить название и почту поддержки;
+   блок **App domain** оставить пустым — иначе Google потребует подтвердить
+   владение `github.com` через Search Console, а это невозможно.
+4. **Data Access** → добавить область `https://www.googleapis.com/auth/chromewebstore`.
+   Google кладёт её в **sensitive scopes** — не пугайтесь, проверку проходить
+   не нужно, см. ниже.
+5. **Branding** → заполнить **Application home page** и **Application privacy
+   policy link**, а в **Authorized domains** добавить домен, на котором они
+   лежат. Без ссылки на политику кнопка **Publish app** не разблокируется.
+
+   У нас это `nemo-illusionist.github.io` — страница
+   `.../gh-pixel-diff/privacy.html`. Домен на `github.io` Google принимает без
+   подтверждения через Search Console; `github.com` добавить не даст, поэтому
+   ссылаться на `docs/PRIVACY.md` в репозитории здесь нельзя.
+
+   Логотип на этой же странице лучше убрать: загруженный логотип требует
+   верификации бренда при переводе в production, а без него ничего подавать не
+   нужно.
+6. **Audience** → **Publish app**, чтобы перевести приложение в состояние
+   **In production**.
+
+   **Важно.** Пока приложение в **Testing**, Google протухает refresh-токен
+   через семь дней, и публикация начнёт падать через неделю после настройки.
+   Пока приложение в Testing, экран согласия пускает только тех, кто внесён в
+   **Test users** — включая владельца проекта. Это годится как временная мера,
+   но не как решение.
+
+   После перевода в production консоль повесит баннер «Your app requires
+   verification»: область магазина считается чувствительной. Подавать на
+   проверку не нужно — экран согласия у неверифицированного приложения
+   проходится через **Advanced → Go to … (unsafe)**, а согласие здесь даёт
+   один человек, владелец товара, один раз в жизни. Верификация нужна лишь для
+   того, чтобы этот экран не пугал посторонних; посторонних тут нет.
+7. **Clients** → **Create OAuth client** → тип **Desktop app**. Консоль
+   предложит скачать JSON с ключами — он и нужен дальше; посмотреть секрет
+   второй раз она не даст.
+8. Получить refresh-токен:
+
+   ```
+   npm run chrome:token -- ~/Downloads/client_secret_….json
+   ```
+
+   Скрипт поднимет слушателя на свободном порту, откроет согласие, поймает
+   код, обменяет его и сам положит все три секрета в репозиторий через `gh` —
+   значения не проходят через терминал и не оседают в истории команд.
+
+   Тем же руками, если понадобится разобраться. Способ через
+   `urn:ietf:wg:oauth:2.0:oob` больше не работает: Google закрыл его в 2022-м, и новый клиент ответит
+   `invalid_request`. Клиентам типа Desktop разрешён возврат на локальный
+   адрес — на нём и строится обмен:
+
+   ```
+   https://accounts.google.com/o/oauth2/auth?response_type=code&access_type=offline&prompt=consent&scope=https://www.googleapis.com/auth/chromewebstore&redirect_uri=http://localhost:8080&client_id=ВАШ_CLIENT_ID
+   ```
+
+   Браузер перекинет на `http://localhost:8080/?code=…` и покажет ошибку —
+   страницы там нет, код берётся из адресной строки. Дальше обменять его
+   (код одноразовый и живёт минуты):
+
+   ```
+   curl -s https://oauth2.googleapis.com/token \
+     -d client_id=ВАШ_CLIENT_ID \
+     -d client_secret=ВАШ_CLIENT_SECRET \
+     -d code=КОД_ИЗ_АДРЕСНОЙ_СТРОКИ \
+     -d grant_type=authorization_code \
+     -d redirect_uri=http://localhost:8080
+   ```
+
+   `prompt=consent` обязателен: без него Google при повторной выдаче вернёт
+   только access-токен, а `refresh_token` молча не пришлёт.
+
+**9. Секреты репозитория:** `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`,
+`CHROME_REFRESH_TOKEN`.
+
+**10. Обоснования разрешений.** Витрина → **Privacy practices**. Каждое
+разрешение из манифеста требует объяснения; готовые тексты — в разделе
+«Ответы на вопросы Chrome о разрешениях» в конце этой страницы.
+
+### Что делает автоматика
+
+Заливает архив новой версией товара и нажимает «опубликовать». Ответ
+`ITEM_PENDING_REVIEW` — нормальный: версия принята и ждёт проверки. Тексты и
+кадры витрины автоматика не трогает — их правят руками, и они переживают
+обновления.
+
+### Товар занят проверкой
+
+```
+"uploadState": "FAILURE",
+"itemError": [{ "error_detail": "The item cannot be updated now because it is
+in pending review, ready to publish, or deleted status." }]
+```
+
+Магазин держит один черновик на товар: пока предыдущая версия на проверке,
+новую он не примет. Флага «поверх» в API нет.
+
+Выхода два. Дождаться конца проверки и повторить выкладку без нового тега —
+**Actions → Магазины → Run workflow**, выбрать тег. Либо отменить проверку:
+консоль разработчика → страница товара → **⋮** → **Cancel review**; товар
+вернётся в черновик, и следующая выкладка пройдёт. Отменять можно до шести
+раз в сутки на издателя, и ускорения проверки это не даёт — только право
+подсунуть версию посвежее.
+
+Ошибка эта тем вероятнее, чем чаще релизы: проверка идёт часами, а тег можно
+поставить за минуту.
+
+Помнить об этом не нужно: раз в сутки задание **Догнать магазин**
+(`catchup.yml`) спрашивает у магазина версию черновика, сравнивает с последним
+тегом и, если магазин отстал, пробует выложить. Занятый проверкой товар оно
+считает не ошибкой, а поводом зайти завтра, и не красит запуск в красное. AMO
+при этом не трогается: туда версия уезжает сразу, релизом, и второй раз ту же
+не примет.
+
+Заданию по расписанию GitHub засыпает через 60 дней без активности в
+репозитории — если релизов давно не было, первый же коммит его будит.
+
+---
+
+## Firefox Add-ons
+
+### Разовая настройка
+
+**1. Аккаунт — бесплатно.** <https://addons.mozilla.org/developers/>
+
+**2. Первая подача — руками.** Загрузить
+`dist/release/gh-pixel-diff-firefox-*.zip` как **listed** дополнение и
+заполнить витрину. Идентификатор дополнения зашит в сборку
+(`scripts/build.mjs`), поэтому дальше AMO узнаёт наши версии сам.
+
+Исходники отдельно прикладывать не нужно: код не минифицируется и не
+собирается — что в архиве, то и написано.
+
+**3. Ключи:** Manage API Keys → JWT issuer и JWT secret → секреты
+`AMO_API_KEY` и `AMO_API_SECRET`.
+
+**4. Включатель:** переменная репозитория `PUBLISH_AMO` = `true`.
+
+### Два предупреждения валидатора — так и задумано
+
+Отчёт AMO на каждую версию показывает две жёлтых строки: `strict_min_version`
+у нас 128, а `data_collection_permissions` читает Firefox 140 (на Android —
+142). Это предупреждение, не ошибка: ключ нужен витрине, а не браузеру, и
+старые Firefox просто пропустят незнакомое поле.
+
+Поднимать минимальную версию до 140 ради чистого отчёта не нужно — это
+обменяет две строки на всех, кто сидит на 128–139. Причина записана и в
+`scripts/build.mjs`, рядом с самим ключом.
+
+### Что делает автоматика
+
+`web-ext sign --channel listed` отправляет новую версию. Ждать подписи мы не
+просим (`--approval-timeout 0`): витринные дополнения проверяют люди, и это
+занимает от часов до суток. Задание зелёное — значит версия принята.
+
+---
+
+## Safari
+
+Остаётся ручным: App Store требует платного аккаунта Apple (99 $ в год) и
+проекта Xcode. Способ установки описан в README и в `SAFARI-INSTALL.txt`
+внутри архива.
+
+---
+
+---
+
+## Тексты витрины
+
+Одни и те же для обоих магазинов. Язык основной — английский.
+
+**Название**
+
+```
+GitHub Pixel Diff
+```
+
+**Краткое описание** (Chrome — до 132 знаков, AMO — до 250)
+
+```
+Adds a pixel-level image diff to the image viewer on GitHub and GitLab — next to 2-up, Swipe and Onion Skin.
+```
+
+**Полное описание**
+
+```
+GitHub and GitLab both show you two versions of an image. Neither shows you
+what changed between them.
+
+Pixel Diff adds a fourth mode next to 2-up, Swipe and Onion Skin — in GitHub's
+image viewer and in GitLab's merge requests. It compares the two images pixel
+by pixel, paints every difference red, and crops the result to the area that
+actually changed — so a three-pixel shift in a long screenshot is a
+three-pixel shift you can see, not a picture you have to hunt through.
+
+- A threshold slider: raise it to ignore compression noise, lower it to catch
+  everything.
+- Zoom and pan: Ctrl + scroll or a trackpad pinch, dragging to move. Magnified
+  pixels stay square, so a one-pixel shift is something you can look at.
+- Edits in different corners are separate places, and the caption walks between
+  them one at a time.
+- A pixel inspector: point at the frame and see which pixel that is and what
+  colour it was before and after.
+- Save what you are looking at as a PNG, ready for a comment or a ticket.
+- Before / after / diff / overlay, and three frames side by side, sharing one
+  scale and one crop.
+- Images that changed size are aligned and compared anyway.
+- SVG and other vector images are rasterised before comparison.
+- Works on the images the site has already loaded — nothing is uploaded
+  anywhere.
+- Yours to adjust on the settings page: the interface language, the colour of
+  the difference, and a second colour for telling darker edits from lighter
+  ones.
+- A GitLab or GitHub Enterprise of your own: add its address on the settings
+  page, grant access, and the mode appears in that instance too.
+- No merge request at hand? Two images of your own compare the same way at
+  https://nemo-illusionist.github.io/gh-pixel-diff/
+
+The comparison runs in your browser, in a background thread. The extension has
+no server, collects nothing, and sends nothing.
+
+Open source: https://github.com/Nemo-Illusionist/gh-pixel-diff
+```
+
+**Категория:** Developer Tools (Chrome) · Developer tools (AMO)
+
+**Политика конфиденциальности:**
+`https://nemo-illusionist.github.io/gh-pixel-diff/privacy.html`
+
+Именно страница на сайте, а не `docs/PRIVACY.md` в репозитории: на неё же
+ссылается экран согласия Google, а `github.com` в Authorized domains не
+добавить.
+
+### Ответы на вопросы Chrome о разрешениях
+
+Их спрашивают на вкладке Privacy, и без них товар не отправить.
+
+**Single purpose**
+
+```
+Comparing the two images shown in an image diff viewer on GitHub and GitLab,
+pixel by pixel, and displaying the difference.
+```
+
+**storage**
+
+```
+Stores the user's own settings: the comparison threshold, whether the outline
+around changes is drawn, which frame was shown last, and whether the
+before/after/diff switcher is visible. No user data of any kind is stored.
+```
+
+**Host permissions — https://viewscreen.githubusercontent.com/\*, https://gitlab.com/\***
+
+```
+GitHub renders image diffs inside a frame on viewscreen.githubusercontent.com,
+and GitLab renders them on gitlab.com itself. The extension adds its mode to
+that viewer and reads the two images already loaded there in order to compare
+them. It has no access to github.com pages at all.
+```
+
+**scripting**
+
+```
+Self-hosted GitLab and GitHub Enterprise live at addresses that cannot be
+known in advance and so cannot be listed in the manifest. When the user adds
+such an address on the settings page and grants access to it, the extension
+registers its own, already shipped content script for that one host with
+scripting.registerContentScripts. No code is fetched or injected from
+anywhere else, and nothing runs on hosts the user has not added.
+```
+
+**Broad host permissions — необязательные, `*://*/*`**
+
+```
+Never requested on install, and never requested by the extension on its own.
+The pattern exists only so that the user can name their own GitLab or GitHub
+Enterprise server on the settings page; the browser then asks about that
+single host. Access is revoked from the same page or from the browser's
+extension settings.
+```
+
+**Web accessible resources — `*://*/*`**
+
+```
+Three files — the comparison library, the comparison code and the worker
+entry point — are readable by pages so that the extension can assemble its
+comparison worker there. A worker cannot be created from an extension URL on
+a third-party page, so the sources are fetched and joined into a blob. The
+pattern is open because the user may add their own GitLab or GitHub
+Enterprise host, whose address cannot be known in advance; in Chrome the
+resources are served under a dynamic URL, so pages cannot use them to detect
+the extension.
+```
+
+**Remote code:** No — everything the extension executes ships inside the
+package. The comparison thread is built from files bundled with the extension.
+
+**Data usage:** ни одна из категорий не отмечается; все три подтверждения
+внизу страницы — да.

@@ -1,0 +1,75 @@
+# Релиз: версия, тег, архивы, магазины.
+#
+# Версию считает release-please по заголовкам коммитов и держит открытым
+# пул-реквест с ней; слияние этого пул-реквеста создаёт тег и релиз. Всё
+# остальное — в том же запуске: события, порождённые GITHUB_TOKEN, чужие
+# workflow не запускают, поэтому «по тегу» здесь ничего ждать нельзя.
+name: Релиз
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version:
+    name: Релизный пул-реквест
+    runs-on: ubuntu-latest
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # Пул-реквест создаёт штатный GITHUB_TOKEN, и порождённое им событие
+      # не запускает проверки. А main их требует, поэтому на релизном
+      # пул-реквесте нужно один раз нажать Close и сразу Reopen: событие
+      # породит человек, и проверки пойдут как на любом другом.
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  archives:
+    name: Архивы
+    needs: version
+    if: needs.version.outputs.created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: scripts/package.sh
+
+      - name: Приложить к релизу
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" dist/release/*.zip dist/release/checksums.txt
+
+          # Заметки собраны из заголовков коммитов; как это ставить — там нет,
+          # а вопрос первый. Дописываем в конец, не трогая собранное.
+          gh release view "$TAG" --json body -q .body > notes.md
+          printf '\n' >> notes.md
+          cat .github/release-install.md >> notes.md
+          gh release edit "$TAG" --notes-file notes.md
+
+  stores:
+    name: Магазины
+    needs: [version, archives]
+    if: needs.version.outputs.created == 'true'
+    uses: ./.github/workflows/publish.yml
+    with:
+      ref: ${{ needs.version.outputs.tag }}
+    secrets: inherit

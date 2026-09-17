@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>GitHub Pixel Diff</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <h1>GitHub Pixel Diff</h1>
+    <p class="lead" data-i18n-rich="popupLead"></p>
+
+    <section>
+      <h2 data-i18n="optionsLanguage"></h2>
+      <label class="setting">
+        <!-- Список наполняется из общего перечня языков: переписанный руками
+             разойдётся с локалями на первой же новой. -->
+        <select id="language"></select>
+      </label>
+      <p class="note" data-i18n="optionsLanguageHint"></p>
+    </section>
+
+    <section>
+      <h2 data-i18n="optionsAccess"></h2>
+      <p id="status" class="status status-checking" data-i18n="popupChecking"></p>
+      <button id="grant" type="button" hidden data-i18n="popupGrant"></button>
+      <p class="note" data-i18n-rich="popupNote"></p>
+    </section>
+
+    <section>
+      <h2 data-i18n="optionsColors"></h2>
+      <div class="colors">
+        <label class="setting">
+          <input id="color-changed" type="color" value="#d1242f">
+          <span data-i18n="optionsColorMain"></span>
+        </label>
+        <button id="colors-reset" type="button" data-i18n="optionsColorsReset"></button>
+      </div>
+      <p class="note" data-i18n="optionsColorsHint"></p>
+
+      <!-- Второй цвет появляется только вместе с направлением: без него он
+           ничего не значит и только путает. -->
+      <label class="setting">
+        <input id="direction" type="checkbox">
+        <span data-i18n="optionsDirection"></span>
+      </label>
+      <div class="colors" id="direction-colors" hidden>
+        <label class="setting">
+          <input id="color-lighter" type="color" value="#0969da">
+          <span data-i18n="optionsColorLighter"></span>
+        </label>
+      </div>
+      <p class="note" data-i18n="optionsDirectionHint"></p>
+    </section>
+
+    <section>
+      <h2 data-i18n="optionsPanel"></h2>
+      <label class="setting">
+        <input id="show-views" type="checkbox" checked>
+        <span data-i18n="popupShowViews"></span>
+      </label>
+      <p class="note" data-i18n="optionsShowViewsHint"></p>
+    </section>
+
+    <!-- Свои серверы GitLab. Их адреса в манифесте не назовёшь, поэтому
+         разрешение и регистрация скрипта случаются здесь, по нажатию. -->
+    <section id="instances">
+      <h2 data-i18n="optionsGitlab"></h2>
+      <p class="note" data-i18n-rich="optionsGitlabLead"></p>
+
+      <form id="add">
+        <input id="host" type="text" spellcheck="false" autocomplete="off"
+               data-i18n-placeholder="optionsHostHint">
+        <button type="submit" data-i18n="optionsAdd"></button>
+      </form>
+
+      <p id="message" class="message" hidden></p>
+
+      <ul id="hosts" class="hosts"></ul>
+      <p id="empty" class="note" data-i18n="optionsEmpty"></p>
+    </section>
+
+    <!-- Свой GitHub Enterprise. Устроено так же, как GitLab, но скрипт идёт и
+         во фреймы: картинки диффа GitHub рисует в отдельном окне. -->
+    <section id="enterprise">
+      <h2 data-i18n="optionsGithub"></h2>
+      <p class="note" data-i18n-rich="optionsGithubLead"></p>
+
+      <form id="add-github">
+        <input id="host-github" type="text" spellcheck="false" autocomplete="off"
+               data-i18n-placeholder="optionsGithubHint">
+        <button type="submit" data-i18n="optionsAdd"></button>
+      </form>
+
+      <p id="message-github" class="message" hidden></p>
+
+      <ul id="hosts-github" class="hosts"></ul>
+      <p id="empty-github" class="note" data-i18n="optionsEmpty"></p>
+    </section>
+
+    <script src="../shared/locale.js"></script>
+    <script src="../shared/page.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

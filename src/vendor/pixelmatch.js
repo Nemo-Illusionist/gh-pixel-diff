@@ -1,10 +1,21 @@
 // pixelmatch 7.2.0 — https://github.com/mapbox/pixelmatch
 // ISC License, Copyright (c) 2025 Mapbox. Полный текст: vendor/pixelmatch.LICENSE
 // Вендорится как обычный скрипт: content scripts в MV3 не умеют ES-модули,
-// а тянуть сборщик ради одного файла не за чем. Единственная правка —
-// снят `export default` и добавлено присваивание в конце.
+// а тянуть сборщик ради одного файла не за чем.
+//
+// Правок здесь две, и обе надо переносить при обновлении:
+//   1. снят `export default`, вместо него присваивание в конце файла;
+//   2. добавлен параметр `aaMask`: отметки сглаживания рисуются и в маске.
+//      Своя маска библиотеке не нужна — она и задумана как «только явные
+//      отличия», — но нам отметки сглаживания говорят «здесь сдвинулось на
+//      полпикселя», и терять их вместе с переходом на маску было незачем.
+//      Рисуются они вполсилы по прозрачности, чтобы отличаться от находок и
+//      не попадать в подсчёт изменившегося.
 (function (global) {
 'use strict';
+
+/** Насколько бледнее находок отметки сглаживания: они не изменения. */
+const AA_MASK_ALPHA = 128;
 
 /**
  * Compare two equally sized images, pixel by pixel.
@@ -23,6 +34,7 @@
  * @param {[number, number, number]} [options.diffColor=[255, 0, 0]] Color of different pixels in diff output.
  * @param {[number, number, number]} [options.diffColorAlt=options.diffColor] Whether to detect dark on light differences between img1 and img2 and set an alternative color to differentiate between the two.
  * @param {boolean} [options.diffMask=false] Draw the diff over a transparent background (a mask).
+ * @param {boolean} [options.aaMask=false] Draw anti-aliased pixels into the mask too, half-transparent.
  * @param {boolean} [options.checkerboard=true] Whether to blend semi-transparent pixels against a checkerboard pattern (true) or plain white (false) when comparing.
  *
  * @return {number} The number of mismatched pixels.
@@ -34,7 +46,7 @@ function pixelmatch(img1, img2, output, width, height, options = {}) {
         aaColor = [255, 255, 0],
         diffColor = [255, 0, 0],
         checkerboard = true,
-        includeAA, diffColorAlt, diffMask
+        includeAA, diffColorAlt, diffMask, aaMask = false
     } = options;
 
     if (!isPixelData(img1) || !isPixelData(img2) || (output && !isPixelData(output)))
@@ -82,8 +94,9 @@ function pixelmatch(img1, img2, output, width, height, options = {}) {
             const isExcludedAA = !includeAA && (antialiased(img1, x, y, width, height, a32, b32, checkerboard) || antialiased(img2, x, y, width, height, b32, a32, checkerboard));
             if (isExcludedAA) {
                 // one of the pixels is anti-aliasing; draw as yellow and do not count as difference
-                // note that we do not include such pixels in a mask
+                // note that we do not include such pixels in a mask unless aaMask is on
                 if (output && !diffMask) drawPixel(output, pos, aaR, aaG, aaB);
+                else if (output && aaMask) drawPixel(output, pos, aaR, aaG, aaB, AA_MASK_ALPHA);
 
             } else {
                 // found substantial difference not caused by anti-aliasing; draw it as such
@@ -303,11 +316,11 @@ function brightnessDelta(img, k, m, r1, g1, b1, a1, checkerboard) {
  * @param {number} g
  * @param {number} b
  */
-function drawPixel(output, pos, r, g, b) {
+function drawPixel(output, pos, r, g, b, a = 255) {
     output[pos] = r;
     output[pos + 1] = g;
     output[pos + 2] = b;
-    output[pos + 3] = 255;
+    output[pos + 3] = a;
 }
 
 /**

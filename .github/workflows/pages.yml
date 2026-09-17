@@ -1,0 +1,60 @@
+# Отдельная страница: собирается из тех же файлов, что и расширение, и
+# выкладывается на GitHub Pages.
+#
+# Отдельно от релиза намеренно: страница — не версия расширения, ей незачем
+# ждать тега. Что слито в main, то и открыто.
+name: Страница
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'src/content/**'
+      - 'src/vendor/**'
+      - 'src/_locales/**'
+      - 'src/icons/icon.svg'
+      - 'scripts/build-site.mjs'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Разворачиваем по одной за раз, не обрывая начатую: незачем оставлять
+# страницу наполовину выложенной.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Сборка
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: node scripts/build-site.mjs
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/site
+
+  deploy:
+    name: Публикация
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

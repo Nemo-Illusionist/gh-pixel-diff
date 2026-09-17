@@ -1,22 +1,90 @@
 {
   "manifest_version": 3,
-  "name": "GitHub Pixel Diff",
-  "version": "0.1.0",
-  "description": "Показывает попиксельную разницу изображений прямо в diff'е пул-реквеста на GitHub.",
+  "name": "__MSG_extName__",
+  "version": "0.13.1",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": [],
-  "host_permissions": ["https://github.com/*"],
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://viewscreen.githubusercontent.com/*",
+    "https://gitlab.com/*"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://github.com/*"],
-      "js": ["vendor/pixelmatch.js", "content/compare.js", "content/ui.js", "content/main.js"],
-      "css": ["content/styles.css"],
-      "run_at": "document_idle"
+      "matches": [
+        "https://viewscreen.githubusercontent.com/diff/img*"
+      ],
+      "js": [
+        "vendor/pixelmatch.js",
+        "shared/locale.js",
+        "content/i18n.js",
+        "content/compare.js",
+        "content/render.js",
+        "content/worker-host.js",
+        "content/frame.js"
+      ],
+      "css": [
+        "content/panel.css",
+        "content/frame.css"
+      ],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://gitlab.com/*"
+      ],
+      "js": [
+        "vendor/pixelmatch.js",
+        "shared/locale.js",
+        "content/i18n.js",
+        "content/compare.js",
+        "content/render.js",
+        "content/worker-host.js",
+        "content/gitlab.js"
+      ],
+      "css": [
+        "content/panel.css",
+        "content/gitlab.css"
+      ],
+      "run_at": "document_end"
     }
-  ]
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "vendor/pixelmatch.js",
+        "content/compare.js",
+        "content/worker.js"
+      ],
+      "matches": [
+        "*://*/*"
+      ],
+      "use_dynamic_url": true
+    }
+  ],
+  "action": {
+    "default_title": "__MSG_extName__",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  }
 }

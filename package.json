@@ -1,16 +1,22 @@
 {
   "name": "gh-pixel-diff",
   "private": true,
-  "version": "0.1.0",
-  "description": "Попиксельная разница изображений в diff'е пул-реквеста на GitHub",
+  "version": "0.13.1",
+  "description": "Pixel-level image diff for GitHub pull requests",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:safari": "scripts/build-safari.sh",
+    "build:site": "node scripts/build-site.mjs",
+    "chrome:token": "node scripts/chrome-token.mjs",
+    "icons": "scripts/icons.sh",
+    "install:macos": "scripts/install-macos.sh",
+    "package": "scripts/package.sh",
     "run:ios": "scripts/run-ios-sim.sh",
+    "screenshots": "scripts/screenshots.sh",
     "test": "scripts/test.sh"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1"
+    "@playwright/test": "1.63.0"
   }
 }

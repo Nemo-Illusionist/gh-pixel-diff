@@ -1,0 +1,390 @@
+{
+  "extName": {
+    "message": "GitHub Pixel Diff",
+    "description": "Название расширения в браузере и в магазине."
+  },
+  "extDescription": {
+    "message": "Добавляет попиксельное сравнение картинок в просмотрщик GitHub и GitLab — рядом с 2-up, Swipe и Onion Skin."
+  },
+  "modeName": {
+    "message": "Pixel Diff"
+  },
+  "computing": {
+    "message": "Считаю…"
+  },
+  "failed": {
+    "message": "Не вышло: $reason$",
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
+  },
+  "loadFailed": {
+    "message": "не удалось загрузить $url$",
+    "placeholders": {
+      "url": {
+        "content": "$1"
+      }
+    }
+  },
+  "emptyImage": {
+    "message": "у картинки нулевой размер"
+  },
+  "pixelsOne": {
+    "message": "$count$ пиксель",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "pixelsFew": {
+    "message": "$count$ пикселя",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "pixelsMany": {
+    "message": "$count$ пикселей",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "pixelsOther": {
+    "message": "$count$ пикселей",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "shareOfFrame": {
+    "message": "$percent$% кадра",
+    "placeholders": {
+      "percent": {
+        "content": "$1"
+      }
+    }
+  },
+  "showFullFrame": {
+    "message": "фрагмент $width$×$height$ — показать кадр целиком",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "showChangesOnly": {
+    "message": "показать только изменения"
+  },
+  "hideOutline": {
+    "message": "убрать рамку"
+  },
+  "showOutline": {
+    "message": "вернуть рамку"
+  },
+  "viewBefore": {
+    "message": "до"
+  },
+  "viewAfter": {
+    "message": "после"
+  },
+  "viewDiff": {
+    "message": "разница"
+  },
+  "viewOverlay": {
+    "message": "наложение",
+    "description": "Кнопка переключателя: разница поверх кадра «после»."
+  },
+  "viewTriple": {
+    "message": "3-up",
+    "description": "Кнопка переключателя: все три кадра сразу."
+  },
+  "popupShowViews": {
+    "message": "Показывать переключатель «до / после / разница»"
+  },
+  "sizeChanged": {
+    "message": "размер изменился: $before$ → $after$",
+    "placeholders": {
+      "before": {
+        "content": "$1"
+      },
+      "after": {
+        "content": "$2"
+      }
+    }
+  },
+  "rasterized": {
+    "message": "вектор отрисован в $width$×$height$",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "thresholdLabel": {
+    "message": "Порог сравнения"
+  },
+  "thresholdHint": {
+    "message": "Порог: слева ловятся даже отличия в сглаживании, справа — только заметные глазу"
+  },
+  "popupLead": {
+    "message": "Добавляет режим <b>Pixel Diff</b> рядом с 2-up, Swipe и Onion Skin — в просмотрщике картинок GitHub и GitLab."
+  },
+  "popupChecking": {
+    "message": "Проверяю доступ…"
+  },
+  "popupGranted": {
+    "message": "Доступ есть — режим появится в панели просмотра картинок."
+  },
+  "popupMissing": {
+    "message": "Доступа нет: без него режим не появится."
+  },
+  "popupGrant": {
+    "message": "Разрешить доступ"
+  },
+  "popupDenied": {
+    "message": "Доступ не выдан. Его же можно включить в настройках расширения, кнопкой «Изменить сайты»."
+  },
+  "popupCheckFailed": {
+    "message": "Не удалось проверить доступ: $reason$",
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupNote": {
+    "message": "Доступ нужен к <code>viewscreen.githubusercontent.com</code> и <code>gitlab.com</code>. Страницы <code>github.com</code> расширение не читает."
+  },
+  "popupReport": {
+    "message": "Сообщить о проблеме"
+  },
+  "siteTitle": {
+    "message": "GitHub Pixel Diff"
+  },
+  "siteTagline": {
+    "message": "Положите сюда две картинки и увидите, что именно между ними изменилось."
+  },
+  "siteRepository": {
+    "message": "Исходный код на GitHub"
+  },
+  "siteDropHint": {
+    "message": "нажмите, перетащите или вставьте картинку"
+  },
+  "sitePasteHint": {
+    "message": "Можно вставлять из буфера обмена: первая картинка станет «до», вторая — «после»."
+  },
+  "siteNeedBoth": {
+    "message": "Добавьте обе картинки — сравнивать пока нечего."
+  },
+  "siteNotImage": {
+    "message": "$name$ — не картинка.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "sitePrivacy": {
+    "message": "Ничего не покидает браузер. Картинки никуда не загружаются, и за этой страницей нет сервера — это статический файл на GitHub Pages."
+  },
+  "sitePrivacyLink": {
+    "message": "Политика приватности"
+  },
+  "siteExtensionPitch": {
+    "message": "Хотите то же самое прямо в пул-реквестах?"
+  },
+  "siteExtensionLink": {
+    "message": "Поставьте расширение"
+  },
+  "siteSlotBefore": {
+    "message": "Было"
+  },
+  "siteSlotAfter": {
+    "message": "Стало"
+  },
+  "siteClear": {
+    "message": "Убрать"
+  },
+  "siteClearAll": {
+    "message": "Начать заново"
+  },
+  "siteResult": {
+    "message": "Разница"
+  },
+  "popupSettings": {
+    "message": "Настройки"
+  },
+  "optionsAccess": {
+    "message": "Доступ"
+  },
+  "optionsGitlab": {
+    "message": "Свои серверы GitLab"
+  },
+  "optionsGitlabLead": {
+    "message": "Свой сервер GitLab: впишите хост, браузер спросит про доступ к нему."
+  },
+  "optionsHostHint": {
+    "message": "gitlab.example.com"
+  },
+  "optionsAdd": {
+    "message": "Добавить"
+  },
+  "optionsRemove": {
+    "message": "Убрать"
+  },
+  "optionsEmpty": {
+    "message": "Пока ни одного."
+  },
+  "optionsAdded": {
+    "message": "Добавлено. Если сервер уже открыт, перезагрузите вкладку."
+  },
+  "optionsDenied": {
+    "message": "Доступ не выдан — режим там не появится."
+  },
+  "optionsHostBad": {
+    "message": "Это не похоже на адрес. Ожидается что-то вроде gitlab.example.com."
+  },
+  "optionsHostCovered": {
+    "message": "Этот адрес и так работает — добавлять его не нужно."
+  },
+  "optionsUnsupported": {
+    "message": "Этот браузер не умеет регистрировать скрипты на лету, поэтому свои серверы здесь недоступны."
+  },
+  "optionsFailed": {
+    "message": "Что-то не вышло; в списке выше — то, что на самом деле есть у браузера."
+  },
+  "popupSiteShort": {
+    "message": "Свои картинки"
+  },
+  "optionsPanel": {
+    "message": "Панель"
+  },
+  "optionsShowViewsHint": {
+    "message": "Любая из версий поодиночке или все три рядом."
+  },
+  "zoomHint": {
+    "message": "Ctrl + колесо или щипок — увеличить, тянуть — двигать, двойной щелчок — сброс",
+    "description": "Подсказка на холсте: как пользоваться увеличением."
+  },
+  "zoomReset": {
+    "message": "увеличение $level$ — сброс",
+    "placeholders": {
+      "level": {
+        "content": "$1"
+      }
+    },
+    "description": "Кнопка в подписи: сбросить увеличение."
+  },
+  "clusterPosition": {
+    "message": "изменение $index$ из $total$",
+    "placeholders": {
+      "index": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    },
+    "description": "Подпись переходов между местами изменений."
+  },
+  "clusterPrev": {
+    "message": "предыдущее изменение",
+    "description": "Кнопка «‹» в подписи."
+  },
+  "clusterNext": {
+    "message": "следующее изменение",
+    "description": "Кнопка «›» в подписи."
+  },
+  "saveFrame": {
+    "message": "сохранить в PNG",
+    "description": "Кнопка в подписи: сохранить показанный кадр картинкой."
+  },
+  "saveFailed": {
+    "message": "браузер не дал сохранить кадр",
+    "description": "Отказ сохранения: «грязный» холст или запрет загрузки."
+  },
+  "optionsLanguage": {
+    "message": "Язык"
+  },
+  "optionsLanguageAuto": {
+    "message": "как в браузере"
+  },
+  "optionsLanguageHint": {
+    "message": "Окно, эта страница и панель. Открытые вкладки — после перезагрузки."
+  },
+  "optionsColors": {
+    "message": "Цвета разницы"
+  },
+  "optionsColorsHint": {
+    "message": "Красное теряется на красном интерфейсе. Применится со следующей загрузки."
+  },
+  "optionsColorLighter": {
+    "message": "стало светлее"
+  },
+  "optionsColorsReset": {
+    "message": "вернуть обычный красный"
+  },
+  "optionsGithub": {
+    "message": "Свой GitHub Enterprise"
+  },
+  "optionsGithubLead": {
+    "message": "Хост и его поддомен <code>viewscreen</code>, на котором GitHub рисует превью."
+  },
+  "optionsGithubHint": {
+    "message": "github.example.com"
+  },
+  "placesOne": {
+    "message": "$count$ место изменений",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "placesFew": {
+    "message": "$count$ места изменений",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "placesMany": {
+    "message": "$count$ мест изменений",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "placesOther": {
+    "message": "$count$ мест изменений",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "optionsColorMain": {
+    "message": "разница"
+  },
+  "optionsDirection": {
+    "message": "цветом показывать направление правки"
+  },
+  "optionsDirectionHint": {
+    "message": "Первым цветом отмечено то, что потемнело, вторым — то, что посветлело."
+  }
+}

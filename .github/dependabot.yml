@@ -1,0 +1,12 @@
+# Версии здесь прибиты гвоздями — образ Playwright, actions, playwright в npm —
+# и следить за ними руками незачем.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
