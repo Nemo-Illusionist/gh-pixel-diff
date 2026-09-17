@@ -297,7 +297,7 @@
       const focus = clusters.length > 1 && focusIndex >= 0 ? clusters[focusIndex] : null;
 
       const box = single
-        ? drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus })
+        ? drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus, colors })
         : drawTriple(focus);
       fitCanvas(canvas);
       canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
@@ -362,7 +362,7 @@
     const drawTriple = (focus) => {
       let box = null;
       for (const [name, target] of tripleCanvases) {
-        box = drawCrop(target, full, result, { frame: name, cropped, outline, focus });
+        box = drawCrop(target, full, result, { frame: name, cropped, outline, focus, colors });
       }
       return box;
     };
