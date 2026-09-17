@@ -36,7 +36,10 @@
         global.postMessage({ type: 'error', id: data.id, message: 'no images' });
         return;
       }
-      const result = diffPrepared(prepared, { threshold: data.threshold });
+      const result = diffPrepared(prepared, {
+        threshold: data.threshold,
+        colors: data.colors,
+      });
       global.postMessage(
         {
           type: 'diff',

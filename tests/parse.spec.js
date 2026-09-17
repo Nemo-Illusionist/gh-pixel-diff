@@ -296,6 +296,46 @@ test('цвет разницы говорит, потемнело или посв
   expect(colors.lighter).toEqual([9, 105, 218, 255]);
 });
 
+test('цвета разницы можно заменить своими', async ({ page }) => {
+  // Красное теряется на красном интерфейсе, а красный с синим различает не
+  // всякий дальтонизм. Мусор вместо цвета не должен обесцвечивать разницу:
+  // сравнение без цвета — это сравнение без ответа.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const painted = await page.evaluate(() => {
+    const width = 2;
+    const height = 1;
+    const prepared = {
+      width,
+      height,
+      dataBefore: new ImageData(new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 255]), width, height),
+      dataAfter: new ImageData(new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]), width, height),
+    };
+    const at = (result, x) => [...result.mask.data.slice(x * 4, x * 4 + 3)];
+
+    const own = self.GhPixelDiff.diffPrepared(prepared, {
+      colors: { darker: '#ff8800', lighter: '#00aa44' },
+    });
+    const broken = self.GhPixelDiff.diffPrepared(prepared, {
+      colors: { darker: 'оранжевый', lighter: '' },
+    });
+    return {
+      darker: at(own, 0),
+      lighter: at(own, 1),
+      brokenDarker: at(broken, 0),
+      brokenLighter: at(broken, 1),
+    };
+  });
+
+  expect(painted.darker).toEqual([255, 136, 0]);
+  expect(painted.lighter).toEqual([0, 170, 68]);
+  // Непонятное значение — обычная пара, а не пустота.
+  expect(painted.brokenDarker).toEqual([209, 36, 47]);
+  expect(painted.brokenLighter).toEqual([9, 105, 218]);
+});
+
 test('совпавшие пиксели в маске прозрачны', async ({ page }) => {
   // Маска — только изменения: подложку под них выбирает тот, кто рисует.
   await page.addScriptTag({

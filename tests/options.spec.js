@@ -225,6 +225,23 @@ test('возврат к языку браузера убирает и строк
     .toBeNull();
 });
 
+test('цвета разницы выбираются и возвращаются к обычным', async ({ page }) => {
+  await openOptions(page);
+
+  await page.fill('#color-darker', '#ff8800');
+  await page.dispatchEvent('#color-darker', 'change');
+
+  await expect
+    .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.darker))
+    .toBe('#ff8800');
+
+  await page.click('#colors-reset');
+
+  await expect(page.locator('#color-darker')).toHaveValue('#d1242f');
+  await expect
+    .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.darker))
+    .toBe('#d1242f');
+});
 
 test('свой GitHub Enterprise просит и хост, и адрес превью', async ({ page }) => {
   // Превью картинок GitHub рисует в отдельном окне: при изоляции поддоменов

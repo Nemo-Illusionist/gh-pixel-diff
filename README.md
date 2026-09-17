@@ -40,7 +40,11 @@ runs in your browser.
   sees" — styled like the Onion Skin one.
 - The colour says which way the edit went: red where the picture got darker —
   text or an element appeared — and blue where it got lighter. One red for
-  everything made "added" and "removed" look the same.
+  everything made "added" and "removed" look the same. **The pair can be
+  changed** on the settings page: red gets lost on a red interface, and red
+  with blue is not told apart by every kind of colour blindness. The legend
+  under the frame shows swatches, not colour names, so it stays true whatever
+  you pick.
 - **Zoom and pan**: Ctrl + scroll (or a trackpad pinch) magnifies the frame,
   dragging moves it, a double click jumps in and back, and the keyboard does the
   same with `+`, `-`, `0` and the arrows. Magnified pixels stay square rather

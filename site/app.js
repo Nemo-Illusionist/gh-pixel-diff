@@ -6,8 +6,8 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
-    global.GhPixelDiffRender;
+  const { attachProbe, attachZoom, colorLegend, createZoom, drawCrop, frameFileName, saveCanvas,
+    zoomLabel } = global.GhPixelDiffRender;
   const { t, plural, locale } = global.GhPixelDiffI18n;
 
   const FRAMES = {
@@ -165,7 +165,8 @@
     );
     // Цвет теперь значит направление правки, и сказать об этом надо там
     // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
-    if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
+    // Настроек у страницы нет — здесь всегда обычная пара цветов.
+    if (result.changed > 0) meta.append(' · ', colorLegend(global.GhPixelDiff.COLORS));
     if (clusters.length > 1) {
       meta.append(
         ' · ',

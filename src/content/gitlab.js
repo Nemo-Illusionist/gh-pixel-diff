@@ -13,8 +13,8 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
-    global.GhPixelDiffRender;
+  const { attachProbe, attachZoom, colorLegend, createZoom, drawCrop, frameFileName, saveCanvas,
+    zoomLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
   const { t, plural, locale } = global.GhPixelDiffI18n;
   const api = global.browser ?? global.chrome;
@@ -90,6 +90,18 @@
       return stored?.showViews ?? SHOW_VIEWS_DEFAULT;
     } catch {
       return SHOW_VIEWS_DEFAULT;
+    }
+  }
+
+  /** Цвета разницы: свои, если их поменяли в настройках. */
+  const colors = { ...global.GhPixelDiff.COLORS };
+
+  async function readColors() {
+    try {
+      const stored = await api?.storage?.sync?.get({ colors: null });
+      if (stored?.colors) Object.assign(colors, stored.colors);
+    } catch {
+      // Хранилища нет — остаётся обычная пара.
     }
   }
 
@@ -251,7 +263,7 @@
       );
       // Цвет теперь значит направление правки, и сказать об этом надо там
       // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
-      if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
+      if (result.changed > 0) meta.append(' · ', colorLegend(colors));
       if (clusters.length > 1) {
         meta.append(
           ' · ',
@@ -346,8 +358,8 @@
           session = await start();
         }
         const computed = session.ask
-          ? await session.ask({ type: 'diff', threshold })
-          : diffPrepared(session.prepared, { threshold });
+          ? await session.ask({ type: 'diff', threshold, colors })
+          : diffPrepared(session.prepared, { threshold, colors });
 
         result = { ...computed, before: session.prepared.before, after: session.prepared.after };
         // Из потока разница приходит буфером — в ImageData её собираем здесь.
@@ -455,8 +467,9 @@
     if (!isGitLab()) return;
 
     const showViews = await readShowViews();
-    // Язык — до сборки панелей: иначе надписи моргнули бы браузерными.
-    await Promise.all([loadSettings(), global.GhPixelDiffLocale?.apply()]);
+    // Язык и цвета — до сборки панелей: иначе надписи моргнули бы браузерными,
+    // а первое сравнение посчиталось бы обычной парой цветов.
+    await Promise.all([loadSettings(), readColors(), global.GhPixelDiffLocale?.apply()]);
 
     const scan = () => {
       for (const viewer of document.querySelectorAll('.diff-viewer')) {

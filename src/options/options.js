@@ -71,6 +71,41 @@ showViews.addEventListener('change', () => {
   Promise.resolve(api.storage.sync.set({ showViews: showViews.checked })).catch(() => {});
 });
 
+// Цвета разницы. Красное теряется на красном интерфейсе, а пара красный /
+// синий различима не при всяком дальтонизме — поэтому её можно заменить.
+const COLORS = { darker: '#d1242f', lighter: '#0969da' };
+const colorInputs = {
+  darker: document.querySelector('#color-darker'),
+  lighter: document.querySelector('#color-lighter'),
+};
+
+function showColors(colors) {
+  for (const [side, input] of Object.entries(colorInputs)) input.value = colors[side];
+}
+
+function saveColors() {
+  const colors = {
+    darker: colorInputs.darker.value,
+    lighter: colorInputs.lighter.value,
+  };
+  Promise.resolve(api.storage.sync.set({ colors })).catch(() => {});
+}
+
+Promise.resolve(api.storage.sync.get({ colors: null }))
+  .then(({ colors }) => showColors({ ...COLORS, ...colors }))
+  .catch(() => {});
+
+for (const input of Object.values(colorInputs)) {
+  // input[type=color] шлёт `input` на каждое движение в палитре и `change`
+  // на закрытии: пишем по второму, иначе в хранилище летит сотня значений.
+  input.addEventListener('change', saveColors);
+}
+
+document.querySelector('#colors-reset').addEventListener('click', () => {
+  showColors(COLORS);
+  saveColors();
+});
+
 /**
  * Два вида своих серверов — и чем они отличаются.
  *

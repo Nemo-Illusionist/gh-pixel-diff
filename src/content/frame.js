@@ -10,8 +10,8 @@
   const { diffPrepared, preparePair, readImagePair } = global.GhPixelDiff;
   const api = global.browser ?? global.chrome;
   const { locale, plural, t } = global.GhPixelDiffI18n;
-  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas, zoomLabel } =
-    global.GhPixelDiffRender;
+  const { attachProbe, attachZoom, colorLegend, createZoom, drawCrop, frameFileName, saveCanvas,
+    zoomLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
 
   const MODE = 'pixel-diff';
@@ -32,6 +32,8 @@
   const MODE_KEY = 'ghpd:mode';
   /** Настройка из окна расширения: показывать ли переключатель кадров. */
   const SHOW_VIEWS_DEFAULT = true;
+  /** Цвета разницы: свои, если их поменяли в настройках. */
+  const colors = { ...global.GhPixelDiff.COLORS };
   /**
    * Пока GitHub не задал фрейму высоту, окно внутри — узкая полоска, и кадр
    * ужимается в точку. Высоту задаёт родительская страница, и делает это,
@@ -183,6 +185,20 @@
     }
   }
 
+  /**
+   * Цвета разницы из настроек.
+   * Читаются один раз при запуске: они уходят в сравнение, а пересчитывать
+   * его на каждую отрисовку незачем.
+   */
+  async function readColors() {
+    try {
+      const stored = await api?.storage?.sync?.get({ colors: null });
+      if (stored?.colors) Object.assign(colors, stored.colors);
+    } catch {
+      // Хранилища нет — остаётся обычная пара.
+    }
+  }
+
   function build(pair) {
     // Родной класс `view` не берём: его CSS прячет всё, кроме активного
     // режима, а видимостью своего контейнера мы управляем сами.
@@ -292,7 +308,7 @@
       );
       // Цвет теперь значит направление правки, и сказать об этом надо там
       // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
-      if (result.changed > 0) meta.append(` · ${t('diffLegend')}`);
+      if (result.changed > 0) meta.append(' · ', colorLegend(colors));
       if (clusters.length > 1) {
         meta.append(
           ' · ',
@@ -423,8 +439,8 @@
           session = await start();
         }
         const computed = session.ask
-          ? await session.ask({ type: 'diff', threshold })
-          : diffPrepared(session.prepared, { threshold });
+          ? await session.ask({ type: 'diff', threshold, colors })
+          : diffPrepared(session.prepared, { threshold, colors });
         result = { ...computed, before: session.prepared.before, after: session.prepared.after };
         // Из потока разница приходит буфером — обратно в картинку её
         // собирает тот, кто рисует.
@@ -579,7 +595,7 @@
 
   // Настройки и язык читаются до сборки панели: иначе ползунок, режим и
   // надписи успели бы моргнуть значениями по умолчанию.
-  const started = Promise.all([loadSettings(), global.GhPixelDiffLocale?.apply()]);
+  const started = Promise.all([loadSettings(), readColors(), global.GhPixelDiffLocale?.apply()]);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => started.then(mount));
   } else {

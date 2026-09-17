@@ -1193,6 +1193,35 @@ test('строки от другого языка не берутся', async ({
   await expect(page.locator('.ghpd-meta')).toContainText('pixels');
 });
 
+test('свои цвета доходят до кадра и до легенды', async ({ page }) => {
+  // Цвет выбирается в настройках, а красит им маску поток сравнения — между
+  // ними хранилище. Легенда при этом показывает образцы, а не названия:
+  // подпись «красным» после замены цвета врала бы.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgPair(true), { colors: { darker: '#ff8800', lighter: '#00aa44' } });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const найдено = await page.evaluate((selector) => {
+    const canvas = document.querySelector(selector);
+    const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    let оранжевых = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] === 255 && data[i + 1] === 136 && data[i + 2] === 0) оранжевых++;
+    }
+    return оранжевых;
+  }, FRAME_CANVAS);
+
+  expect(найдено).toBeGreaterThan(0);
+
+  const образцы = await page.evaluate(() =>
+    [...document.querySelectorAll('.ghpd-legend-swatch')].map((node) => node.style.background),
+  );
+  expect(образцы).toEqual(['rgb(255, 136, 0)', 'rgb(0, 170, 68)']);
+  await expect(page.locator('.ghpd-meta')).toContainText('darker');
+});
+
 test('на своём GitHub Enterprise режим встаёт так же', async ({ page }) => {
   // Превью у своего сервера рисуется на его собственном адресе. Разметка и
   // параметры — те же, что на github.com, значит и панель должна быть той же;
