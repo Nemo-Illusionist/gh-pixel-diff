@@ -10,15 +10,17 @@
 (function (global) {
   'use strict';
 
-  const i18n = global.GhPixelDiffMessages ?? (global.browser ?? global.chrome)?.i18n;
+  // Ищем источник на каждом обращении, а не один раз: выбранный вручную язык
+  // приезжает из хранилища, то есть позже загрузки этого файла.
+  const source = () => global.GhPixelDiffMessages ?? (global.browser ?? global.chrome)?.i18n;
 
   /** Текст по ключу; подстановки — в порядке $1, $2, … */
   function t(key, ...substitutions) {
-    return i18n?.getMessage(key, substitutions.map(String)) || '';
+    return source()?.getMessage(key, substitutions.map(String)) || '';
   }
 
   function locale() {
-    return i18n?.getUILanguage?.() || global.navigator?.language || 'en';
+    return source()?.getUILanguage?.() || global.navigator?.language || 'en';
   }
 
   /**

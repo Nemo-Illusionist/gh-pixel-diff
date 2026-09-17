@@ -8,7 +8,10 @@
 
   const api = global.browser ?? global.chrome;
 
-  const t = (key, ...substitutions) => api.i18n.getMessage(key, substitutions.map(String));
+  // Источник строк ищем при каждом обращении: выбранный вручную язык приходит
+  // из хранилища, то есть позже загрузки этого файла.
+  const t = (key, ...substitutions) =>
+    (global.GhPixelDiffMessages ?? api.i18n).getMessage(key, substitutions.map(String));
 
   /** Адреса, ради которых расширение и существует: они выданы при установке. */
   const ORIGINS = {

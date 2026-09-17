@@ -69,6 +69,15 @@ test('локали не расходятся между собой', () => {
   }
 });
 
+test('на выбор предлагаются ровно те языки, что есть в локалях', () => {
+  // Новая локаль, забытая в списке выбора, — это язык, который есть в
+  // расширении, но которого нет в настройках.
+  const source = read('../src/shared/locale.js');
+  const offered = [...source.matchAll(/code: '([a-z-]+)'/g)].map(([, code]) => code).sort();
+
+  expect(offered).toEqual(Object.keys(locales).sort());
+});
+
 test('манифест ссылается на существующие строки', () => {
   const manifest = read('../src/manifest.json');
 

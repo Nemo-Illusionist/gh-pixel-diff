@@ -2,9 +2,16 @@
 const { api, translate, wireAccess } = self.GhPixelDiffPage;
 const REPOSITORY = 'https://github.com/Nemo-Illusionist/gh-pixel-diff';
 
-translate();
-
-wireAccess(document.querySelector('#status'), document.querySelector('#grant'));
+// Надписи расставляем после того, как выяснится язык: выбранный вручную
+// приезжает из хранилища, то есть не сразу.
+self.GhPixelDiffLocale.apply()
+  .catch(() => '')
+  .then((language) => {
+    if (language) document.documentElement.lang = language;
+    translate();
+    // Состояние доступа тоже пишется словами — значит после языка.
+    wireAccess(document.querySelector('#status'), document.querySelector('#grant'));
+  });
 
 // Версия — здесь: в панели расширений её показывает не всякий браузер, а
 // сравнить установленное с последним релизом хочется всегда.

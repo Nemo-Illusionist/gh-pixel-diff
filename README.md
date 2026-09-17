@@ -182,6 +182,19 @@ pages at all, so the extension cannot see your repositories or your session.
 Nothing is collected and nothing is sent anywhere — see the
 [privacy policy](docs/PRIVACY.md).
 
+### The language of the interface
+
+Normally the extension speaks whatever language the browser is set to. A browser
+in English and work in Russian live in the same head all the time, though, and
+the browser has no per-extension language switch — so the settings page has one:
+**Language** → same as the browser, English, Русский. It covers the window, the
+settings page itself and the comparison panel; pages already open keep the old
+language until they are reloaded.
+
+The panel lives inside someone else's page and cannot reach the extension's own
+locale files, so the settings page hands the strings over through storage. The
+standalone site still follows the browser.
+
 ### A GitLab of your own
 
 Self-hosted GitLab lives at an address no manifest can know in advance, so it

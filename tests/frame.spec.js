@@ -76,9 +76,9 @@ function svgSized(width, height) {
  * файлов и хранилище. Хранилище держим на стороне теста — настоящее переживает
  * перезагрузку страницы, и заглушка должна вести себя так же.
  */
-async function stubExtension(page, settings = {}) {
+async function stubExtension(page, settings = {}, stored = {}) {
   // Хранилище расширения: живёт в тесте, поэтому переживает page.reload().
-  const store = {};
+  const store = { ...stored };
   await page.exposeFunction('ghpdStorageGet', (defaults) => ({ ...defaults, ...store }));
   await page.exposeFunction('ghpdStorageSet', (values) => {
     Object.assign(store, values);
@@ -177,7 +177,7 @@ async function openFrame(page, images = null, settings = {}, options = {}) {
     return route.fulfill({ contentType: 'text/javascript', body: read(`../src/${path}`) });
   });
 
-  const store = await stubExtension(page, settings);
+  const store = await stubExtension(page, settings, options.stored);
 
   // Позже общего маршрута на файлы расширения: побеждает последний.
   if (options.brokenWorker) {
@@ -1135,6 +1135,44 @@ test('строка пикселя не двигает кадр, когда по�
 
   expect(после.y).toBeCloseTo(до.y, 0);
   expect(после.height).toBeCloseTo(до.height, 0);
+});
+
+/** Строки локали в том виде, в каком их кладёт в хранилище страница настроек. */
+const russian = JSON.parse(readFileSync(file('../src/_locales/ru/messages.json'), 'utf8'));
+
+test('выбранный язык доходит до панели', async ({ page }) => {
+  // Браузер на английском и работа на русском уживаются в одной голове сплошь
+  // и рядом. Панель живёт на чужой странице и до файла локали не дотянется —
+  // строки ей кладёт в хранилище страница настроек, отсюда и проверка.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(
+    page,
+    null,
+    { 'ghpd:language': 'ru' },
+    { stored: { 'ghpd:messages': { language: 'ru', messages: russian } } },
+  );
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+
+  await expect(page.locator('.ghpd-meta')).toContainText(/пиксел/);
+  await expect(page.locator('.ghpd-views .ghpd-view-button').first()).toHaveText('до');
+});
+
+test('строки от другого языка не берутся', async ({ page }) => {
+  // Язык успели сменить, а строки в хранилище остались от прежнего: показать
+  // их — значит показать интерфейс на языке, который только что отвергли.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(
+    page,
+    null,
+    { 'ghpd:language': 'de' },
+    { stored: { 'ghpd:messages': { language: 'ru', messages: russian } } },
+  );
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  await expect(page.locator('.ghpd-meta')).toContainText('pixels');
 });
 
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {
