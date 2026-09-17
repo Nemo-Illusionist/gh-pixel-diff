@@ -438,16 +438,19 @@
   /**
    * Пересобирает «до» в координатах «после».
    *
-   * После этого сравнивать можно как обычно: сдвиг уже учтён, а строкам,
-   * которых в «до» не было, напротив ничего не стоит — pixelmatch увидит их
-   * как изменение, то есть ровно как вставку.
+   * Строка, которой в «до» не нашлось пары, сравнивается с тем, что было на
+   * этом месте раньше, — то есть как без всякого сшивания. Так вставка
+   * показывает ровно то, что на ней видно нового: поставь напротив неё
+   * пустоту, и вся полоса, включая пустые поля, объявилась бы изменившейся,
+   * а число изменившихся пикселей выросло бы там, где глазами ничего не
+   * прибавилось.
    */
   function shiftRows(data, map, width) {
     const bytes = width * 4;
     const shifted = new Uint8ClampedArray(map.length * bytes);
     for (let y = 0; y < map.length; y++) {
-      const source = map[y];
-      if (source < 0) continue;
+      const source = map[y] < 0 ? y : map[y];
+      if (source >= map.length) continue;
       shifted.set(data.subarray(source * bytes, source * bytes + bytes), y * bytes);
     }
     return shifted;
