@@ -98,3 +98,23 @@ code { font-size: 12px; word-break: break-all; }
   padding: 3px 10px;
   font-size: 13px;
 }
+
+/* Цвета разницы: два образца и возврат к обычной паре — в одну строку. */
+.colors {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.colors .setting { margin: 0; }
+
+.colors input[type='color'] {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}

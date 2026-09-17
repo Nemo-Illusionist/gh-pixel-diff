@@ -15,6 +15,22 @@
    */
   const DARKER = [209, 36, 47];
   const LIGHTER = [9, 105, 218];
+  /** Те же цвета строкой — такими они лежат в настройках и в разметке. */
+  const COLORS = { darker: '#d1242f', lighter: '#0969da' };
+
+  /**
+   * Цвет из настроек в тройку чисел, понятную pixelmatch.
+   *
+   * Значение приходит из хранилища, а туда — из поля ввода браузера, но
+   * хранилище переживает и опечатки, и ручную правку. Непонятное значение
+   * заменяется своим: сравнение без цвета — это сравнение без разницы.
+   */
+  function toRgb(value, fallback) {
+    const match = /^#?([0-9a-f]{6})$/i.exec(String(value ?? ''));
+    if (!match) return fallback;
+    const number = parseInt(match[1], 16);
+    return [(number >> 16) & 255, (number >> 8) & 255, number & 255];
+  }
 
   const t = (key, ...substitutions) =>
     global.GhPixelDiffI18n?.t(key, ...substitutions) || '';
@@ -370,8 +386,11 @@
         // Цвет кодирует направление правки: pixelmatch различает, стало в
         // этом месте темнее или светлее. Раньше всё красилось красным, и
         // «текст появился» выглядело так же, как «текст исчез».
-        diffColor: LIGHTER,
-        diffColorAlt: DARKER,
+        // Цвета можно поменять в настройках: красное на красном интерфейсе
+        // теряется, а пара красный / синий различима не при всяком
+        // дальтонизме.
+        diffColor: toRgb(options.colors?.lighter, LIGHTER),
+        diffColorAlt: toRgb(options.colors?.darker, DARKER),
       },
     );
 
@@ -401,6 +420,8 @@
     diffPrepared,
     rewriteRepository,
     boundsOfChanges,
+    toRgb,
+    COLORS,
     findChanges,
     rasterScale,
   };

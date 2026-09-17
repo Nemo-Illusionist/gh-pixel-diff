@@ -259,9 +259,6 @@
   "optionsShowViewsHint": {
     "message": "The switcher sits under the frame and shows either version on its own, or all three side by side — always in the same scale and crop as the difference."
   },
-  "diffLegend": {
-    "message": "red — darker, blue — lighter"
-  },
   "zoomHint": {
     "message": "Ctrl + scroll or pinch to zoom, drag to move, double-click to reset",
     "description": "Подсказка на холсте: как пользоваться увеличением."
@@ -311,5 +308,28 @@
   },
   "optionsLanguageHint": {
     "message": "Applies to the window, this page and the comparison panel. Pages already open keep the old language until they are reloaded."
+  },
+  "legendDarker": {
+    "message": "darker",
+    "description": "Легенда цвета: здесь картинка потемнела."
+  },
+  "legendLighter": {
+    "message": "lighter",
+    "description": "Легенда цвета: здесь картинка посветлела."
+  },
+  "optionsColors": {
+    "message": "Colours of the difference"
+  },
+  "optionsColorsHint": {
+    "message": "Red gets lost on a red interface, and red with blue is not told apart by every kind of colour blindness. Applies from the next page load."
+  },
+  "optionsColorDarker": {
+    "message": "got darker"
+  },
+  "optionsColorLighter": {
+    "message": "got lighter"
+  },
+  "optionsColorsReset": {
+    "message": "back to the usual pair"
   }
 }
