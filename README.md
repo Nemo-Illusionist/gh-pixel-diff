@@ -67,8 +67,9 @@ runs in your browser.
 - **An element added at the top no longer turns the whole frame red**: rows are
   stitched to their counterparts first — by the same trick text diffs use to
   tell an edited line from an inserted one — and the caption says how many rows
-  were inserted or removed. On a 1440×2400 frame this is not a cost but a
-  saving: the comparison has almost nothing left to disagree about.
+  were inserted or removed. Stitching a 1440×2400 frame costs about 10 ms; on
+  a frame that really did shift it saves an order of magnitude more, since the
+  comparison is left with almost nothing to disagree about.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame
