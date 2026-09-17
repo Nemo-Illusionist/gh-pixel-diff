@@ -114,7 +114,146 @@
   border-radius: 2px;
 }
 
+/* В строке управления кадр и сброс увеличения — такие же кнопки, как выбор
+   кадра рядом: подчёркнутая ссылка посреди ряда кнопок читается как чужая.
+   Вид ссылки остаётся у того, что уехало под «⋯», — там это строки списка. */
+.ghpd-bar .ghpd-crop-toggle,
+.ghpd-bar .ghpd-zoom-reset {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--fgColor-muted, #59636e);
+  text-decoration: none;
+}
+
+.ghpd-bar .ghpd-crop-toggle:hover,
+.ghpd-bar .ghpd-zoom-reset:hover {
+  color: var(--fgColor-default, #1f2328);
+  border-color: var(--borderColor-default, #d0d7de);
+}
+
+.ghpd-bar .ghpd-crop-toggle:focus-visible,
+.ghpd-bar .ghpd-zoom-reset:focus-visible {
+  outline: 2px solid var(--fgColor-accent, #0969da);
+  outline-offset: 1px;
+}
+
+/* Кнопка с двумя подписями: обе в одной ячейке, видна одна. Ширина — по
+   большей, и от нажатия не меняется. */
+.ghpd-two-way { display: inline-grid; }
+.ghpd-two-way > span { grid-area: 1 / 1; }
+
+/* Строка управления: то, ради чего панель открывают, — какой кадр показать и
+   куда в нём смотреть. Состав постоянный, меняется только видимость: кнопки
+   не должны переезжать вслед за длиной числа в подписи. */
+.ghpd-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-height: 26px;
+}
+
+.ghpd-bar > [hidden] { display: none; }
+
 /* Переходы между местами изменений: стрелки по бокам от «2 из 5». */
+.ghpd-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--fgColor-muted, #59636e);
+}
+
+.ghpd-nav[hidden] { display: none; }
+
+/* Подпись переходов коротка нарочно: «все» или «2/5». Длинная фраза меняла бы
+   ширину от нажатия к нажатию и таскала бы за собой всё, что правее. Цифры
+   одной ширины и место под самое длинное держат её на месте. */
+.ghpd-nav-label {
+  min-width: 4ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* «⋯»: порог, рамка и сохранение. Открывается вверх — панель стоит у нижнего
+   края окна просмотра, и вниз открываться ей некуда. */
+.ghpd-menu { position: relative; }
+
+.ghpd-menu-button {
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--fgColor-muted, #59636e);
+  cursor: pointer;
+}
+
+.ghpd-menu-button:hover { color: var(--fgColor-default, #1f2328); }
+
+.ghpd-menu-button.selected {
+  border-color: var(--borderColor-default, #d0d7de);
+  color: var(--fgColor-default, #1f2328);
+}
+
+.ghpd-menu-button:focus-visible {
+  outline: 2px solid var(--fgColor-accent, #0969da);
+  outline-offset: 1px;
+}
+
+.ghpd-menu-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  white-space: nowrap;
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 8px;
+  background: var(--bgColor-default, #ffffff);
+  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.16);
+}
+
+.ghpd-menu-panel[hidden] { display: none; }
+
+/* Внутри меню ползунку незачем тянуться во всю ширину панели. */
+.ghpd-menu-panel .ghpd-controls {
+  width: 240px;
+  max-width: none;
+}
+
+/* Пункты меню — строки списка, а не ссылки посреди текста: подчёркивание
+   здесь только рябит, а попасть надо во всю строку, а не в слова. */
+.ghpd-menu-panel button {
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: 6px;
+  color: var(--fgColor-default, #1f2328);
+  text-decoration: none;
+}
+
+.ghpd-menu-panel button:hover { background: var(--bgColor-neutral-muted, #818b981f); }
+
+.ghpd-menu-panel button:focus-visible {
+  outline: 2px solid var(--fgColor-accent, #0969da);
+  outline-offset: 1px;
+}
+
+.ghpd-menu-panel > [hidden] { display: none; }
+
 .ghpd-cluster-step {
   font: inherit;
   font-size: 14px;

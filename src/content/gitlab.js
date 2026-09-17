@@ -14,7 +14,7 @@
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
   const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, holdStage, saveCanvas,
-    zoomLabel } = global.GhPixelDiffRender;
+    zoomLabel, createMenu, twoWayLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
   const { t, plural, locale } = global.GhPixelDiffI18n;
   const api = global.browser ?? global.chrome;
@@ -146,6 +146,9 @@
     cropToggle.type = 'button';
     outlineToggle.type = 'button';
     zoomReset.type = 'button';
+    // Подписи у кнопки две, а ширина одна — по большей: иначе «весь кадр» и
+    // «фрагмент» двигали бы всё, что правее, от нажатия к нажатию.
+    const showCropLabel = twoWayLabel(cropToggle, t('showFullFrame'), t('showChangesOnly'));
     // Переходы между местами изменений: правки часто в разных концах кадра,
     // и обрезка по всем сразу — это опять весь кадр.
     const save = el('button', 'ghpd-save', t('saveFrame'));
@@ -157,6 +160,12 @@
       button.title = t(key);
       button.setAttribute('aria-label', t(key));
     }
+    // Переходы собраны в одну группу и живут в строке управления, а не в
+    // подписи: подпись пересобирается на каждый пересчёт, и кнопки в ней
+    // переезжали с места на место вслед за длиной числа.
+    const nav = el('div', 'ghpd-nav');
+    const navLabel = el('span', 'ghpd-nav-label');
+    nav.append(prevChange, navLabel, nextChange);
 
     const controls = el('div', 'ghpd-controls');
     const slider = el('input', 'ghpd-slider');
@@ -176,11 +185,22 @@
     const views = el('div', 'ghpd-views');
     views.hidden = !showViews;
 
+    // Порог, рамка и сохранение — под «⋯»: нужны они не каждый раз, а место
+    // под кадром занимали всегда. Внизу остаётся то, ради чего панель
+    // открывают: какой кадр показать и куда в нём смотреть.
+    const menu = createMenu(t('moreControls'));
+    menu.panel.append(controls, outlineToggle, save);
+
+    // Строка управления: состав постоянный, меняется только видимость —
+    // кнопки не переезжают с места на место.
+    const bar = el('div', 'ghpd-bar');
+    bar.append(views, cropToggle, zoomReset, nav, menu.element);
+
     // Кадр живёт в сцене: её размер не зависит от того, что в ней показано,
-    // и подпись с ползунком не ездят вслед за высотой кадра.
+    // и подпись со строкой управления не ездят вслед за высотой кадра.
     const stage = el('div', 'ghpd-stage');
     stage.append(canvas, triple);
-    shell.append(stage, meta, probe, controls, views);
+    shell.append(stage, meta, probe, bar);
     panel.append(shell);
 
     let result = null;
@@ -277,47 +297,21 @@
       // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
       const shown = result.changed === 0 ? '0' : percent >= 0.01 ? percent.toFixed(2) : '<0.01';
 
+      // Подпись — только факты: сколько изменилось и на чём это считано.
+      // Всё, чем панель управляют, живёт строкой ниже и стоит на месте.
       meta.replaceChildren(
         el('strong', null, plural('pixels', result.changed)),
         ` · ${t('shareOfFrame', shown)}`,
       );
-      // Цвет теперь значит направление правки, и сказать об этом надо там
-      // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
-      if (clusters.length > 1) {
-        meta.append(
-          ' · ',
-          prevChange,
-          focusIndex < 0
-            ? ` ${plural('places', clusters.length)} `
-            : ` ${t('clusterPosition', focusIndex + 1, clusters.length)} `,
-          nextChange,
-        );
-      }
-      // Увеличение видно по кадру, но не видно, насколько оно велико и как
-      // вернуться обратно, — поэтому говорим об этом в подписи.
-      if (single && zoom.scale > 1) {
-        zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
-        meta.append(' · ', zoomReset);
-      }
-      if (result.bounds) {
-        cropToggle.textContent = cropped
-          ? t('showFullFrame', box.width, box.height)
-          : t('showChangesOnly');
-        meta.append(' · ', cropToggle);
-        // Рамка есть только в полном кадре — там же и переключатель.
-        if (!cropped) {
-          outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-          meta.append(' · ', outlineToggle);
-        }
-      }
-      // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
-      // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
-      if (single) meta.append(' · ', save);
-      if (result.scale > 1) meta.append(` · ${t('rasterized', result.width, result.height)}`);
       // Сдвиг называем словами: «весь кадр красный» и «вставлено 24 строки» —
       // разные ответы, даже когда картинка одна и та же.
-      if (result.inserted) meta.append(` · ${plural('rowsAdded', result.inserted)}`);
-      if (result.removed) meta.append(` · ${plural('rowsRemoved', result.removed)}`);
+      const shift = [
+        result.inserted ? `+${result.inserted.toLocaleString(locale())}` : '',
+        result.removed ? `−${result.removed.toLocaleString(locale())}` : '',
+      ].filter(Boolean).join(' ');
+      if (clusters.length > 1) meta.append(` · ${plural('places', clusters.length)}`);
+      if (shift) meta.append(` · ${t('rowsShifted', shift)}`);
+      if (result.scale > 1) meta.append(` · ${t('rasterized', result.width, result.height)}`);
       if (result.sizeChanged) {
         meta.append(
           ` · ${t(
@@ -327,6 +321,31 @@
           )}`,
         );
       }
+
+      // «все» или «2/5»: короткая подпись стоит на месте, а длинная фраза
+      // ездила бы вслед за своей длиной и таскала бы за собой «⋯».
+      nav.hidden = clusters.length < 2;
+      navLabel.textContent =
+        focusIndex < 0 ? t('clusterAll') : `${focusIndex + 1}/${clusters.length}`;
+      navLabel.title =
+        focusIndex < 0
+          ? plural('places', clusters.length)
+          : t('clusterPosition', focusIndex + 1, clusters.length);
+      cropToggle.hidden = !result.bounds;
+      if (result.bounds) {
+        showCropLabel(cropped);
+        cropToggle.title = t('cropSize', box.width, box.height);
+      }
+      // Увеличение видно по кадру, но не видно, насколько оно велико и как
+      // вернуться обратно, — поэтому кнопка сброса называет его вслух.
+      zoomReset.hidden = !single || zoom.scale <= 1;
+      if (!zoomReset.hidden) zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
+      // Рамка есть только в полном кадре — там же и переключатель.
+      outlineToggle.hidden = cropped || !result.bounds;
+      outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
+      // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
+      // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
+      save.hidden = !single;
     }
 
     cropToggle.addEventListener('click', () => {

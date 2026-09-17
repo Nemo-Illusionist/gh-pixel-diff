@@ -249,6 +249,13 @@ try {
   await showFrame('3-up');
   written['frame-3up'] = await shoot();
 
+  // «⋯»: порог, рамка и сохранение. В README без этого снимка непонятно, куда
+  // делся ползунок, стоявший под кадром прежде.
+  await showFrame('diff');
+  await frame().evaluate(() => document.querySelector('.ghpd-menu-button').click());
+  written['frame-menu'] = await shoot();
+  await frame().evaluate(() => document.querySelector('.ghpd-menu-button').click());
+
   written.popup = await pageShot(await context.newPage(), 'popup/popup.html');
 
   // Страница настроек нужна дважды и в разном виде. README читают сверху

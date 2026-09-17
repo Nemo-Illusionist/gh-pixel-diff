@@ -100,6 +100,14 @@ The overlay puts the difference straight onto the new version, in full colour:
 
 ![The difference over the new version](docs/screenshots/frame-overlay.png)
 
+Under the frame there are only two answers and the hands that go with them: a
+line of facts (how much changed, and what it was measured on) and a line of
+controls (which frame to show, and where in it to look). The threshold, the
+outline and saving live under «⋯» — they aren't needed every time, yet they
+took up room always.
+
+![Threshold, outline and saving under «⋯»](docs/screenshots/frame-menu.png)
+
 ## Installation
 
 **Chrome, Edge, any Chromium** — [in the Chrome Web Store][store]. One button,
