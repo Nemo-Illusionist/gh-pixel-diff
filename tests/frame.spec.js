@@ -832,7 +832,7 @@ test('три кадра рядом влезают по ширине', async ({ p
     const boxes = canvases.map((node) => node.getBoundingClientRect());
     return {
       сколько: canvases.length,
-      одиночныйСпрятан: document.querySelector('.ghpd-view > .ghpd-shell > .ghpd-canvas').hidden,
+      одиночныйСпрятан: document.querySelector('.ghpd-view .ghpd-stage > .ghpd-canvas').hidden,
       // Переключатель остаётся на месте: это он и переключил.
       переключательВиден: !document.querySelector('.ghpd-views').hidden,
       влезают: boxes.every((box) => box.left >= view.left - 1 && box.right <= view.right + 1),
@@ -872,7 +872,7 @@ test('три кадра показывают разные картинки', asy
 });
 
 /** Одиночный кадр панели — тот, который увеличивают. */
-const FRAME_CANVAS = '.ghpd-view > .ghpd-shell > .ghpd-canvas';
+const FRAME_CANVAS = '.ghpd-view .ghpd-stage > .ghpd-canvas';
 
 /** Что сейчас на холсте: размер, угловой пиксель и отпечаток содержимого. */
 const canvasState = (page) =>
@@ -1274,6 +1274,40 @@ test('на своём GitHub Enterprise режим встаёт так же', as
   await expect(page.locator('.ghpd-meta')).toContainText(/pixels/);
 });
 
+test('переключение места изменений не двигает ползунок', async ({ page }) => {
+  // Обрезка по одному месту ниже, чем по всем, и высота кадра меняется от
+  // нажатия к нажатию. Пока её задавал сам кадр, вместе с ним ездило и всё,
+  // что под ним: подпись, ползунок, переключатель. Ползунок, уехавший
+  // из-под курсора в тот момент, когда его тянут, — это не мелочь.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgTwoSpots());
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const низ = () =>
+    page.evaluate(() => ({
+      ползунок: Math.round(document.querySelector('.ghpd-slider').getBoundingClientRect().top),
+      кадры: Math.round(document.querySelector('.ghpd-views').getBoundingClientRect().top),
+    }));
+
+  const было = await низ();
+
+  await page.click('.ghpd-cluster-step[aria-label="next change"]');
+  expect(await низ()).toEqual(было);
+
+  await page.click('.ghpd-cluster-step[aria-label="next change"]');
+  expect(await низ()).toEqual(было);
+
+  // И кадр целиком тоже не должен ничего сдвигать вниз — только вверх, один
+  // раз, когда сцена вырастает под самый рослый кадр.
+  await page.click('.ghpd-crop-toggle');
+  const целиком = await низ();
+  await page.click('.ghpd-crop-toggle');
+
+  expect(await низ()).toEqual(целиком);
+});
+
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {
   // Высоту фрейма задаёт родительская страница, и делает это, когда меняется
   // её собственный режим. Восстановишь свой раньше — окно внутри остаётся
@@ -1297,7 +1331,7 @@ test('запомненный режим ждёт, пока фрейм вырас
   await waitForResult(page);
 
   const canvas = await page.evaluate(() => {
-    const node = document.querySelector('.ghpd-view > .ghpd-shell > .ghpd-canvas');
+    const node = document.querySelector('.ghpd-view .ghpd-stage > .ghpd-canvas');
     const box = node.getBoundingClientRect();
     // Сравниваем с самим кадром: в точку он ужимается, когда фрейм — полоска.
     return { доляВысоты: box.height / node.height, доляШирины: box.width / node.width };
@@ -1327,7 +1361,7 @@ test('кадр по центру, даже если подпись шире', as
     };
     return {
       вид: middle('.ghpd-view'),
-      холст: middle('.ghpd-view > .ghpd-shell > .ghpd-canvas'),
+      холст: middle('.ghpd-view .ghpd-stage > .ghpd-canvas'),
       подпись: middle('.ghpd-meta'),
     };
   });

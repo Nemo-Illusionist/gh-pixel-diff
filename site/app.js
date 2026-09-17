@@ -6,7 +6,7 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas,
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, holdStage, saveCanvas,
     zoomLabel } = global.GhPixelDiffRender;
   const { t, plural, locale } = global.GhPixelDiffI18n;
 
@@ -36,6 +36,7 @@
   document.title = `${t('siteTitle')} — ${t('modeName')}`;
 
   const panel = document.querySelector('#panel');
+  const stage = document.querySelector('.panel-frame');
   const canvas = document.querySelector('#canvas');
   const triple = document.querySelector('#triple');
   const meta = document.querySelector('#meta');
@@ -165,6 +166,8 @@
         box = drawCrop(target, full, result, { frame: name, cropped, outline, focus, colors: global.GhPixelDiff.COLORS });
       }
     }
+
+    holdStage(stage, single ? canvas : triple);
 
     const percent = result.ratio * 100;
     // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.

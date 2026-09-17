@@ -559,6 +559,28 @@
     canvas.addEventListener('pointerleave', clear);
   }
 
+  /**
+   * Держит высоту сцены по самому рослому кадру, который в ней побывал.
+   *
+   * Кадр меняет высоту сам собой: обрезка по одному месту изменений ниже, чем
+   * по всем, «до» и «после» бывают разного размера, три кадра рядом ниже
+   * одного. Пока высоту задавал кадр, вместе с ним ездило и всё, что под ним.
+   * Ползунок, уехавший из-под курсора в тот момент, когда его тянут, — это не
+   * мелочь.
+   *
+   * Сцена поэтому только растёт. Предел ей — тот же, что и кадру: больше
+   * своего потолка кадр не бывает, а окно может и уменьшиться, и тогда
+   * запомненная высота вытолкнула бы ползунок за край.
+   */
+  function holdStage(stage, canvas) {
+    const height = canvas.getBoundingClientRect().height;
+    if (!height) return;
+    const ceiling = Number.parseFloat(getComputedStyle(canvas).maxHeight);
+    const held = Number.parseFloat(stage.style.minHeight) || 0;
+    const wanted = Math.min(Math.max(height, held), ceiling || Infinity);
+    stage.style.minHeight = `${Math.ceil(wanted)}px`;
+  }
+
   /** Как показать увеличение человеку: «2,5×», а не «2.4999999×». */
   function zoomLabel(scale, locale) {
     return `${Number(scale.toFixed(1)).toLocaleString(locale ?? 'en')}×`;
@@ -568,6 +590,7 @@
     drawCrop,
     saveCanvas,
     frameFileName,
+    holdStage,
     attachProbe,
     createZoom,
     attachZoom,

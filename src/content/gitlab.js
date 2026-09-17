@@ -13,7 +13,7 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas,
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, holdStage, saveCanvas,
     zoomLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
   const { t, plural, locale } = global.GhPixelDiffI18n;
@@ -173,7 +173,11 @@
     const views = el('div', 'ghpd-views');
     views.hidden = !showViews;
 
-    shell.append(canvas, triple, meta, probe, controls, views);
+    // Кадр живёт в сцене: её размер не зависит от того, что в ней показано,
+    // и подпись с ползунком не ездят вслед за высотой кадра.
+    const stage = el('div', 'ghpd-stage');
+    stage.append(canvas, triple);
+    shell.append(stage, meta, probe, controls, views);
     panel.append(shell);
 
     let result = null;
@@ -263,6 +267,8 @@
           box = drawCrop(target, full, result, { frame: name, cropped, outline, focus, colors });
         }
       }
+
+      holdStage(stage, single ? canvas : triple);
 
       const percent = result.ratio * 100;
       // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.

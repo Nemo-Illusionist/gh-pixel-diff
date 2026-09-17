@@ -10,7 +10,7 @@
   const { diffPrepared, preparePair, readImagePair } = global.GhPixelDiff;
   const api = global.browser ?? global.chrome;
   const { locale, plural, t } = global.GhPixelDiffI18n;
-  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas,
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, holdStage, saveCanvas,
     zoomLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
 
@@ -255,7 +255,11 @@
       button.setAttribute('aria-label', t(key));
     }
 
-    shell.append(canvas, triple, meta, probe);
+    // Кадр живёт в сцене: её размер не зависит от того, что в ней показано,
+    // и подпись с ползунком не ездят вслед за высотой кадра.
+    const stage = el('div', 'ghpd-stage');
+    stage.append(canvas, triple);
+    shell.append(stage, meta, probe);
     view.append(shell);
 
     let result = null;
@@ -301,6 +305,7 @@
         : drawTriple(focus);
       fitCanvas(canvas);
       canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
+      holdStage(stage, single ? canvas : triple);
       const percent = result.ratio * 100;
       // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
       const shown = result.changed === 0 ? '0' : percent >= 0.01 ? percent.toFixed(2) : '<0.01';
