@@ -28,8 +28,8 @@ runs in your browser.
 
 - Sits as a fourth button in the native row of modes — no separate panel.
 - Opens on the changed fragment; the full frame is one link away in the caption,
-  with the changed areas outlined — the outline can be turned off, and the
-  choice is remembered.
+  with the changed area outlined in the same colour as the difference — the
+  outline can be turned off, and the choice is remembered.
 - **Changes in different corners are separate places, and you can walk between
   them**: the caption says `‹ 3 changed places ›`, and stepping crops to one
   place at a time, in reading order. By default all of them are shown at once,

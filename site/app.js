@@ -158,11 +158,11 @@
 
     let box;
     if (single) {
-      box = drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus });
+      box = drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus, colors: global.GhPixelDiff.COLORS });
       canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
     } else {
       for (const [name, target] of tripleCanvases) {
-        box = drawCrop(target, full, result, { frame: name, cropped, outline, focus });
+        box = drawCrop(target, full, result, { frame: name, cropped, outline, focus, colors: global.GhPixelDiff.COLORS });
       }
     }
 
