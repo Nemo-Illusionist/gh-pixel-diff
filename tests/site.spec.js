@@ -120,6 +120,105 @@ test('порог меняет число найденных пикселей', a
   await expect.poll(count).toBeLessThan(sensitive);
 });
 
+/** Самый частый цвет непрозрачных пикселей кадра — цвет отметок разницы. */
+async function markColor(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('#canvas');
+    const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    const counts = new Map();
+    for (let i = 0; i < data.length; i += 4) {
+      // Серая подложка «разницы» — обесцвеченное «до»: у неё все три канала
+      // равны. Отметки цветные, их и ищем.
+      if (data[i] === data[i + 1] && data[i + 1] === data[i + 2]) continue;
+      const key = `${data[i]},${data[i + 1]},${data[i + 2]}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  });
+}
+
+test('цвет разницы задаётся на странице и применяется сразу', async ({ page }) => {
+  // Цвет запечён в маску, поэтому смена цвета — это пересчёт, а не отрисовка.
+  // Проверяем именно кадр: настройка, не доехавшая до картинки, бесполезна.
+  await load(page);
+  await expect(meta(page)).toContainText(/pixels?/);
+
+  expect(await markColor(page)).toBe('209,36,47');
+
+  await page.locator('#tune').click();
+  await page.locator('#color-changed').evaluate((node) => {
+    node.value = '#00a000';
+    node.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
+  await expect.poll(() => markColor(page)).toBe('0,160,0');
+
+  // И выбор переживает перезагрузку: он в localStorage этой страницы.
+  await page.reload();
+  await load(page);
+  await expect(meta(page)).toContainText(/pixels?/);
+  expect(await markColor(page)).toBe('0,160,0');
+});
+
+test('бета включается на странице и меняет ответ', async ({ page }) => {
+  // Пара со сдвигом: наверху добавлен блок, и всё ниже съехало. Без сшивания
+  // изменившимся оказывается почти весь кадр.
+  await load(page, 'shifted-before.png', 'shifted-after.png');
+  await expect(meta(page)).toContainText(/pixels?/);
+  const count = () =>
+    page.evaluate(() =>
+      Number(document.querySelector('#meta strong').textContent.replace(/\D/g, '')),
+    );
+
+  const было = await count();
+
+  await page.locator('#tune').click();
+  await page.locator('#beta').check();
+
+  // Ответ пересчитан, и найденного заметно меньше: переехавшие строки
+  // сошлись со своими и перестали считаться изменившимися.
+  await expect.poll(count).toBeLessThan(было / 2);
+  // Сдвиг назван словами, а не только числом.
+  await expect(meta(page)).toContainText(/rows|строк/);
+});
+
+test('переключатель кадров можно спрятать, и он не запирает в «3-up»', async ({ page }) => {
+  // Спрятанный переключатель не должен оставлять в том кадре, который был
+  // выбран до него: из «3-up» иначе не выйти, и сохранение в нём погашено.
+  await load(page);
+  await expect(meta(page)).toContainText(/pixels?/);
+
+  await page.locator('.ghpd-view-button', { hasText: '3-up' }).click();
+  await expect(page.locator('#canvas')).toBeHidden();
+
+  await page.locator('#tune').click();
+  await page.locator('#show-views').uncheck();
+
+  await expect(page.locator('#views')).toBeHidden();
+  await expect(page.locator('#canvas')).toBeVisible();
+});
+
+test('язык переключается на месте, не теряя картинок', async ({ page }) => {
+  // Перезагрузка была бы дешевле, но унесла бы обе картинки: они лежат в
+  // памяти, а не в адресе.
+  await load(page);
+  await expect(meta(page)).toContainText(/pixels?/);
+
+  await page.locator('#tune').click();
+  await page.locator('#language').selectOption('ru');
+
+  await expect(meta(page)).toContainText(/пиксел/);
+  // Надписи, поставленные один раз при запуске, тоже переставлены.
+  await expect(page.locator('.ghpd-view-button').first()).toHaveText('до');
+  await expect(page.locator('.ghpd-crop-toggle')).toContainText('весь кадр');
+  // Картинки на месте: панель никуда не девалась.
+  await expect(page.locator('#canvas')).toBeVisible();
+
+  // И выбор помнится: он в localStorage этой страницы.
+  await page.reload();
+  await expect(page.locator('#language')).toHaveValue('ru');
+});
+
 test('не картинка — понятный отказ, а не молчание', async ({ page }) => {
   await page.setInputFiles('.drop[data-slot=before] input', {
     name: 'notes.txt',

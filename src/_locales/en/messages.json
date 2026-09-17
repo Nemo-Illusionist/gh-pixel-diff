@@ -1,4 +1,8 @@
 {
+  "languageName": {
+    "message": "English",
+    "description": "Имя этого языка на нём самом — для выбора языка."
+  },
   "extName": {
     "message": "GitHub Pixel Diff",
     "description": "Название расширения в браузере и в магазине."
@@ -217,6 +221,18 @@
   },
   "siteResult": {
     "message": "Difference"
+  },
+  "siteTune": {
+    "message": "Tune the comparison",
+    "description": "Heading of the settings block on the standalone page."
+  },
+  "siteColorsHint": {
+    "message": "Red gets lost on a red interface. Here the colour applies at once.",
+    "description": "Colours hint on the standalone page: «next page load» makes no sense there."
+  },
+  "siteLanguageHint": {
+    "message": "This page and the panel. Applies at once — your images stay put.",
+    "description": "Language hint on the standalone page."
   },
   "popupSettings": {
     "message": "Settings"

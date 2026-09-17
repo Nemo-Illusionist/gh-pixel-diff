@@ -21,8 +21,11 @@ GitLab's, in merge requests on `gitlab.com`.
 
 **No pull request at hand?** The same comparison works on two files of your own:
 <https://nemo-illusionist.github.io/gh-pixel-diff/> — drop two images and get the
-same diff. Nothing is uploaded: the page is a static file, and the comparison
-runs in your browser.
+same diff. Everything the panel does inside a pull request the page does too:
+zoom, the changed places, the eyedropper, saving a PNG — and under *Tune the
+comparison*, the language, the colours of the difference and the beta. Nothing
+is uploaded: the page is a static file, the comparison runs in your browser, and
+the settings stay there as well.
 
 ## What it does
 

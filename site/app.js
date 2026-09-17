@@ -29,11 +29,46 @@
     return node;
   };
 
-  for (const node of document.querySelectorAll('[data-i18n]')) {
-    node.textContent = t(node.dataset.i18n);
+  /**
+   * Настройки страницы — в localStorage, а не в хранилище расширения: его
+   * здесь нет. Отказ хранилища не должен уносить с собой страницу, поэтому
+   * каждое обращение обёрнуто: в приватном окне чтение и запись бросают.
+   */
+  const settings = {
+    read(key, fallback = null) {
+      try {
+        const stored = global.localStorage?.getItem(key);
+        return stored === null || stored === undefined ? fallback : JSON.parse(stored);
+      } catch {
+        return fallback;
+      }
+    },
+    write(key, value) {
+      try {
+        global.localStorage?.setItem(key, JSON.stringify(value));
+      } catch {
+        // Не сохранилось — выбор всё равно действует до конца этого визита.
+      }
+    },
+  };
+
+  const THRESHOLD_KEY = 'ghpd:threshold';
+  const OUTLINE_KEY = 'ghpd:outline';
+  const FRAME_KEY = 'ghpd:frame';
+  const COLORS_KEY = 'ghpd:colors';
+  const BETA_KEY = 'ghpd:beta';
+  const VIEWS_KEY = 'ghpd:showViews';
+
+  /** Надписи ставим отсюда: при смене языка их придётся переставить заново. */
+  function label() {
+    for (const node of document.querySelectorAll('[data-i18n]')) {
+      node.textContent = t(node.dataset.i18n);
+    }
+    document.documentElement.lang = global.__GHPD_LOCALE ?? 'en';
+    document.title = `${t('siteTitle')} — ${t('modeName')}`;
   }
-  document.documentElement.lang = global.__GHPD_LOCALE ?? 'en';
-  document.title = `${t('siteTitle')} — ${t('modeName')}`;
+
+  label();
 
   const panel = document.querySelector('#panel');
   const stage = document.querySelector('.panel-frame');
@@ -46,6 +81,12 @@
 
   slider.setAttribute('aria-label', t('thresholdLabel'));
   slider.title = t('thresholdHint');
+  // Порог помнится между парами. Проверяем границы: в хранилище может лежать
+  // что угодно, а Number(null) — это ноль, то есть самый левый край.
+  const savedThreshold = Number(settings.read(THRESHOLD_KEY));
+  if (Number.isFinite(savedThreshold) && savedThreshold >= 0 && savedThreshold <= Number(slider.max)) {
+    slider.value = String(savedThreshold);
+  }
 
   // Холст с кадром целиком — один на страницу: заводить его заново на каждую
   // отрисовку значит тратить десятки мегабайт при каждом движении ползунка.
@@ -55,9 +96,15 @@
   const files = { before: null, after: null };
   let session = null;
   let result = null;
-  let shownFrame = 'diff';
+  // Порог, рамка и выбранный кадр помнятся между парами — как в расширении:
+  // на десяти картинках подряд незачем настраивать одно и то же заново.
+  let shownFrame = FRAMES[settings.read(FRAME_KEY)] ? settings.read(FRAME_KEY) : 'diff';
   let cropped = true;
-  let outline = true;
+  let outline = settings.read(OUTLINE_KEY, true) !== false;
+  // Цвета разницы и бета — те же, что в настройках расширения: по умолчанию
+  // один красный, направление и сшивание включаются руками.
+  const colors = { ...global.GhPixelDiff.COLORS, ...(settings.read(COLORS_KEY) ?? {}) };
+  let beta = settings.read(BETA_KEY, false) === true;
 
   const cropToggle = el('button', 'ghpd-crop-toggle');
   const outlineToggle = el('button', 'ghpd-outline-toggle');
@@ -67,7 +114,7 @@
   zoomReset.type = 'button';
   // Подписи у кнопки две, а ширина одна — по большей: иначе «весь кадр» и
   // «фрагмент» двигали бы всё, что правее, от нажатия к нажатию.
-  const showCropLabel = twoWayLabel(cropToggle, t('showFullFrame'), t('showChangesOnly'));
+  let showCropLabel = twoWayLabel(cropToggle, t('showFullFrame'), t('showChangesOnly'));
   // Переходы между местами изменений: правки часто в разных концах кадра, и
   // обрезка по всем сразу — это опять весь кадр.
   const save = el('button', 'ghpd-save', t('saveFrame'));
@@ -139,10 +186,13 @@
   prevChange.addEventListener('click', () => stepChange(-1));
   nextChange.addEventListener('click', () => stepChange(1));
 
+  const tripleLabels = new Map();
   const tripleCanvases = ['before', 'after', 'diff'].map((name) => {
     const item = el('div', 'ghpd-triple-item');
     const target = el('canvas', 'ghpd-canvas');
-    item.append(target, el('div', 'ghpd-triple-label', t(FRAMES[name])));
+    const caption = el('div', 'ghpd-triple-label', t(FRAMES[name]));
+    tripleLabels.set(name, caption);
+    item.append(target, caption);
     triple.append(item);
     return [name, target];
   });
@@ -154,6 +204,7 @@
     button.setAttribute('aria-pressed', String(name === shownFrame));
     button.addEventListener('click', () => {
       shownFrame = name;
+      settings.write(FRAME_KEY, name);
       for (const [other, node] of viewButtons) {
         node.classList.toggle('selected', other === name);
         node.setAttribute('aria-pressed', String(other === name));
@@ -177,11 +228,11 @@
 
     let box;
     if (single) {
-      box = drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus, colors: global.GhPixelDiff.COLORS });
+      box = drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus, colors });
       canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
     } else {
       for (const [name, target] of tripleCanvases) {
-        box = drawCrop(target, full, result, { frame: name, cropped, outline, focus, colors: global.GhPixelDiff.COLORS });
+        box = drawCrop(target, full, result, { frame: name, cropped, outline, focus, colors });
       }
     }
 
@@ -252,7 +303,132 @@
 
   outlineToggle.addEventListener('click', () => {
     outline = !outline;
+    settings.write(OUTLINE_KEY, outline);
     render();
+  });
+
+  // Настройка сравнения: язык, переключатель кадров, цвета и бета — всё то
+  // же, что на странице настроек расширения. Разница одна: хранилища
+  // расширения здесь нет, и выбор применяется сразу.
+  const tune = {
+    language: document.querySelector('#language'),
+    views: document.querySelector('#show-views'),
+    changed: document.querySelector('#color-changed'),
+    lighter: document.querySelector('#color-lighter'),
+    direction: document.querySelector('#direction'),
+    directionColors: document.querySelector('#direction-colors'),
+    reset: document.querySelector('#colors-reset'),
+    beta: document.querySelector('#beta'),
+  };
+
+  /** Список языков — из самих локалей: написанный руками разойдётся с ними. */
+  function fillLanguages() {
+    const { languages, chosen } = global.GhPixelDiffLocale;
+    const auto = el('option', null, t('optionsLanguageAuto'));
+    auto.value = '';
+    tune.language.replaceChildren(auto);
+    for (const { code, name } of languages) {
+      const option = el('option', null, name);
+      option.value = code;
+      tune.language.append(option);
+    }
+    tune.language.value = chosen();
+  }
+
+  /**
+   * Переставляет надписи после смены языка.
+   *
+   * Перезагрузка была бы дешевле, но унесла бы с собой обе картинки: они
+   * лежат в памяти, а не в адресе. Поэтому всё, что подписано один раз при
+   * запуске, подписывается здесь заново; остальное скажет render().
+   */
+  function relabel() {
+    label();
+    fillLanguages();
+    slider.setAttribute('aria-label', t('thresholdLabel'));
+    slider.title = t('thresholdHint');
+    canvas.title = t('zoomHint');
+    save.textContent = t('saveFrame');
+    showCropLabel = twoWayLabel(cropToggle, t('showFullFrame'), t('showChangesOnly'));
+    const more = document.querySelector('.ghpd-menu-button');
+    more.title = t('moreControls');
+    more.setAttribute('aria-label', t('moreControls'));
+    for (const [name, node] of viewButtons) node.textContent = t(FRAMES[name]);
+    for (const [name, node] of tripleLabels) node.textContent = t(FRAMES[name]);
+    for (const [button, key] of [[prevChange, 'clusterPrev'], [nextChange, 'clusterNext']]) {
+      button.title = t(key);
+      button.setAttribute('aria-label', t(key));
+    }
+    if (result) render();
+  }
+
+  fillLanguages();
+  tune.language.addEventListener('change', () => {
+    global.GhPixelDiffLocale.choose(tune.language.value);
+    relabel();
+  });
+
+  /**
+   * Показывать ли переключатель кадров.
+   * Спрятанный переключатель не должен запирать в том кадре, который был
+   * выбран до этого: из «3-up» иначе не выйти, и сохранение в нём погашено.
+   */
+  function applyViews(visible) {
+    views.hidden = !visible;
+    if (!visible && shownFrame !== 'diff') {
+      shownFrame = 'diff';
+      settings.write(FRAME_KEY, shownFrame);
+      for (const [name, node] of viewButtons) {
+        node.classList.toggle('selected', name === shownFrame);
+        node.setAttribute('aria-pressed', String(name === shownFrame));
+      }
+      if (result) render();
+    }
+  }
+
+  tune.views.checked = settings.read(VIEWS_KEY, true) !== false;
+  applyViews(tune.views.checked);
+  tune.views.addEventListener('change', () => {
+    settings.write(VIEWS_KEY, tune.views.checked);
+    applyViews(tune.views.checked);
+  });
+
+  function showColors() {
+    tune.changed.value = colors.changed;
+    tune.lighter.value = colors.lighter;
+    tune.direction.checked = Boolean(colors.direction);
+    tune.directionColors.hidden = !colors.direction;
+  }
+
+  /** Цвет запечён в маску, поэтому смена цвета — это пересчёт, а не отрисовка. */
+  function saveColors() {
+    colors.changed = tune.changed.value;
+    colors.lighter = tune.lighter.value;
+    colors.direction = tune.direction.checked;
+    tune.directionColors.hidden = !colors.direction;
+    settings.write(COLORS_KEY, colors);
+    if (result) compare();
+  }
+
+  showColors();
+  for (const input of [tune.changed, tune.lighter]) {
+    // input[type=color] шлёт `input` на каждое движение в палитре и `change`
+    // на закрытии: считаем по второму, иначе пересчёт идёт сотню раз.
+    input.addEventListener('change', saveColors);
+  }
+  tune.direction.addEventListener('change', saveColors);
+  tune.reset.addEventListener('click', () => {
+    Object.assign(colors, global.GhPixelDiff.COLORS);
+    showColors();
+    settings.write(COLORS_KEY, colors);
+    if (result) compare();
+  });
+
+  tune.beta.checked = beta;
+  tune.beta.addEventListener('change', () => {
+    beta = tune.beta.checked;
+    settings.write(BETA_KEY, beta);
+    if (result) compare();
   });
 
   /** Поток здоровается сам: молчание — повод считать в общем потоке. */
@@ -356,8 +532,8 @@
         session = await start();
       }
       const computed = session.ask
-        ? await session.ask({ type: 'diff', threshold })
-        : diffPrepared(session.prepared, { threshold });
+        ? await session.ask({ type: 'diff', threshold, colors, beta })
+        : diffPrepared(session.prepared, { threshold, colors, beta });
 
       result = { ...computed, before: session.prepared.before, after: session.prepared.after };
       // Из потока карта строк приходит буфером — собираем обратно.
@@ -382,6 +558,7 @@
 
   let debounce = null;
   slider.addEventListener('input', () => {
+    settings.write(THRESHOLD_KEY, Number(slider.value));
     clearTimeout(debounce);
     debounce = setTimeout(compare, SLIDER_DELAY);
   });
