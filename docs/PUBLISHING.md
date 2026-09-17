@@ -307,10 +307,10 @@ them. It has no access to github.com pages at all.
 **scripting**
 
 ```
-Self-hosted GitLab lives at an address that cannot be known in advance and so
-cannot be listed in the manifest. When the user adds such an address on the
-settings page and grants access to it, the extension registers its own,
-already shipped GitLab content script for that one host with
+Self-hosted GitLab and GitHub Enterprise live at addresses that cannot be
+known in advance and so cannot be listed in the manifest. When the user adds
+such an address on the settings page and grants access to it, the extension
+registers its own, already shipped content script for that one host with
 scripting.registerContentScripts. No code is fetched or injected from
 anywhere else, and nothing runs on hosts the user has not added.
 ```
@@ -319,9 +319,23 @@ anywhere else, and nothing runs on hosts the user has not added.
 
 ```
 Never requested on install, and never requested by the extension on its own.
-The pattern exists only so that the user can name their own GitLab server on
-the settings page; the browser then asks about that single host. Access is
-revoked from the same page or from the browser's extension settings.
+The pattern exists only so that the user can name their own GitLab or GitHub
+Enterprise server on the settings page; the browser then asks about that
+single host. Access is revoked from the same page or from the browser's
+extension settings.
+```
+
+**Web accessible resources — `*://*/*`**
+
+```
+Three files — the comparison library, the comparison code and the worker
+entry point — are readable by pages so that the extension can assemble its
+comparison worker there. A worker cannot be created from an extension URL on
+a third-party page, so the sources are fetched and joined into a blob. The
+pattern is open because the user may add their own GitLab or GitHub
+Enterprise host, whose address cannot be known in advance; in Chrome the
+resources are served under a dynamic URL, so pages cannot use them to detect
+the extension.
 ```
 
 **Remote code:** No — everything the extension executes ships inside the

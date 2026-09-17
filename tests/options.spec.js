@@ -90,8 +90,10 @@ test('ключи отказов есть в локалях', () => {
 // файла локали та не дотянется, она живёт на чужой странице.
 const SITE = 'https://options.test';
 
+const manifest = JSON.parse(read('../src/manifest.json'));
+
 /** Открывает страницу настроек с заглушкой API браузера. */
-async function openOptions(page) {
+async function openOptions(page, granted = []) {
   await page.route(`${SITE}/**`, (route) => {
     const path = new URL(route.request().url()).pathname.slice(1);
     const types = { js: 'text/javascript', css: 'text/css', html: 'text/html', json: 'application/json' };
@@ -105,8 +107,16 @@ async function openOptions(page) {
     }
   });
 
-  await page.addInitScript((messages) => {
+  await page.addInitScript(({ messages, manifest, origins }) => {
     const store = { sync: {}, local: {} };
+    // Разрешения и реестр скриптов живут в странице: тест смотрит на них так
+    // же, как потом будет смотреть браузер.
+    const permissions = { origins: [...origins] };
+    // @ts-ignore
+    globalThis.ghpdPermissions = permissions;
+    const scripts = [];
+    // @ts-ignore
+    globalThis.ghpdScripts = scripts;
     // @ts-ignore — видно тесту: страница должна не только показать язык, но и
     // положить строки для панели.
     globalThis.ghpdStore = store;
@@ -133,18 +143,41 @@ async function openOptions(page) {
       },
       runtime: {
         getURL: (path) => `${location.origin}/${path}`,
-        getManifest: () => ({ content_scripts: [{ matches: ['https://gitlab.com/*'], js: [], css: [] }] }),
+        getManifest: () => manifest,
       },
       storage: { sync: area('sync'), local: area('local') },
       permissions: {
         contains: async () => true,
-        getAll: async () => ({ origins: [] }),
+        getAll: async () => ({ origins: [...permissions.origins] }),
+        request: async ({ origins: asked }) => {
+          permissions.origins.push(...asked);
+          // @ts-ignore — о чём именно спросили, тест проверяет отдельно.
+          globalThis.ghpdAsked = asked;
+          return true;
+        },
+        remove: async ({ origins: dropped }) => {
+          permissions.origins = permissions.origins.filter((origin) => !dropped.includes(origin));
+          return true;
+        },
+      },
+      scripting: {
+        getRegisteredContentScripts: async () => scripts.map((script) => ({ ...script })),
+        registerContentScripts: async (added) => scripts.push(...added),
+        unregisterContentScripts: async ({ ids }) => {
+          for (const id of ids) {
+            const at = scripts.findIndex((script) => script.id === id);
+            if (at >= 0) scripts.splice(at, 1);
+          }
+        },
       },
     };
-  }, locales[0]);
+  }, { messages: locales[0], manifest, origins: granted });
 
   await page.goto(`${SITE}/options/options.html`);
 }
+
+/** Что сейчас зарегистрировано в браузере от нашего имени. */
+const registered = (page) => page.evaluate(() => globalThis.ghpdScripts);
 
 test('язык выбирается на странице настроек', async ({ page }) => {
   await openOptions(page);
@@ -192,7 +225,6 @@ test('возврат к языку браузера убирает и строк
     .toBeNull();
 });
 
-
 test('цвета разницы выбираются и возвращаются к обычным', async ({ page }) => {
   await openOptions(page);
 
@@ -209,4 +241,79 @@ test('цвета разницы выбираются и возвращаются
   await expect
     .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.darker))
     .toBe('#d1242f');
+});
+
+test('свой GitHub Enterprise просит и хост, и адрес превью', async ({ page }) => {
+  // Превью картинок GitHub рисует в отдельном окне: при изоляции поддоменов
+  // это `viewscreen.<хост>`, без неё — сам хост. Какой случай у человека,
+  // заранее не узнать, поэтому просим оба адреса сразу.
+  await openOptions(page);
+
+  await page.fill('#host-github', 'github.example.com');
+  await page.click('#add-github button');
+
+  await expect
+    .poll(() => page.evaluate(() => globalThis.ghpdAsked))
+    .toEqual(['https://github.example.com/*', 'https://viewscreen.github.example.com/*']);
+
+  // Сервер показан один раз и в своём разделе, а не двумя строками.
+  await expect(page.locator('#hosts-github li')).toHaveCount(1);
+  await expect(page.locator('#hosts-github li span')).toHaveText('github.example.com');
+  await expect(page.locator('#hosts li')).toHaveCount(0);
+});
+
+test('скрипт своего GitHub идёт во фреймы, а скрипт GitLab — нет', async ({ page }) => {
+  // Картинки диффа GitHub рисует в отдельном окне внутри страницы: скрипт,
+  // не попавший во фреймы, не увидит ничего.
+  await openOptions(page);
+
+  await page.fill('#host-github', 'github.example.com');
+  await page.click('#add-github button');
+  await expect(page.locator('#hosts-github li')).toHaveCount(1);
+
+  await page.fill('#host', 'gitlab.example.com');
+  await page.click('#add button');
+  await expect(page.locator('#hosts li')).toHaveCount(1);
+
+  const scripts = await registered(page);
+  const enterprise = scripts.find((script) => script.id === 'github-github.example.com');
+  const gitlab = scripts.find((script) => script.id === 'gitlab-gitlab.example.com');
+
+  expect(enterprise.allFrames).toBe(true);
+  expect(enterprise.matches).toEqual([
+    'https://github.example.com/*',
+    'https://viewscreen.github.example.com/*',
+  ]);
+  // Состав скрипта — из манифеста, а не переписанный руками список.
+  expect(enterprise.js).toEqual(manifest.content_scripts[0].js);
+  expect(gitlab.allFrames).toBe(false);
+  expect(gitlab.js).toEqual(manifest.content_scripts[1].js);
+});
+
+test('вид сервера виден по самим разрешениям, без своего списка', async ({ page }) => {
+  // Разрешение отзывается и мимо этой страницы; список, который мы бы хранили,
+  // начал бы врать в тот же день. Поэтому вид узнаётся по адресам: разрешение
+  // на `viewscreen.<хост>` бывает только у GitHub Enterprise.
+  await openOptions(page, [
+    'https://gitlab.example.com/*',
+    'https://github.example.com/*',
+    'https://viewscreen.github.example.com/*',
+  ]);
+
+  await expect(page.locator('#hosts li span')).toHaveText(['gitlab.example.com']);
+  await expect(page.locator('#hosts-github li span')).toHaveText(['github.example.com']);
+});
+
+test('убрать сервер — снять оба разрешения и регистрацию', async ({ page }) => {
+  await openOptions(page, [
+    'https://github.example.com/*',
+    'https://viewscreen.github.example.com/*',
+  ]);
+  await expect(page.locator('#hosts-github li')).toHaveCount(1);
+
+  await page.click('#hosts-github li button');
+
+  await expect(page.locator('#hosts-github li')).toHaveCount(0);
+  expect(await page.evaluate(() => globalThis.ghpdPermissions.origins)).toEqual([]);
+  expect(await registered(page)).toEqual([]);
 });

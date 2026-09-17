@@ -331,5 +331,14 @@
   },
   "optionsColorsReset": {
     "message": "back to the usual pair"
+  },
+  "optionsGithub": {
+    "message": "A GitHub Enterprise of your own"
+  },
+  "optionsGithubLead": {
+    "message": "Add the address of your instance — <code>github.example.com</code> — and the mode appears in its image viewer. The browser will ask for access to that host and to its <code>viewscreen</code> subdomain, where GitHub draws the preview."
+  },
+  "optionsGithubHint": {
+    "message": "github.example.com"
   }
 }

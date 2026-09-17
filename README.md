@@ -199,6 +199,19 @@ The panel lives inside someone else's page and cannot reach the extension's own
 locale files, so the settings page hands the strings over through storage. The
 standalone site still follows the browser.
 
+### A GitHub Enterprise of your own
+
+A self-hosted GitHub is added the same way, in its own section: type the
+instance — `github.example.com` — and press **Add**. The browser asks for
+access to that host and to its `viewscreen` subdomain, where GitHub draws the
+preview: with subdomain isolation on it lives there, without it on the host
+itself, and which of the two it is cannot be known in advance.
+
+The mode is the same one github.com gets — the frame, its markup and the
+encoded image addresses are identical, so nothing else had to be taught. The
+host is not checked at all; what identifies the viewer is the path and the
+parameters. Reload the tab if the instance is already open.
+
 ### A GitLab of your own
 
 Self-hosted GitLab lives at an address no manifest can know in advance, so it

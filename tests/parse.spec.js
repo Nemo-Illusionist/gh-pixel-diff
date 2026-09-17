@@ -68,6 +68,34 @@ test('подменяет репозиторий в адресе картинки
   expect(result.noRepository).toBeNull();
 });
 
+test('свой GitHub Enterprise — тот же фрейм на другом хосте', async ({ page }) => {
+  // Адрес превью у своего сервера свой: `viewscreen.<хост компании>` при
+  // изоляции поддоменов или сам хост без неё. Списка таких адресов не бывает,
+  // поэтому хост не проверяется вовсе — решают путь и параметры. Попасть на
+  // чужую страницу скрипт всё равно может только там, куда человек сам выдал
+  // доступ.
+  const pairs = await page.evaluate(() => {
+    const hex = (text) =>
+      [...text].map((c) => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+    const query =
+      `?enc_url1=${hex('https://github.example.com/raw/a/shot.png')}` +
+      `&enc_url2=${hex('https://github.example.com/raw/b/shot.png')}&path=shot.png`;
+    return {
+      enterprise: self.GhPixelDiff.readImagePair(
+        `https://viewscreen.github.example.com/diff/img${query}`,
+      ),
+      // Без изоляции поддоменов превью приходит с самого хоста.
+      plain: self.GhPixelDiff.readImagePair(`https://github.example.com/diff/img${query}`),
+      // А вот чужая страница на том же хосте — не дифф картинки.
+      other: self.GhPixelDiff.readImagePair(`https://github.example.com/owner/repo/pull/1${query}`),
+    };
+  });
+
+  expect(pairs.enterprise.before).toBe('https://github.example.com/raw/a/shot.png');
+  expect(pairs.plain.after).toBe('https://github.example.com/raw/b/shot.png');
+  expect(pairs.other).toBeNull();
+});
+
 test('находит прямоугольник с различиями', async ({ page }) => {
   // Границы берутся из маски: закрашены в ней только изменившиеся пиксели,
   // остальное прозрачно. Цвет при этом любой — он кодирует направление

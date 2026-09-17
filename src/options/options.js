@@ -106,14 +106,55 @@ document.querySelector('#colors-reset').addEventListener('click', () => {
   saveColors();
 });
 
-const form = document.querySelector('#add');
-const input = document.querySelector('#host');
-const message = document.querySelector('#message');
-const list = document.querySelector('#hosts');
-const empty = document.querySelector('#empty');
+/**
+ * Два вида своих серверов — и чем они отличаются.
+ *
+ * `match` — по какой строке искать в манифесте состав скрипта: списки файлов
+ * для GitLab и для фрейма GitHub разные, а переписывать их сюда руками значит
+ * однажды разойтись с тем, что грузит браузер.
+ *
+ * У GitHub Enterprise скрипт работает во фреймах: картинки диффа рисуются в
+ * отдельном окне внутри страницы, как и на github.com.
+ */
+const KINDS = {
+  gitlab: { match: 'gitlab.com', allFrames: false },
+  github: { match: 'viewscreen.githubusercontent.com', allFrames: true },
+};
+
+/**
+ * Поддомен, на котором GitHub — и облачный, и свой — рисует превью файлов.
+ *
+ * У Enterprise с включённой изоляцией поддоменов это `viewscreen.<хост>`, без
+ * неё превью приходит с самого хоста. Какой из случаев у человека, заранее
+ * неизвестно, поэтому просим оба адреса сразу: лишнее разрешение здесь
+ * дешевле, чем режим, который не появился и не объяснил почему.
+ */
+const VIEWSCREEN = 'viewscreen.';
+
+/** Разметка обеих секций: у каждой свой вид сервера. */
+const SECTIONS = {
+  gitlab: {
+    form: document.querySelector('#add'),
+    input: document.querySelector('#host'),
+    message: document.querySelector('#message'),
+    list: document.querySelector('#hosts'),
+    empty: document.querySelector('#empty'),
+  },
+  github: {
+    form: document.querySelector('#add-github'),
+    input: document.querySelector('#host-github'),
+    message: document.querySelector('#message-github'),
+    list: document.querySelector('#hosts-github'),
+    empty: document.querySelector('#empty-github'),
+  },
+};
 
 /** Имя записи в реестре скриптов: по нему же её и снимаем. */
-const idFor = (host) => `gitlab-${host}`;
+const idFor = (kind, host) => `${kind}-${host}`;
+
+/** Адреса, которые нужны этому виду сервера. */
+const originsFor = (kind, origin, host) =>
+  kind === 'github' ? [origin, origin.replace(`//${host}/`, `//${VIEWSCREEN}${host}/`)] : [origin];
 
 /**
  * Адрес из того, что напечатал человек.
@@ -153,10 +194,10 @@ function toOrigin(raw) {
 }
 
 /** Состав скрипта берём из манифеста: второй список разошёлся бы с первым. */
-function gitlabScripts() {
+function scriptsFor(kind) {
   const entry = api.runtime
     .getManifest()
-    .content_scripts.find((script) => script.matches.some((match) => match.includes('gitlab.com')));
+    .content_scripts.find((script) => script.matches.some((match) => match.includes(KINDS[kind].match)));
   return { js: entry.js, css: entry.css };
 }
 
@@ -168,7 +209,37 @@ async function granted() {
   return origins.filter((origin) => !ORIGINS.origins.includes(origin));
 }
 
-function say(text, bad) {
+/**
+ * Какие серверы добавлены и какого они вида — по одним лишь разрешениям.
+ *
+ * Своего списка не заводим намеренно: разрешение отзывается и мимо этой
+ * страницы, в настройках браузера, и список, который мы бы хранили, начал бы
+ * врать в тот же день. Вид сервера виден по самим адресам: разрешение на
+ * `viewscreen.<хост>` бывает только у GitHub Enterprise — у GitLab такого
+ * поддомена нет.
+ */
+function describe(origins) {
+  const hosts = new Map();
+  for (const origin of origins) {
+    const host = hostOf(origin);
+    if (!host.startsWith(VIEWSCREEN)) hosts.set(host, { kind: 'gitlab', origins: [origin] });
+  }
+  for (const origin of origins) {
+    const host = hostOf(origin);
+    if (!host.startsWith(VIEWSCREEN)) continue;
+    const parent = host.slice(VIEWSCREEN.length);
+    const known = hosts.get(parent);
+    if (known) hosts.set(parent, { kind: 'github', origins: [...known.origins, origin] });
+    // Разрешение на превью есть, а на сам сервер нет: половина отозвана мимо
+    // этой страницы. Показываем как есть — иначе адрес пропал бы из списка,
+    // оставшись выданным.
+    else hosts.set(parent, { kind: 'github', origins: [origin] });
+  }
+  return hosts;
+}
+
+function say(kind, text, bad) {
+  const { message } = SECTIONS[kind];
   message.textContent = text ?? '';
   message.hidden = !text;
   message.classList.toggle('message-bad', Boolean(bad));
@@ -181,106 +252,118 @@ function say(text, bad) {
  * тогда регистрация останется висеть. Источник правды один: то, что говорит
  * permissions, а не то, что мы когда-то записали.
  */
-async function sync(origins) {
+async function sync(hosts) {
   if (!api.scripting?.registerContentScripts) return;
 
   const registered = await api.scripting.getRegisteredContentScripts();
-  const ours = registered.filter((script) => script.id.startsWith('gitlab-'));
+  const ours = registered.filter((script) => /^(gitlab|github)-/.test(script.id));
+  const wanted = new Map(
+    [...hosts].map(([host, { kind, origins }]) => [idFor(kind, host), { kind, origins }]),
+  );
 
-  const stale = ours.filter((script) => !origins.includes(script.matches?.[0]));
+  const stale = ours.filter((script) => !wanted.has(script.id));
   if (stale.length) {
     await api.scripting.unregisterContentScripts({ ids: stale.map((script) => script.id) });
   }
 
-  const known = new Set(ours.map((script) => script.matches?.[0]));
-  const missing = origins.filter((origin) => !known.has(origin));
+  const known = new Set(ours.map((script) => script.id));
+  const missing = [...wanted].filter(([id]) => !known.has(id));
   if (missing.length) {
-    const { js, css } = gitlabScripts();
     await api.scripting.registerContentScripts(
-      missing.map((origin) => ({
-        id: idFor(hostOf(origin)),
-        matches: [origin],
-        js,
-        css,
+      missing.map(([id, { kind, origins }]) => ({
+        id,
+        matches: origins,
+        ...scriptsFor(kind),
+        allFrames: KINDS[kind].allFrames,
         runAt: 'document_end',
       })),
     );
   }
 }
 
-async function remove(origin) {
+async function remove(kind, host, origins) {
   try {
     // Сначала снимаем регистрацию: запись без разрешения браузеру не нужна.
     if (api.scripting?.unregisterContentScripts) {
-      await api.scripting
-        .unregisterContentScripts({ ids: [idFor(hostOf(origin))] })
-        .catch(() => {});
+      await api.scripting.unregisterContentScripts({ ids: [idFor(kind, host)] }).catch(() => {});
     }
-    await api.permissions.remove({ origins: [origin] });
-    say(null);
+    await api.permissions.remove({ origins });
+    say(kind, null);
   } catch (error) {
-    say(t('optionsFailed'), true);
+    say(kind, t('optionsFailed'), true);
     console.error(error);
   }
   await render();
 }
 
 async function render() {
-  const origins = await granted();
+  const hosts = describe(await granted());
   try {
-    await sync(origins);
+    await sync(hosts);
   } catch (error) {
-    say(t('optionsFailed'), true);
+    say('gitlab', t('optionsFailed'), true);
     console.error(error);
   }
 
-  list.replaceChildren();
-  for (const origin of origins) {
-    const item = document.createElement('li');
-    const name = document.createElement('span');
-    name.textContent = hostOf(origin);
-    const drop = document.createElement('button');
-    drop.type = 'button';
-    drop.textContent = t('optionsRemove');
-    drop.addEventListener('click', () => remove(origin));
-    item.append(name, drop);
-    list.append(item);
+  for (const [kind, section] of Object.entries(SECTIONS)) {
+    section.list.replaceChildren();
+    let shown = 0;
+    for (const [host, entry] of hosts) {
+      if (entry.kind !== kind) continue;
+      shown++;
+      const item = document.createElement('li');
+      const name = document.createElement('span');
+      name.textContent = host;
+      const drop = document.createElement('button');
+      drop.type = 'button';
+      drop.textContent = t('optionsRemove');
+      drop.addEventListener('click', () => remove(kind, host, entry.origins));
+      item.append(name, drop);
+      section.list.append(item);
+    }
+    section.empty.hidden = shown > 0;
   }
-  empty.hidden = origins.length > 0;
 }
 
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
+/** Добавление сервера: разрешение спрашивается здесь, по этому нажатию. */
+function wireForm(kind) {
+  const { form, input } = SECTIONS[kind];
 
-  const { origin, error } = toOrigin(input.value);
-  if (error) {
-    say(t(error), true);
-    return;
-  }
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
 
-  // Регистрировать скрипт браузер даст только после того, как разрешение
-  // выдано, — и попросить его можно лишь отсюда, по этому самому нажатию.
-  if (!api.scripting?.registerContentScripts) {
-    say(t('optionsUnsupported'), true);
-    return;
-  }
-
-  try {
-    if (!(await api.permissions.request({ origins: [origin] }))) {
-      say(t('optionsDenied'), true);
+    const { origin, host, error } = toOrigin(input.value);
+    if (error) {
+      say(kind, t(error), true);
       return;
     }
-  } catch (caught) {
-    say(t('optionsFailed'), true);
-    console.error(caught);
-    return;
-  }
 
-  input.value = '';
-  await render();
-  // Уже открытая вкладка своего скрипта не получит: регистрация действует со
-  // следующей загрузки.
-  say(t('optionsAdded'));
-});
+    // Регистрировать скрипт браузер даст только после того, как разрешение
+    // выдано, — и попросить его можно лишь отсюда, по этому самому нажатию.
+    if (!api.scripting?.registerContentScripts) {
+      say(kind, t('optionsUnsupported'), true);
+      return;
+    }
+
+    try {
+      if (!(await api.permissions.request({ origins: originsFor(kind, origin, host) }))) {
+        say(kind, t('optionsDenied'), true);
+        return;
+      }
+    } catch (caught) {
+      say(kind, t('optionsFailed'), true);
+      console.error(caught);
+      return;
+    }
+
+    input.value = '';
+    await render();
+    // Уже открытая вкладка своего скрипта не получит: регистрация действует
+    // со следующей загрузки.
+    say(kind, t('optionsAdded'));
+  });
+}
+
+for (const kind of Object.keys(SECTIONS)) wireForm(kind);
 
 render();
