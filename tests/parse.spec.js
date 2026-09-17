@@ -152,16 +152,17 @@ test('сдвинутые строки сшиваются, а не объявля
     // столько же вытеснено за край кадра.
     const after = rows([5, 6, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
 
-    const aligned = self.GhPixelDiff.diffPrepared({
+    const aligned = self.GhPixelDiff.diffPrepared(
+      { width, height, dataBefore: before, dataAfter: after },
+      { align: true },
+    );
+    // По умолчанию сшивания нет: это бета, и включают её в настройках.
+    const plain = self.GhPixelDiff.diffPrepared({
       width,
       height,
       dataBefore: before,
       dataAfter: after,
     });
-    const plain = self.GhPixelDiff.diffPrepared(
-      { width, height, dataBefore: before, dataAfter: after },
-      { align: false },
-    );
 
     return {
       inserted: aligned.inserted,

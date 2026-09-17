@@ -389,5 +389,14 @@
   },
   "rowNew": {
     "message": "a new row"
+  },
+  "optionsBeta": {
+    "message": "Beta"
+  },
+  "optionsAlign": {
+    "message": "stitch shifted rows"
+  },
+  "optionsAlignHint": {
+    "message": "An element added at the top stops turning the whole frame red. On flat content the guess can miss and mark places where nothing changed."
   }
 }

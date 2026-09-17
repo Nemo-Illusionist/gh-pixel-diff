@@ -115,6 +115,21 @@ document.querySelector('#colors-reset').addEventListener('click', () => {
   saveColors();
 });
 
+// Сшивание сдвинутых строк. Пока бета: на однообразном содержимом — пустой
+// список, ровные поля — строки неразличимы, и сшить их можно как угодно.
+// Отметки тогда появляются там, где ничего не менялось.
+const align = document.querySelector('#align');
+
+Promise.resolve(api.storage.sync.get({ align: false }))
+  .then(({ align: value }) => {
+    align.checked = value === true;
+  })
+  .catch(() => {});
+
+align.addEventListener('change', () => {
+  Promise.resolve(api.storage.sync.set({ align: align.checked })).catch(() => {});
+});
+
 /**
  * Два вида своих серверов — и чем они отличаются.
  *

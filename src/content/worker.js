@@ -39,6 +39,7 @@
       const result = diffPrepared(prepared, {
         threshold: data.threshold,
         colors: data.colors,
+        align: data.align,
       });
       global.postMessage(
         {

@@ -93,7 +93,9 @@ test('добавляет режим к родным и считает разни
     expect(done.meta).not.toMatch(/Не вышло|Failed/);
     // По умолчанию показан фрагмент с изменениями, а не весь кадр.
     expect(done.meta).toMatch(/фрагмент|fragment/);
-    expect(Number(done.meta.replace(/\s/g, '').match(/^(\d+)/)?.[1])).toBeGreaterThan(100);
+    // Разряды числа отбиваются по-разному: в русском пробелом, в английском
+    // запятой. Убираем и то и другое, иначе «21,096 pixels» читается как 21.
+    expect(Number(done.meta.replace(/[\s,]/g, '').match(/^(\d+)/)?.[1])).toBeGreaterThan(100);
     expect(done.canvas).toMatch(/^\d+x\d+$/);
 
     // Возврат к родному режиму возвращает всё как было.

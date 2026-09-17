@@ -652,14 +652,17 @@
     const { width, height } = prepared;
     const mask = new ImageData(width, height);
 
-    // Строки сшиваются до сравнения: вставленный наверху элемент сдвигает всё
-    // ниже, и без этого кадр честно объявляется изменившимся целиком.
-    // Отключаемо: выравнивание — догадка, пусть и хорошая, а бывает нужно
-    // увидеть именно голое попиксельное сравнение.
-    const aligned =
-      options.align === false
-        ? null
-        : alignRows(prepared.dataBefore.data, prepared.dataAfter.data, width, height);
+    // Сшивание строк — по просьбе, а не по умолчанию.
+    //
+    // Там, где элемент добавили наверху, оно спасает кадр от сплошной
+    // красноты. Но это догадка, и на однообразном содержимом — пустой список,
+    // ровные поля — она садится мимо: строки там неразличимы, и сшить их
+    // можно как угодно. Кадр от этого не краснеет целиком, зато отметки
+    // появляются там, где ничего не менялось, а это хуже честного «изменилось
+    // всё». Поэтому пока включается руками, в настройках, и названо бетой.
+    const aligned = options.align
+      ? alignRows(prepared.dataBefore.data, prepared.dataAfter.data, width, height)
+      : null;
     const shifted =
       aligned && (aligned.inserted || aligned.removed)
         ? shiftRows(prepared.dataBefore.data, aligned.map, width)
