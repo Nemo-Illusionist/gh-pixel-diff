@@ -51,10 +51,15 @@
           ratio: result.ratio,
           bounds: result.bounds,
           clusters: result.clusters,
+          inserted: result.inserted,
+          removed: result.removed,
+          // Карта строк нужна инспектору пикселя: под курсором должен быть
+          // тот самый пиксель «до», а не тот, что оказался на этом месте.
+          rows: result.rows?.buffer ?? null,
           sizeChanged: prepared.sizeChanged,
           mask: result.mask.data.buffer,
         },
-        [result.mask.data.buffer],
+        result.rows ? [result.mask.data.buffer, result.rows.buffer] : [result.mask.data.buffer],
       );
     }
   };

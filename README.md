@@ -64,6 +64,11 @@ runs in your browser.
 - **Save what you see as a PNG**: the chosen frame, the crop, the zoom, the
   outlines — whatever is on screen goes into `shot.diff.png`, ready to drop into
   a comment or a ticket.
+- **An element added at the top no longer turns the whole frame red**: rows are
+  stitched to their counterparts first — by the same trick text diffs use to
+  tell an edited line from an inserted one — and the caption says how many rows
+  were inserted or removed. On a 1440×2400 frame this is not a cost but a
+  saving: the comparison has almost nothing left to disagree about.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame
