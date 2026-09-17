@@ -83,16 +83,6 @@
   text-align: center;
 }
 
-/* Образец цвета в легенде — того же роста, что буквы рядом. */
-.ghpd-legend-swatch {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  vertical-align: -1px;
-  border: 1px solid var(--borderColor-default, #d0d7de);
-  border-radius: 2px;
-}
-
 .ghpd-probe-swatch {
   display: inline-block;
   width: 9px;

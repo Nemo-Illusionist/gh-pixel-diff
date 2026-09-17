@@ -195,11 +195,14 @@
       const margin = Math.max(6, Math.round(Math.max(result.width, result.height) / 120));
       const factor = canvas.width / shown.width;
       const line = Math.max(2, Math.round(Math.max(result.width, result.height) / 400));
-      // Мест изменений может быть несколько, и обвести надо все: иначе
-      // переход «дальше» уводит туда, где на кадре ничего не отмечено.
-      // Выбранное — в полную силу, остальные бледнее: видно и где мы сейчас,
-      // и что есть ещё.
-      const boxes = result.clusters?.length ? result.clusters : [result.bounds];
+      // Пока место не выбрано, рамка одна — общая на все изменения: она
+      // отвечает на вопрос «где вообще смотреть», и дробить её на три
+      // еле заметных прямоугольника значит не отвечать вовсе.
+      //
+      // А вот когда по местам ходят, обвести надо каждое: иначе переход
+      // «дальше» уводит туда, где на кадре ничего не отмечено. Выбранное —
+      // в полную силу, остальные бледнее.
+      const boxes = focus ? result.clusters ?? [focus] : [result.bounds];
       ctx.save();
       // Рамка живёт в координатах кадра; увеличение переносит её сюда тем же
       // преобразованием, что и картинку.
@@ -552,32 +555,6 @@
     canvas.addEventListener('pointerleave', clear);
   }
 
-  /**
-   * Легенда под кадром: что значит каждый цвет.
-   *
-   * Образцами, а не словами «красным» и «синим»: цвета можно поменять в
-   * настройках, и подпись, называющая их по имени, начала бы врать при первой
-   * же замене. Образец говорит правду про любой цвет — и заодно про тот,
-   * который человек различает плохо.
-   */
-  function colorLegend(colors) {
-    const t = (key) => global.GhPixelDiffI18n?.t(key) || '';
-    const swatch = (color) => {
-      const box = document.createElement('span');
-      box.className = 'ghpd-legend-swatch';
-      box.style.background = color;
-      return box;
-    };
-    const fragment = document.createDocumentFragment();
-    fragment.append(
-      swatch(colors.darker),
-      ` ${t('legendDarker')} · `,
-      swatch(colors.lighter),
-      ` ${t('legendLighter')}`,
-    );
-    return fragment;
-  }
-
   /** Как показать увеличение человеку: «2,5×», а не «2.4999999×». */
   function zoomLabel(scale, locale) {
     return `${Number(scale.toFixed(1)).toLocaleString(locale ?? 'en')}×`;
@@ -587,7 +564,6 @@
     drawCrop,
     saveCanvas,
     frameFileName,
-    colorLegend,
     attachProbe,
     createZoom,
     attachZoom,

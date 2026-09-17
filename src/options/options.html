@@ -30,16 +30,26 @@
       <h2 data-i18n="optionsColors"></h2>
       <div class="colors">
         <label class="setting">
-          <input id="color-darker" type="color" value="#d1242f">
-          <span data-i18n="optionsColorDarker"></span>
-        </label>
-        <label class="setting">
-          <input id="color-lighter" type="color" value="#0969da">
-          <span data-i18n="optionsColorLighter"></span>
+          <input id="color-changed" type="color" value="#d1242f">
+          <span data-i18n="optionsColorMain"></span>
         </label>
         <button id="colors-reset" type="button" data-i18n="optionsColorsReset"></button>
       </div>
       <p class="note" data-i18n="optionsColorsHint"></p>
+
+      <!-- Второй цвет появляется только вместе с направлением: без него он
+           ничего не значит и только путает. -->
+      <label class="setting">
+        <input id="direction" type="checkbox">
+        <span data-i18n="optionsDirection"></span>
+      </label>
+      <div class="colors" id="direction-colors" hidden>
+        <label class="setting">
+          <input id="color-lighter" type="color" value="#0969da">
+          <span data-i18n="optionsColorLighter"></span>
+        </label>
+      </div>
+      <p class="note" data-i18n="optionsDirectionHint"></p>
     </section>
 
     <section>
