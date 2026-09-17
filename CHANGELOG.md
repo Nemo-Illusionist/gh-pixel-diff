@@ -4,6 +4,13 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.13.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.13.0...v0.13.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* the controls stay where they are ([#55](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/55)) ([e4a2564](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/e4a2564d140cfafce91d50268b8a81c6c54982c3))
+
 ## [0.13.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.12.0...v0.13.0) (2026-09-17)
 
 
