@@ -1330,7 +1330,8 @@ test('переехавшее вниз содержимое не краснеет
   // Добавленный наверху элемент сдвигает всё, что ниже. Без сшивания строк
   // панель честно сообщает, что изменился весь кадр, — и этим не помогает.
   await page.setViewportSize({ width: 900, height: 700 });
-  await openFrame(page, svgShifted());
+  // Сшивание — бета: панель берёт его из настроек, а не включает сама.
+  await openFrame(page, svgShifted(), { beta: true });
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
@@ -1339,9 +1340,29 @@ test('переехавшее вниз содержимое не краснеет
 
   // Сдвиг назван словами.
   expect(подпись).toMatch(/rows inserted/);
-  // И весь кадр при этом не объявлен изменившимся: доля кадра осталась малой.
-  const [, доля] = /· ([\d.]+)% of the frame/.exec(подпись);
-  expect(Number(доля)).toBeLessThan(25);
+  // И найденного заметно меньше, чем без сшивания: переехавшее содержимое
+  // перестало считаться изменившимся.
+  const [, пикселей] = /^([\d,]+) pixels/.exec(подпись);
+  expect(Number(пикселей.replace(/,/g, ''))).toBeLessThan(20000);
+});
+
+test('без беты кадр сравнивается как есть', async ({ page }) => {
+  // Сшивание — догадка, и на однообразном содержимом она садится мимо. Пока
+  // это бета, панель по умолчанию сравнивает кадры как есть, ничего не
+  // предполагая о сдвиге.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgShifted());
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const подпись = await page.textContent('.ghpd-meta');
+
+  expect(подпись).not.toMatch(/rows/);
+  // Переехавшее содержимое считается изменившимся: без сшивания панель
+  // находит вдесятеро больше пикселей, чем с ним.
+  const [, пикселей] = /^([\d,]+) pixels/.exec(подпись);
+  expect(Number(пикселей.replace(/,/g, ''))).toBeGreaterThan(50000);
 });
 
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {

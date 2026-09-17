@@ -64,12 +64,18 @@ runs in your browser.
 - **Save what you see as a PNG**: the chosen frame, the crop, the zoom, the
   outlines — whatever is on screen goes into `shot.diff.png`, ready to drop into
   a comment or a ticket.
-- **An element added at the top no longer turns the whole frame red**: rows are
-  stitched to their counterparts first — by the same trick text diffs use to
-  tell an edited line from an inserted one — and the caption says how many rows
-  were inserted or removed. Stitching a 1440×2400 frame costs about 10 ms; on
-  a frame that really did shift it saves an order of magnitude more, since the
-  comparison is left with almost nothing to disagree about.
+- **Beta: stitching shifted rows, and the edge one version doesn't have.** An
+  element added at the top pushes everything below it down, and the comparison
+  then reports the whole frame as changed; a frame that got two dozen rows
+  shorter grows a solid red band at the bottom that the real edit drowns in.
+  Turn *stitch shifted rows, and do not count the edge* on in the settings and
+  rows are matched to their counterparts first — by the same trick text diffs
+  use to tell an edited line from an inserted one — while the band is marked at
+  half strength and counts neither towards the number nor towards the crop. It
+  is off by default: both change the number in the caption, and the stitching is
+  a guess besides — on flat content, an empty list or plain margins, rows are
+  indistinguishable and can be stitched any which way, and then the frame gets
+  marks where nothing changed.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame

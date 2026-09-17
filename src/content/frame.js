@@ -34,6 +34,8 @@
   const SHOW_VIEWS_DEFAULT = true;
   /** Цвета разницы: свои, если их поменяли в настройках. */
   const colors = { ...global.GhPixelDiff.COLORS };
+  /** Сшивать ли сдвинутые строки — бета, по умолчанию выключено. */
+  const beta = { on: false };
   /**
    * Пока GitHub не задал фрейму высоту, окно внутри — узкая полоска, и кадр
    * ужимается в точку. Высоту задаёт родительская страница, и делает это,
@@ -192,10 +194,11 @@
    */
   async function readColors() {
     try {
-      const stored = await api?.storage?.sync?.get({ colors: null });
+      const stored = await api?.storage?.sync?.get({ colors: null, beta: false });
       if (stored?.colors) Object.assign(colors, stored.colors);
+      beta.on = stored?.beta === true;
     } catch {
-      // Хранилища нет — остаётся обычная пара.
+      // Хранилища нет — остаётся обычная пара и сравнение без сшивания.
     }
   }
 
@@ -437,6 +440,7 @@
             height: prepared.height,
             scale: prepared.scale,
             sizeChanged: prepared.sizeChanged,
+            common: prepared.common,
             before: prepared.dataBefore.data.buffer,
             after: prepared.dataAfter.data.buffer,
           }, [prepared.dataBefore.data.buffer, prepared.dataAfter.data.buffer]);
@@ -460,8 +464,8 @@
           session = await start();
         }
         const computed = session.ask
-          ? await session.ask({ type: 'diff', threshold, colors })
-          : diffPrepared(session.prepared, { threshold, colors });
+          ? await session.ask({ type: 'diff', threshold, colors, beta: beta.on })
+          : diffPrepared(session.prepared, { threshold, colors, beta: beta.on });
         result = { ...computed, before: session.prepared.before, after: session.prepared.after };
         // Из потока разница приходит буфером — обратно в картинку её
         // собирает тот, кто рисует.

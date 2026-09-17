@@ -389,5 +389,14 @@
   },
   "rowNew": {
     "message": "a new row"
+  },
+  "optionsBeta": {
+    "message": "Beta"
+  },
+  "optionsBetaOn": {
+    "message": "stitch shifted rows, and do not count the edge"
+  },
+  "optionsBetaHint": {
+    "message": "An element added at the top stops turning the whole frame red, and the strip one version does not have stops counting. Both change the number in the caption; on flat content the stitching can also miss."
   }
 }

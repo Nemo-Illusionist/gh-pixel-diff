@@ -115,6 +115,22 @@ document.querySelector('#colors-reset').addEventListener('click', () => {
   saveColors();
 });
 
+// Бета: сшивание сдвинутых строк и край, которого у одной из версий нет.
+// Обе поправки меняют само число в подписи, а на однообразном содержимом —
+// пустой список, ровные поля — сшивание к тому же садится мимо. Поэтому
+// включается руками и одним переключателем на обе.
+const beta = document.querySelector('#beta');
+
+Promise.resolve(api.storage.sync.get({ beta: false }))
+  .then(({ beta: value }) => {
+    beta.checked = value === true;
+  })
+  .catch(() => {});
+
+beta.addEventListener('change', () => {
+  Promise.resolve(api.storage.sync.set({ beta: beta.checked })).catch(() => {});
+});
+
 /**
  * Два вида своих серверов — и чем они отличаются.
  *

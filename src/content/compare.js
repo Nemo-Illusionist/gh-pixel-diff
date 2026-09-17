@@ -636,6 +636,13 @@
       after,
       dataBefore: toImageData(before, width, height, scale),
       dataAfter: toImageData(after, width, height, scale),
+      // Общая часть: там, где обе версии есть на самом деле. Холст берётся по
+      // большей из картинок, и у меньшей край остаётся пустым — сравнивать
+      // его не с чем.
+      common: {
+        width: Math.min(before.naturalWidth, after.naturalWidth) * scale,
+        height: Math.min(before.naturalHeight, after.naturalHeight) * scale,
+      },
       sizeChanged:
         before.naturalWidth !== after.naturalWidth ||
         before.naturalHeight !== after.naturalHeight,
@@ -652,14 +659,17 @@
     const { width, height } = prepared;
     const mask = new ImageData(width, height);
 
-    // Строки сшиваются до сравнения: вставленный наверху элемент сдвигает всё
-    // ниже, и без этого кадр честно объявляется изменившимся целиком.
-    // Отключаемо: выравнивание — догадка, пусть и хорошая, а бывает нужно
-    // увидеть именно голое попиксельное сравнение.
-    const aligned =
-      options.align === false
-        ? null
-        : alignRows(prepared.dataBefore.data, prepared.dataAfter.data, width, height);
+    // Сшивание строк — по просьбе, а не по умолчанию.
+    //
+    // Там, где элемент добавили наверху, оно спасает кадр от сплошной
+    // красноты. Но это догадка, и на однообразном содержимом — пустой список,
+    // ровные поля — она садится мимо: строки там неразличимы, и сшить их
+    // можно как угодно. Кадр от этого не краснеет целиком, зато отметки
+    // появляются там, где ничего не менялось, а это хуже честного «изменилось
+    // всё». Поэтому пока включается руками, в настройках, и названо бетой.
+    const aligned = options.beta
+      ? alignRows(prepared.dataBefore.data, prepared.dataAfter.data, width, height)
+      : null;
     const shifted =
       aligned && (aligned.inserted || aligned.removed)
         ? shiftRows(prepared.dataBefore.data, aligned.map, width)
@@ -696,14 +706,42 @@
       },
     );
 
+    // Край, которого у одной из версий нет, изменением не считается.
+    //
+    // Кадр стал на два десятка строк короче — и эти строки, сравненные с
+    // пустотой, дают сплошную красную полосу и десятки тысяч «изменившихся»
+    // пикселей. На снимке страницы это девять десятых всей находки: настоящая
+    // правка тонет в полосе, которая и так названа словами в подписи.
+    // Поэтому край отмечается вполсилы, как сглаживание: виден, но ни в счёт,
+    // ни в границы, ни в места изменений не идёт.
+    //
+    // Тоже под бетой, и вместе со сшиванием: обе поправки меняют само число в
+    // подписи, а число — то, на что смотрят в первую очередь. Пусть сначала
+    // поживут у тех, кто их включил нарочно.
+    const common = options.beta ? (prepared.common ?? { width, height }) : { width, height };
+    let outside = 0;
+    if (common.width < width || common.height < height) {
+      for (let y = 0; y < height; y++) {
+        const edge = y >= common.height;
+        for (let x = edge ? 0 : common.width; x < width; x++) {
+          const i = (y * width + x) * 4;
+          if (mask.data[i + 3] !== 255) continue;
+          mask.data[i + 3] = 128;
+          outside++;
+        }
+      }
+    }
+
     const found = findChanges(mask.data, width, height);
 
     return {
       width,
       height,
       scale: prepared.scale ?? 1,
-      changed,
-      ratio: changed / (width * height),
+      changed: changed - outside,
+      // Доля считается от общей части: делить на кадр, которого у одной из
+      // версий нет, значит занижать долю тем сильнее, чем больше он вырос.
+      ratio: (changed - outside) / (common.width * common.height || width * height),
       // Сколько строк прибавилось и убавилось: сдвиг стоит не только показать,
       // но и назвать — «весь кадр красный» и «вставлено 24 строки» это разные
       // ответы, даже когда картинка одна и та же.

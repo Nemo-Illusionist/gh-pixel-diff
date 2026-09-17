@@ -152,16 +152,17 @@ test('сдвинутые строки сшиваются, а не объявля
     // столько же вытеснено за край кадра.
     const after = rows([5, 6, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
 
-    const aligned = self.GhPixelDiff.diffPrepared({
+    const aligned = self.GhPixelDiff.diffPrepared(
+      { width, height, dataBefore: before, dataAfter: after },
+      { beta: true },
+    );
+    // По умолчанию сшивания нет: это бета, и включают её в настройках.
+    const plain = self.GhPixelDiff.diffPrepared({
       width,
       height,
       dataBefore: before,
       dataAfter: after,
     });
-    const plain = self.GhPixelDiff.diffPrepared(
-      { width, height, dataBefore: before, dataAfter: after },
-      { align: false },
-    );
 
     return {
       inserted: aligned.inserted,
@@ -267,6 +268,58 @@ test('без различий прямоугольника нет', async ({ pag
   });
 
   expect(bounds).toBeNull();
+});
+
+test('в бете край, которого нет у одной из версий, не считается изменением', async ({ page }) => {
+  // Кадр стал короче — и недостающие строки, сравненные с пустотой, дают
+  // сплошную полосу и десятки тысяч «изменившихся» пикселей. На настоящем
+  // снимке это девять десятых всей находки: правка тонет в полосе, о которой
+  // и так сказано словами. Поправка пока под бетой, вместе со сшиванием:
+  // обе меняют само число в подписи.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const result = await page.evaluate(() => {
+    const width = 10;
+    const height = 10;
+    // «До» — десять строк, «после» — восемь тех же самых; низ пуст.
+    const fill = (rows) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          data[i] = (y * 37) % 256;
+          data[i + 1] = (y * 11 + x) % 256;
+          data[i + 2] = 200;
+          data[i + 3] = 255;
+        }
+      }
+      return new ImageData(data, width, height);
+    };
+
+    const diff = self.GhPixelDiff.diffPrepared(
+      {
+        width,
+        height,
+        dataBefore: fill(10),
+        dataAfter: fill(8),
+        common: { width, height: 8 },
+      },
+      { beta: true },
+    );
+
+    let half = 0;
+    for (let i = 3; i < diff.mask.data.length; i += 4) if (diff.mask.data[i] === 128) half++;
+    return { changed: diff.changed, ratio: diff.ratio, bounds: diff.bounds, half };
+  });
+
+  // Общая часть совпала целиком — значит изменений нет.
+  expect(result.changed).toBe(0);
+  expect(result.ratio).toBe(0);
+  expect(result.bounds).toBeNull();
+  // Но полоса на кадре отмечена — вполсилы, как сглаживание.
+  expect(result.half).toBe(2 * 10);
 });
 
 test('считает изменившиеся пиксели', async ({ page }) => {

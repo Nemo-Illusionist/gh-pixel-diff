@@ -23,6 +23,7 @@
         height: data.height,
         scale: data.scale,
         sizeChanged: data.sizeChanged,
+        common: data.common,
         // Вид поверх переданного буфера, без копирования.
         dataBefore: new ImageData(new Uint8ClampedArray(data.before), data.width, data.height),
         dataAfter: new ImageData(new Uint8ClampedArray(data.after), data.width, data.height),
@@ -39,6 +40,7 @@
       const result = diffPrepared(prepared, {
         threshold: data.threshold,
         colors: data.colors,
+        beta: data.beta,
       });
       global.postMessage(
         {
