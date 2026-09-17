@@ -354,5 +354,40 @@
   },
   "optionsDirectionHint": {
     "message": "The first colour marks what got darker, the second what got lighter."
+  },
+  "rowsAddedOne": {
+    "message": "$count$ row inserted",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsAddedOther": {
+    "message": "$count$ rows inserted",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsRemovedOne": {
+    "message": "$count$ row removed",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsRemovedOther": {
+    "message": "$count$ rows removed",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowNew": {
+    "message": "a new row"
   }
 }

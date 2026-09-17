@@ -194,6 +194,269 @@
   }
 
   /**
+   * Сколько строк подряд разрешаем считать вставкой.
+   *
+   * Предел нужен не ради скорости, а ради смысла: если совпадающих строк
+   * почти нет, значит это не «добавили блок», а вообще другая картинка, и
+   * выравнивать в ней нечего.
+   */
+  const ALIGN_MIN_ANCHORS = 4;
+
+  /**
+   * Свёртка строки пикселей в число.
+   *
+   * FNV-1a, но не по байтам, а по пикселям: тот же буфер читается как
+   * Uint32Array, и работы становится вчетверо меньше. На снимке страницы это
+   * разница между «незаметно» и «заметно»: свёртка идёт по всем пикселям
+   * обеих картинок, а их там миллионы.
+   *
+   * Хеш, а не сами байты: строки сравниваются только на равенство, а держать
+   * ради этого копию картинки — лишние мегабайты. Совпадение хешей у разных
+   * строк возможно, но цена ошибки мала: неверно сшитая пара строк тут же
+   * разойдётся попиксельным сравнением.
+   */
+  function rowHashes(data, width, height) {
+    const pixels = new Uint32Array(data.buffer, data.byteOffset, width * height);
+    const hashes = new Uint32Array(height);
+    for (let y = 0; y < height; y++) {
+      let hash = 0x811c9dc5;
+      const start = y * width;
+      for (let i = start; i < start + width; i++) {
+        hash = Math.imul(hash ^ pixels[i], 0x01000193);
+      }
+      hashes[y] = hash >>> 0;
+    }
+    return hashes;
+  }
+
+  /** Самая длинная возрастающая подпоследовательность — по значениям. */
+  function longestIncreasing(values) {
+    const tails = [];
+    const back = new Int32Array(values.length).fill(-1);
+    const ends = [];
+    for (let i = 0; i < values.length; i++) {
+      let low = 0;
+      let high = tails.length;
+      while (low < high) {
+        const middle = (low + high) >> 1;
+        if (values[ends[middle]] < values[i]) low = middle + 1;
+        else high = middle;
+      }
+      if (low > 0) back[i] = ends[low - 1];
+      ends[low] = i;
+      if (low === tails.length) tails.push(i);
+      else tails[low] = i;
+    }
+    const chain = [];
+    for (let i = ends[tails.length - 1] ?? -1; i >= 0; i = back[i]) chain.push(i);
+    return chain.reverse();
+  }
+
+  /**
+   * Сколько раз строка может повториться, чтобы участвовать в голосовании.
+   *
+   * Однотонный фон занимает сотни одинаковых строк: пар из них получаются
+   * десятки тысяч, и голосуют они за все сдвиги сразу. Предел здесь не о
+   * смысле, а о работе — голос такой строки всё равно почти ничего не весит.
+   */
+  const SHIFT_REPEATS = 64;
+
+  /** Насколько согласие строк при сдвиге должно превзойти согласие без него. */
+  const SHIFT_GAIN = 1.25;
+  /** И насколько согласие вообще должно быть, чтобы считаться согласием. */
+  const SHIFT_MIN_ROWS = 8;
+
+  /**
+   * Сколько содержательных строк совпало, если «до» сдвинуть на offset.
+   *
+   * Однотонные строки в счёт не идут: фон совпадает с фоном при любом сдвиге
+   * и на вопрос «правильный ли это сдвиг» не отвечает вовсе.
+   */
+  function agreement(before, after, offset, worth) {
+    let same = 0;
+    for (let y = 0; y < after.length; y++) {
+      if (!worth[y]) continue;
+      const source = y + offset;
+      if (source >= 0 && source < before.length && before[source] === after[y]) same++;
+    }
+    return same;
+  }
+
+  /**
+   * Общий сдвиг кадра, если якорей не нашлось.
+   *
+   * Уникальных строк может не быть вовсе: снимок из одноцветных полос, схема,
+   * график. Тогда строки голосуют за сдвиг — каждая за тот, при котором она
+   * встала бы на своё место, — и побеждает тот, при котором содержательных
+   * строк сходится заметно больше, чем без всякого сдвига. Именно «заметно»:
+   * иначе панель начнёт двигать кадр от любого совпадения фона с фоном.
+   */
+  function bestShift(before, after, height) {
+    const places = new Map();
+    for (let y = 0; y < height; y++) {
+      const at = places.get(before[y]);
+      if (at === undefined) places.set(before[y], [y]);
+      else if (at.length < SHIFT_REPEATS) at.push(y);
+    }
+    const repeats = new Map();
+    for (let y = 0; y < height; y++) repeats.set(after[y], (repeats.get(after[y]) ?? 0) + 1);
+    // Содержательные строки: те, что не повторяются в кадре без конца.
+    const worth = new Uint8Array(height);
+    for (let y = 0; y < height; y++) {
+      worth[y] = (repeats.get(after[y]) ?? 1) < SHIFT_REPEATS ? 1 : 0;
+    }
+
+    const votes = new Map();
+    for (let y = 0; y < height; y++) {
+      const at = places.get(after[y]);
+      if (!at || !worth[y] || at.length >= SHIFT_REPEATS) continue;
+      // Голос делится на число двойников: строка, повторяющаяся в кадре
+      // сорок раз, знает о сдвиге в сорок раз меньше, чем единственная в
+      // своём роде. Без этого полоса фона перекрикивает любой текст.
+      const weight = 1 / (at.length * (repeats.get(after[y]) ?? 1));
+      for (const source of at) {
+        const offset = source - y;
+        if (offset === 0) continue;
+        votes.set(offset, (votes.get(offset) ?? 0) + weight);
+      }
+    }
+    if (!votes.size) return 0;
+
+    // Проверяем не по числу голосов, а по делу: сколько строк сойдётся.
+    const base = agreement(before, after, 0, worth);
+    let best = 0;
+    let bestSame = Math.max(base * SHIFT_GAIN, SHIFT_MIN_ROWS);
+    const candidates = [...votes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+    for (const [offset] of candidates) {
+      const same = agreement(before, after, offset, worth);
+      if (same > bestSame) {
+        bestSame = same;
+        best = offset;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Сшивает строки «до» со строками «после».
+   *
+   * Зачем. Добавленный наверху элемент сдвигает всё, что ниже, и попиксельное
+   * сравнение честно объявляет изменившимся весь кадр. Ответ «поменялось всё»
+   * верен и бесполезен: на деле поменялась одна строка, а остальные переехали.
+   *
+   * Как. Тем же приёмом, которым текстовые диффы отличают «строку поправили»
+   * от «строку вставили»: строки, встретившиеся ровно по разу в обеих
+   * картинках и совпавшие, — надёжные якоря. Из них берётся самая длинная
+   * возрастающая цепочка (порядок строк переставляться не может), а промежутки
+   * между якорями паруются один к одному сверху вниз; что не поместилось —
+   * вставка или удаление.
+   *
+   * Якорями служат уникальные строки, потому что повторяющиеся — например,
+   * пустой фон — сшили бы кадр как попало.
+   *
+   * @returns {{map: Int32Array, inserted: number, removed: number}} map — для
+   *          каждой строки «после» номер её строки в «до» или -1, если такой
+   *          строки там не было
+   */
+  function alignRows(dataBefore, dataAfter, width, height) {
+    const before = rowHashes(dataBefore, width, height);
+    const after = rowHashes(dataAfter, width, height);
+
+    // Где какая строка встречается. -1 — не встречалась, -2 — не один раз.
+    const seen = new Map();
+    for (let y = 0; y < height; y++) {
+      const hash = before[y];
+      seen.set(hash, seen.has(hash) ? -2 : y);
+    }
+    const anchorsBefore = [];
+    const anchorsAfter = [];
+    const taken = new Map();
+    for (let y = 0; y < height; y++) {
+      const hash = after[y];
+      const at = seen.get(hash);
+      if (at === undefined || at < 0) continue;
+      // Уникальной строка должна быть в обеих картинках: иначе якорь
+      // ненадёжен.
+      if (taken.has(hash)) {
+        taken.set(hash, -2);
+        continue;
+      }
+      taken.set(hash, y);
+    }
+    for (const [hash, y] of taken) {
+      if (y < 0) continue;
+      anchorsAfter.push(y);
+      anchorsBefore.push(seen.get(hash));
+    }
+    // По возрастанию строки «после» — порядок для поиска цепочки.
+    const order = anchorsAfter
+      .map((y, index) => index)
+      .sort((a, b) => anchorsAfter[a] - anchorsAfter[b]);
+    const chain = longestIncreasing(order.map((index) => anchorsBefore[index]));
+
+    const map = new Int32Array(height).fill(-1);
+    if (chain.length < ALIGN_MIN_ANCHORS) {
+      // Якорей не нашлось: уникальных строк в картинке может не быть вовсе.
+      // Тогда остаётся общий сдвиг — или не остаётся ничего, и строки стоят
+      // на своих местах, как было до всякого выравнивания.
+      const offset = bestShift(before, after, height);
+      let shiftedIn = 0;
+      for (let y = 0; y < height; y++) {
+        const source = y + offset;
+        if (source >= 0 && source < height) map[y] = source;
+        else shiftedIn++;
+      }
+      return { map, inserted: offset ? shiftedIn : 0, removed: offset ? shiftedIn : 0 };
+    }
+
+    /** Паруем промежуток между якорями один к одному, сверху вниз. */
+    let inserted = 0;
+    let removed = 0;
+    const fill = (fromAfter, toAfter, fromBefore, toBefore) => {
+      const rows = Math.min(toAfter - fromAfter, toBefore - fromBefore);
+      for (let i = 0; i < rows; i++) map[fromAfter + i] = fromBefore + i;
+      inserted += toAfter - fromAfter - rows;
+      removed += toBefore - fromBefore - rows;
+    };
+
+    let prevAfter = 0;
+    let prevBefore = 0;
+    for (const link of chain) {
+      const index = order[link];
+      const y = anchorsAfter[index];
+      const source = anchorsBefore[index];
+      fill(prevAfter, y, prevBefore, source);
+      map[y] = source;
+      prevAfter = y + 1;
+      prevBefore = source + 1;
+    }
+    fill(prevAfter, height, prevBefore, height);
+
+    return { map, inserted, removed };
+  }
+
+  /**
+   * Пересобирает «до» в координатах «после».
+   *
+   * Строка, которой в «до» не нашлось пары, сравнивается с тем, что было на
+   * этом месте раньше, — то есть как без всякого сшивания. Так вставка
+   * показывает ровно то, что на ней видно нового: поставь напротив неё
+   * пустоту, и вся полоса, включая пустые поля, объявилась бы изменившейся,
+   * а число изменившихся пикселей выросло бы там, где глазами ничего не
+   * прибавилось.
+   */
+  function shiftRows(data, map, width) {
+    const bytes = width * 4;
+    const shifted = new Uint8ClampedArray(map.length * bytes);
+    for (let y = 0; y < map.length; y++) {
+      const source = map[y] < 0 ? y : map[y];
+      if (source >= map.length) continue;
+      shifted.set(data.subarray(source * bytes, source * bytes + bytes), y * bytes);
+    }
+    return shifted;
+  }
+
+  /**
    * Сторона клетки, которой нащупываются места изменений, в пикселях кадра.
    *
    * Правка на снимке — это не один пиксель, а пятно: буква, значок, строка.
@@ -389,8 +652,21 @@
     const { width, height } = prepared;
     const mask = new ImageData(width, height);
 
+    // Строки сшиваются до сравнения: вставленный наверху элемент сдвигает всё
+    // ниже, и без этого кадр честно объявляется изменившимся целиком.
+    // Отключаемо: выравнивание — догадка, пусть и хорошая, а бывает нужно
+    // увидеть именно голое попиксельное сравнение.
+    const aligned =
+      options.align === false
+        ? null
+        : alignRows(prepared.dataBefore.data, prepared.dataAfter.data, width, height);
+    const shifted =
+      aligned && (aligned.inserted || aligned.removed)
+        ? shiftRows(prepared.dataBefore.data, aligned.map, width)
+        : prepared.dataBefore.data;
+
     const changed = global.pixelmatch(
-      prepared.dataBefore.data,
+      shifted,
       prepared.dataAfter.data,
       mask.data,
       width,
@@ -428,6 +704,12 @@
       scale: prepared.scale ?? 1,
       changed,
       ratio: changed / (width * height),
+      // Сколько строк прибавилось и убавилось: сдвиг стоит не только показать,
+      // но и назвать — «весь кадр красный» и «вставлено 24 строки» это разные
+      // ответы, даже когда картинка одна и та же.
+      inserted: aligned?.inserted ?? 0,
+      removed: aligned?.removed ?? 0,
+      rows: aligned && (aligned.inserted || aligned.removed) ? aligned.map : null,
       bounds: found.bounds,
       // Места изменений — для переходов между ними: на снимке страницы
       // правки часто в разных концах кадра.
@@ -449,6 +731,7 @@
     toRgb,
     COLORS,
     findChanges,
+    alignRows,
     rasterScale,
   };
 })(self);

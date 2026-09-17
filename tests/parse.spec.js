@@ -119,6 +119,93 @@ test('находит прямоугольник с различиями', async 
   expect(bounds).toEqual({ x: 3, y: 5, width: 2, height: 2 });
 });
 
+test('сдвинутые строки сшиваются, а не объявляются изменившимися', async ({ page }) => {
+  // Добавленный наверху элемент сдвигает всё, что ниже, и попиксельное
+  // сравнение честно объявляет изменившимся весь кадр. Ответ «поменялось всё»
+  // верен и бесполезен: на деле прибавилась пара строк, а остальные переехали.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const result = await page.evaluate(() => {
+    const width = 8;
+    const height = 12;
+    const rows = (values) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      values.forEach((value, y) => {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          // Строки делаем непохожими друг на друга: соседние оттенки серого
+          // порог сравнения и не заметил бы, а в жизни строка снимка — это
+          // текст, и от соседней она отличается сильно.
+          data[i] = (value * 97) % 256;
+          data[i + 1] = (value * 53 + 40) % 256;
+          data[i + 2] = (value * 29 + 120) % 256;
+          data[i + 3] = 255;
+        }
+      });
+      return new ImageData(data, width, height);
+    };
+
+    const before = rows([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]);
+    // То же самое, сдвинутое на две строки вниз: сверху вставлено, снизу
+    // столько же вытеснено за край кадра.
+    const after = rows([5, 6, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
+
+    const aligned = self.GhPixelDiff.diffPrepared({
+      width,
+      height,
+      dataBefore: before,
+      dataAfter: after,
+    });
+    const plain = self.GhPixelDiff.diffPrepared(
+      { width, height, dataBefore: before, dataAfter: after },
+      { align: false },
+    );
+
+    return {
+      inserted: aligned.inserted,
+      removed: aligned.removed,
+      changed: aligned.changed,
+      plainChanged: plain.changed,
+      total: width * height,
+    };
+  });
+
+  expect(result.inserted).toBe(2);
+  expect(result.removed).toBe(2);
+  // Без сшивания изменившимся оказывается почти весь кадр.
+  expect(result.plainChanged).toBeGreaterThan(result.total * 0.8);
+  // А со сшиванием — только вставленные строки: они сравниваются с тем, что
+  // было на их месте, и потому видны, но остальной кадр молчит.
+  expect(result.changed).toBe(2 * 8);
+});
+
+test('на непохожих картинках строки не сшиваются', async ({ page }) => {
+  // Если совпавших строк почти нет, это не сдвиг, а другая картинка: сшивать
+  // в ней нечего, и выдумывать соответствия хуже, чем не выдумывать.
+  const aligned = await page.evaluate(() => {
+    const width = 4;
+    const height = 8;
+    const noise = (seed) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = (i * seed) % 251;
+        data[i + 1] = (i * seed * 3) % 253;
+        data[i + 2] = (i * seed * 7) % 247;
+        data[i + 3] = 255;
+      }
+      return data;
+    };
+    return self.GhPixelDiff.alignRows(noise(3), noise(11), width, height);
+  });
+
+  expect(aligned.inserted).toBe(0);
+  expect(aligned.removed).toBe(0);
+  // Каждая строка осталась на своём месте.
+  expect(Object.values(aligned.map)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+});
+
 test('разные концы кадра — разные места изменений', async ({ page }) => {
   // Обрезка по общему прямоугольнику для двух правок в разных углах — это
   // весь кадр: обрезать нечего. Поэтому места считаются отдельно, по ним

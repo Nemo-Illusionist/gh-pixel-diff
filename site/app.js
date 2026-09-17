@@ -210,6 +210,10 @@
     // трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
     if (single) meta.append(' · ', save);
     if (result.scale > 1) meta.append(` · ${t('rasterized', result.width, result.height)}`);
+    // Сдвиг называем словами: «весь кадр красный» и «вставлено 24 строки» —
+    // разные ответы, даже когда картинка одна и та же.
+    if (result.inserted) meta.append(` · ${plural('rowsAdded', result.inserted)}`);
+    if (result.removed) meta.append(` · ${plural('rowsRemoved', result.removed)}`);
     if (result.sizeChanged) {
       meta.append(
         ` · ${t(
@@ -335,6 +339,8 @@
         : diffPrepared(session.prepared, { threshold });
 
       result = { ...computed, before: session.prepared.before, after: session.prepared.after };
+      // Из потока карта строк приходит буфером — собираем обратно.
+      if (computed.rows instanceof ArrayBuffer) result.rows = new Int32Array(computed.rows);
       // Из потока разница приходит буфером — обратно в ImageData её собираем здесь.
       if (computed.mask instanceof ArrayBuffer) {
         result.mask = new ImageData(

@@ -61,6 +61,24 @@ function svgTwoSpots() {
   return { before: frame('#c9d1d9', '#c9d1d9'), after: frame('#f85149', '#f85149') };
 }
 
+/**
+ * Пара, где содержимое переехало вниз: сверху вставлена полоса, всё
+ * остальное то же самое. Попиксельно такая пара различается целиком.
+ */
+function svgShifted() {
+  const frame = (offset) =>
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300">' +
+    '<rect width="200" height="300" fill="#0d1117"/>' +
+    [40, 90, 140].
+      map(
+        (y, index) =>
+          `<rect x="20" y="${y + offset}" width="${60 + index * 30}" height="14" fill="#c9d1d9"/>`,
+      )
+      .join('') +
+    '</svg>';
+  return { before: frame(0), after: frame(30) };
+}
+
 /** Вектор заданного размера с полоской посередине. */
 function svgSized(width, height) {
   return (
@@ -1306,6 +1324,24 @@ test('переключение места изменений не двигает
   await page.click('.ghpd-crop-toggle');
 
   expect(await низ()).toEqual(целиком);
+});
+
+test('переехавшее вниз содержимое не краснеет целиком', async ({ page }) => {
+  // Добавленный наверху элемент сдвигает всё, что ниже. Без сшивания строк
+  // панель честно сообщает, что изменился весь кадр, — и этим не помогает.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgShifted());
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const подпись = await page.textContent('.ghpd-meta');
+
+  // Сдвиг назван словами.
+  expect(подпись).toMatch(/rows inserted/);
+  // И весь кадр при этом не объявлен изменившимся: доля кадра осталась малой.
+  const [, доля] = /· ([\d.]+)% of the frame/.exec(подпись);
+  expect(Number(доля)).toBeLessThan(25);
 });
 
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {

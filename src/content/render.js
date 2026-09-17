@@ -533,10 +533,13 @@
         return;
       }
 
+      // Строки могли сдвинуться: тогда «до» этого пикселя лежит в другой
+      // строке, а у вставленной строки его нет вовсе.
+      const source = result.rows ? result.rows[y] : y;
       let before;
       let after;
       try {
-        before = samplePixel(result.before, x, y, result.scale);
+        before = source >= 0 ? samplePixel(result.before, x, source, result.scale) : null;
         after = samplePixel(result.after, x, y, result.scale);
       } catch {
         // «Грязный» холст — единственная причина отказа; молчим, а не ломаем
@@ -547,8 +550,9 @@
 
       node.replaceChildren(
         `${x}, ${y} · `,
-        swatch(before),
-        ` ${t('viewBefore')} ${hex(before)} → `,
+        ...(before
+          ? [swatch(before), ` ${t('viewBefore')} ${hex(before)} → `]
+          : [`${t('rowNew')} → `]),
         swatch(after),
         ` ${t('viewAfter')} ${hex(after)}`,
       );

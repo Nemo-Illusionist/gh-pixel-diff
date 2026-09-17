@@ -386,5 +386,72 @@
   },
   "optionsDirectionHint": {
     "message": "Первым цветом отмечено то, что потемнело, вторым — то, что посветлело."
+  },
+  "rowsAddedOne": {
+    "message": "вставлена $count$ строка",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsAddedFew": {
+    "message": "вставлено $count$ строки",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsAddedMany": {
+    "message": "вставлено $count$ строк",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsAddedOther": {
+    "message": "вставлено $count$ строк",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsRemovedOne": {
+    "message": "убрана $count$ строка",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsRemovedFew": {
+    "message": "убрано $count$ строки",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsRemovedMany": {
+    "message": "убрано $count$ строк",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowsRemovedOther": {
+    "message": "убрано $count$ строк",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "rowNew": {
+    "message": "новая строка"
   }
 }
