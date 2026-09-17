@@ -107,6 +107,9 @@ test('порог меняет число найденных пикселей', a
   const count = () =>
     page.evaluate(() => Number(document.querySelector('#meta strong').textContent.replace(/\D/g, '')));
 
+  // Порог уехал под «⋯» — сперва открываем меню.
+  await page.locator('.ghpd-menu-button').click();
+
   const sensitive = await (async () => {
     await page.locator('#threshold').fill('0');
     await expect.poll(count).toBeGreaterThan(0);
@@ -191,12 +194,12 @@ test('увеличение работает и на странице, и сбр�
     }));
   });
 
-  await expect(meta(page)).toContainText('zoom');
+  await expect(page.locator('.ghpd-zoom-reset')).toContainText('zoom');
   expect(await отпечаток()).not.toBe(было);
 
   // Новая картинка — новое место: держать на ней прежнее увеличение незачем.
   await page.setInputFiles('.drop[data-slot=after] input', fixture('before.png'));
-  await expect(meta(page)).not.toContainText('zoom');
+  await expect(page.locator('.ghpd-zoom-reset')).toBeHidden();
 });
 
 test('строки не пропадают, даже если window.chrome защищён от записи', async ({ page }) => {

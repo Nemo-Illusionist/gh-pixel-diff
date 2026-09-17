@@ -302,6 +302,17 @@ async function waitForResult(page) {
     .toMatch(/pixels/);
 }
 
+/**
+ * Порог, рамка и сохранение живут под «⋯»: до них надо сперва добраться.
+ * Меню от нажатия внутри себя не закрывается, поэтому открывать его на каждое
+ * действие незачем — но и повторное открытие ничего не ломает.
+ */
+async function openMenu(page) {
+  if (await page.locator('.ghpd-menu-panel').isHidden()) {
+    await page.click('.ghpd-menu-button');
+  }
+}
+
 test('встаёт четвёртой кнопкой, родные не трогает', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);
@@ -445,6 +456,7 @@ test('в полном кадре изменения обведены', async ({ 
   // что с ней красного заметно больше: периметр вокруг всего изменившегося
   // длиннее самих изменений.
   const обведено = await redPixels(page);
+  await openMenu(page);
   await page.click('.ghpd-outline-toggle');
   const голый = await redPixels(page);
 
@@ -460,6 +472,7 @@ test('рамку вокруг изменений можно убрать', async
 
   const обведено = await redPixels(page);
 
+  await openMenu(page);
   await page.click('.ghpd-outline-toggle');
   const голый = await redPixels(page);
   expect(голый).toBeLessThan(обведено - 100);
@@ -503,6 +516,7 @@ test('ползунок слушается клавиатуры и помнит �
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
+  await openMenu(page);
   await page.focus('.ghpd-slider');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
@@ -555,6 +569,7 @@ test('считает в отдельном потоке', async ({ page }) => {
   expect(await page.evaluate(() => globalThis.workersStarted)).toBe(1);
 
   // Смена порога идёт туда же и не заводит второго потока.
+  await openMenu(page);
   await page.focus('.ghpd-slider');
   await page.keyboard.press('ArrowRight');
   await expect
@@ -751,6 +766,7 @@ test('настройки переживают запрет хранилища ф
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
+  await openMenu(page);
   await page.focus('.ghpd-slider');
   await page.keyboard.press('ArrowRight');
   expect(store['ghpd:threshold']).toBe('0.11');
@@ -942,13 +958,14 @@ test('щипок увеличивает кадр, а обычная прокру
 
   expect(await wheelOver(page, { ctrl: false, deltaY: -300 })).toBe(false);
   expect(await canvasState(page)).toEqual(было);
-  expect(await page.textContent('.ghpd-meta')).not.toContain('zoom');
+  // Пока увеличения нет, и сбрасывать нечего — кнопка спрятана.
+  await expect(page.locator('.ghpd-zoom-reset')).toBeHidden();
 
   expect(await wheelOver(page, { ctrl: true, deltaY: -300 })).toBe(true);
   const стало = await canvasState(page);
 
   expect(стало.отпечаток).not.toBe(было.отпечаток);
-  expect(await page.textContent('.ghpd-meta')).toContain('zoom');
+  await expect(page.locator('.ghpd-zoom-reset')).toContainText('zoom');
 });
 
 test('увеличение не меняет размер холста, а только то, что в нём', async ({ page }) => {
@@ -1034,31 +1051,33 @@ test('по двум правкам в разных концах кадра мо�
   await waitForResult(page);
 
   // По умолчанию показаны все изменения разом — прежний ответ панели. Ходьба
-  // по местам добавлена к нему, а не вместо него.
+  // по местам добавлена к нему, а не вместо него. Сколько их всего — сказано
+  // в подписи, а «все / 2 из 5» стоит у стрелок и не меняет ширины.
   await expect(page.locator('.ghpd-meta')).toContainText('2 changed places');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('all');
   const все = await canvasState(page);
 
   await page.click('.ghpd-cluster-step[aria-label="next change"]');
 
-  await expect(page.locator('.ghpd-meta')).toContainText('change 1 of 2');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('1/2');
   const первое = await canvasState(page);
   expect(первое.отпечаток).not.toBe(все.отпечаток);
 
   await page.click('.ghpd-cluster-step[aria-label="next change"]');
 
-  await expect(page.locator('.ghpd-meta')).toContainText('change 2 of 2');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('2/2');
   expect((await canvasState(page)).отпечаток).not.toBe(первое.отпечаток);
 
   // Круг проходит через «все», а не мимо: после последнего места — снова всё.
   await page.click('.ghpd-cluster-step[aria-label="next change"]');
 
-  await expect(page.locator('.ghpd-meta')).toContainText('2 changed places');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('all');
   expect(await canvasState(page)).toEqual(все);
 
   // И назад — тоже по кругу, сразу к последнему месту.
   await page.click('.ghpd-cluster-step[aria-label="previous change"]');
 
-  await expect(page.locator('.ghpd-meta')).toContainText('change 2 of 2');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('2/2');
 });
 
 test('рамка одна, пока место не выбрано, и на каждом месте — своя', async ({ page }) => {
@@ -1085,14 +1104,14 @@ test('рамка одна, пока место не выбрано, и на ка
 });
 
 test('одна правка — переходов нет', async ({ page }) => {
-  // Стрелки «‹ 1 из 1 ›» никуда не ведут и только занимают место в подписи.
+  // Стрелки «‹ 1 из 1 ›» никуда не ведут — группа переходов просто спрятана.
   await page.setViewportSize({ width: 900, height: 700 });
   await openFrame(page);
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
-  await expect(page.locator('.ghpd-cluster-step')).toHaveCount(0);
+  await expect(page.locator('.ghpd-nav')).toBeHidden();
 });
 
 test('показанный кадр сохраняется картинкой', async ({ page }) => {
@@ -1105,6 +1124,7 @@ test('показанный кадр сохраняется картинкой', 
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
+  await openMenu(page);
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click('.ghpd-save'),
@@ -1143,6 +1163,7 @@ test('имя файла говорит, какой кадр сохранён', a
   // Второй кадр переключателя — «после».
   await page.click('.ghpd-views .ghpd-view-button:nth-child(2)');
 
+  await openMenu(page);
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click('.ghpd-save'),
@@ -1161,7 +1182,27 @@ test('три кадра рядом не сохраняются одной кар
   await waitForResult(page);
   await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
 
-  await expect(page.locator('.ghpd-save')).toHaveCount(0);
+  // Пункт не пропадает, а гаснет: меню из одного ползунка выглядит сломанным.
+  await openMenu(page);
+  await expect(page.locator('.ghpd-save')).toBeDisabled();
+});
+
+test('состав «⋯» не меняется: неуместное гаснет, а не пропадает', async ({ page }) => {
+  // В «3-up» нечего сохранять, в обрезке нечего обводить — и если прятать оба
+  // пункта, под «⋯» остаётся один ползунок, а меню выглядит сломанным.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+  await openMenu(page);
+
+  await expect(page.locator('.ghpd-menu-panel .ghpd-slider')).toBeVisible();
+  await expect(page.locator('.ghpd-outline-toggle')).toBeVisible();
+  await expect(page.locator('.ghpd-outline-toggle')).toBeDisabled();
+  await expect(page.locator('.ghpd-save')).toBeVisible();
+  await expect(page.locator('.ghpd-save')).toBeDisabled();
 });
 
 test('под курсором видно, какой был пиксель и каким стал', async ({ page }) => {
@@ -1292,11 +1333,11 @@ test('на своём GitHub Enterprise режим встаёт так же', as
   await expect(page.locator('.ghpd-meta')).toContainText(/pixels/);
 });
 
-test('переключение места изменений не двигает ползунок', async ({ page }) => {
+test('переключение места изменений не двигает строку управления', async ({ page }) => {
   // Обрезка по одному месту ниже, чем по всем, и высота кадра меняется от
   // нажатия к нажатию. Пока её задавал сам кадр, вместе с ним ездило и всё,
-  // что под ним: подпись, ползунок, переключатель. Ползунок, уехавший
-  // из-под курсора в тот момент, когда его тянут, — это не мелочь.
+  // что под ним: подпись, переключатель кадров, «⋯». Кнопка, уехавшая
+  // из-под курсора в тот момент, когда по ней целятся, — это не мелочь.
   await page.setViewportSize({ width: 900, height: 700 });
   await openFrame(page, svgTwoSpots());
   await injectExtension(page);
@@ -1305,8 +1346,9 @@ test('переключение места изменений не двигает
 
   const низ = () =>
     page.evaluate(() => ({
-      ползунок: Math.round(document.querySelector('.ghpd-slider').getBoundingClientRect().top),
+      строка: Math.round(document.querySelector('.ghpd-bar').getBoundingClientRect().top),
       кадры: Math.round(document.querySelector('.ghpd-views').getBoundingClientRect().top),
+      ещё: Math.round(document.querySelector('.ghpd-menu-button').getBoundingClientRect().left),
     }));
 
   const было = await низ();
@@ -1338,8 +1380,8 @@ test('переехавшее вниз содержимое не краснеет
 
   const подпись = await page.textContent('.ghpd-meta');
 
-  // Сдвиг назван словами.
-  expect(подпись).toMatch(/rows inserted/);
+  // Сдвиг назван словами: «+2 −2 rows».
+  expect(подпись).toMatch(/\+\d+ −\d+ rows/);
   // И найденного заметно меньше, чем без сшивания: переехавшее содержимое
   // перестало считаться изменившимся.
   const [, пикселей] = /^([\d,]+) pixels/.exec(подпись);
@@ -1436,5 +1478,7 @@ test('подпись на языке интерфейса', async ({ page }) => 
   const meta = await page.textContent('.ghpd-meta');
 
   expect(meta).toMatch(/^[\d,]+ pixels · [\d.<]+% of the frame/);
-  expect(meta).toContain('show the whole frame');
+  // Управление рядом и тоже на языке интерфейса.
+  // У кнопки две подписи, показана одна — читаем именно её.
+  expect(await page.innerText('.ghpd-crop-toggle')).toBe('whole frame');
 });

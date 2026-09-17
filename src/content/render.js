@@ -585,6 +585,82 @@
     stage.style.minHeight = `${Math.ceil(wanted)}px`;
   }
 
+  /**
+   * Меню для того, чем пользуются редко.
+   *
+   * Порог, рамка и сохранение нужны не каждый раз, а место под кадром
+   * занимали всегда. Под «⋯» они в одном нажатии и не мешают тем двум вещам,
+   * ради которых панель открывают: сколько изменилось и какой кадр показать.
+   *
+   * Открывается вверх: панель стоит у нижнего края окна просмотра, и вниз
+   * открываться ей некуда.
+   */
+  function createMenu(label) {
+    const root = document.createElement('div');
+    root.className = 'ghpd-menu';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'ghpd-menu-button';
+    button.textContent = '⋯';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-expanded', 'false');
+
+    const panel = document.createElement('div');
+    panel.className = 'ghpd-menu-panel';
+    panel.hidden = true;
+
+    const show = (open) => {
+      panel.hidden = !open;
+      button.setAttribute('aria-expanded', String(open));
+      button.classList.toggle('selected', open);
+    };
+
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      show(panel.hidden);
+    });
+    // Нажатие мимо меню и Esc закрывают его — как и всякое меню в браузере.
+    // Слушаем на документе: панель живёт в чужой странице, и своего слоя, из
+    // которого можно было бы поймать всё, у неё нет.
+    document.addEventListener('click', (event) => {
+      if (!panel.hidden && !root.contains(event.target)) show(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !panel.hidden) {
+        show(false);
+        button.focus();
+      }
+    });
+
+    root.append(button, panel);
+    return { element: root, panel, close: () => show(false) };
+  }
+
+  /**
+   * Кнопка с двумя подписями: «весь кадр» и «фрагмент».
+   *
+   * Обе лежат в одной ячейке сетки, видна одна — и ширина кнопки равна
+   * большей из них, а не текущей. Иначе всё, что правее, ездило бы вслед за
+   * длиной слова, и в каждом языке по-своему.
+   *
+   * @returns {(first: boolean) => void} показать первую подпись или вторую.
+   */
+  function twoWayLabel(button, first, second) {
+    button.classList.add('ghpd-two-way');
+    const [a, b] = [first, second].map((text) => {
+      const span = document.createElement('span');
+      span.textContent = text;
+      return span;
+    });
+    button.replaceChildren(a, b);
+    return (showFirst) => {
+      a.style.visibility = showFirst ? '' : 'hidden';
+      b.style.visibility = showFirst ? 'hidden' : '';
+    };
+  }
+
   /** Как показать увеличение человеку: «2,5×», а не «2.4999999×». */
   function zoomLabel(scale, locale) {
     return `${Number(scale.toFixed(1)).toLocaleString(locale ?? 'en')}×`;
@@ -595,6 +671,8 @@
     saveCanvas,
     frameFileName,
     holdStage,
+    createMenu,
+    twoWayLabel,
     attachProbe,
     createZoom,
     attachZoom,

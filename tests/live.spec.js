@@ -28,6 +28,10 @@ function readState() {
     ours: document.querySelectorAll('.ghpd-mode-item').length,
     checked: document.querySelector('.ghpd-mode-item input[value="pixel-diff"]')?.checked ?? false,
     meta: document.querySelector('.ghpd-meta')?.textContent ?? '',
+    // Кадр целиком или фрагмент — теперь кнопка в строке управления, а не
+    // часть подписи: подпись отвечает за факты, строка — за руки.
+    // innerText, а не textContent: подписи у кнопки две, видна одна.
+    crop: document.querySelector('.ghpd-crop-toggle')?.innerText ?? '',
     canvas: canvas ? `${canvas.width}x${canvas.height}` : null,
     viewHidden: view ? view.hidden : null,
     nativeHidden: [...document.querySelectorAll('.view:not(.ghpd-view)')]
@@ -91,8 +95,9 @@ test('добавляет режим к родным и считает разни
     const done = await state();
     expect(done.worker).toBe('on');
     expect(done.meta).not.toMatch(/Не вышло|Failed/);
-    // По умолчанию показан фрагмент с изменениями, а не весь кадр.
-    expect(done.meta).toMatch(/фрагмент|fragment/);
+    // По умолчанию показан фрагмент с изменениями, а не весь кадр: кнопка
+    // предлагает обратное — показать кадр целиком.
+    expect(done.crop).toMatch(/весь кадр|whole frame/);
     // Разряды числа отбиваются по-разному: в русском пробелом, в английском
     // запятой. Убираем и то и другое, иначе «21,096 pixels» читается как 21.
     expect(Number(done.meta.replace(/[\s,]/g, '').match(/^(\d+)/)?.[1])).toBeGreaterThan(100);

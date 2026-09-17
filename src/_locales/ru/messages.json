@@ -72,7 +72,15 @@
     }
   },
   "showFullFrame": {
-    "message": "фрагмент $width$×$height$ — показать кадр целиком",
+    "message": "весь кадр",
+    "description": "Кнопка в панели: показать кадр целиком."
+  },
+  "showChangesOnly": {
+    "message": "фрагмент",
+    "description": "Кнопка в панели: вернуться к фрагменту с изменениями."
+  },
+  "cropSize": {
+    "message": "фрагмент $width$×$height$",
     "placeholders": {
       "width": {
         "content": "$1"
@@ -80,10 +88,12 @@
       "height": {
         "content": "$2"
       }
-    }
+    },
+    "description": "Подсказка к кнопке кадра."
   },
-  "showChangesOnly": {
-    "message": "показать только изменения"
+  "moreControls": {
+    "message": "ещё",
+    "description": "Кнопка «⋯»: порог, рамка и сохранение."
   },
   "hideOutline": {
     "message": "убрать рамку"
@@ -280,7 +290,7 @@
     "description": "Подсказка на холсте: как пользоваться увеличением."
   },
   "zoomReset": {
-    "message": "увеличение $level$ — сброс",
+    "message": "увеличение $level$",
     "placeholders": {
       "level": {
         "content": "$1"
@@ -299,6 +309,10 @@
       }
     },
     "description": "Подпись переходов между местами изменений."
+  },
+  "clusterAll": {
+    "message": "все",
+    "description": "Переходы по местам: показаны все места сразу."
   },
   "clusterPrev": {
     "message": "предыдущее изменение",
@@ -387,69 +401,14 @@
   "optionsDirectionHint": {
     "message": "Первым цветом отмечено то, что потемнело, вторым — то, что посветлело."
   },
-  "rowsAddedOne": {
-    "message": "вставлена $count$ строка",
+  "rowsShifted": {
+    "message": "строк $rows$",
     "placeholders": {
-      "count": {
+      "rows": {
         "content": "$1"
       }
-    }
-  },
-  "rowsAddedFew": {
-    "message": "вставлено $count$ строки",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "rowsAddedMany": {
-    "message": "вставлено $count$ строк",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "rowsAddedOther": {
-    "message": "вставлено $count$ строк",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "rowsRemovedOne": {
-    "message": "убрана $count$ строка",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "rowsRemovedFew": {
-    "message": "убрано $count$ строки",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "rowsRemovedMany": {
-    "message": "убрано $count$ строк",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "rowsRemovedOther": {
-    "message": "убрано $count$ строк",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
+    },
+    "description": "Сдвиг строк: «строк +60 −60»."
   },
   "rowNew": {
     "message": "новая строка"

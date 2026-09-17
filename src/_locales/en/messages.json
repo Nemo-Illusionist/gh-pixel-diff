@@ -56,7 +56,15 @@
     }
   },
   "showFullFrame": {
-    "message": "fragment $width$×$height$ — show the whole frame",
+    "message": "whole frame",
+    "description": "Panel button: show the whole frame."
+  },
+  "showChangesOnly": {
+    "message": "fragment",
+    "description": "Panel button: back to the fragment with the changes."
+  },
+  "cropSize": {
+    "message": "fragment $width$×$height$",
     "placeholders": {
       "width": {
         "content": "$1"
@@ -64,10 +72,12 @@
       "height": {
         "content": "$2"
       }
-    }
+    },
+    "description": "Tooltip on the frame button."
   },
-  "showChangesOnly": {
-    "message": "show changes only"
+  "moreControls": {
+    "message": "more",
+    "description": "The «⋯» button: threshold, outline and saving."
   },
   "hideOutline": {
     "message": "hide the outline"
@@ -264,7 +274,7 @@
     "description": "Подсказка на холсте: как пользоваться увеличением."
   },
   "zoomReset": {
-    "message": "zoom $level$ — reset",
+    "message": "$level$ zoom",
     "placeholders": {
       "level": {
         "content": "$1"
@@ -283,6 +293,10 @@
       }
     },
     "description": "Подпись переходов между местами изменений."
+  },
+  "clusterAll": {
+    "message": "all",
+    "description": "Change navigation: all the places at once."
   },
   "clusterPrev": {
     "message": "previous change",
@@ -355,37 +369,14 @@
   "optionsDirectionHint": {
     "message": "The first colour marks what got darker, the second what got lighter."
   },
-  "rowsAddedOne": {
-    "message": "$count$ row inserted",
+  "rowsShifted": {
+    "message": "$rows$ rows",
     "placeholders": {
-      "count": {
+      "rows": {
         "content": "$1"
       }
-    }
-  },
-  "rowsAddedOther": {
-    "message": "$count$ rows inserted",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "rowsRemovedOne": {
-    "message": "$count$ row removed",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "rowsRemovedOther": {
-    "message": "$count$ rows removed",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
+    },
+    "description": "Row shift: «+60 −60 rows»."
   },
   "rowNew": {
     "message": "a new row"
