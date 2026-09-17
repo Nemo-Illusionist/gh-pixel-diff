@@ -25,10 +25,13 @@ const isViewscreen = (url) => url.includes('viewscreen.githubusercontent.com/dif
 
 // Подпись к витринному кадру: заголовок и строка помельче. В магазине их
 // читают раньше описания, поэтому каждая говорит про свой кадр.
+// Магазин принимает пять кадров. Кадр целиком в эту пятёрку не попал: он
+// отличается от первого одной обрезкой, а рассказать хочется о разном.
 const STORE = [
   ['frame-changes', 'Pixel diff, cropped to what changed', 'The mode sits next to 2-up, Swipe and Onion Skin'],
-  ['frame-full', 'Or the whole frame, if you need the context', 'One click switches between the crop and the full image'],
+  ['frame-overlay', 'The difference over the new version', 'The edit in its own surroundings, not on a grey ghost'],
   ['frame-3up', 'Before, after and the diff side by side', 'Every frame shares one scale and one crop'],
+  ['options-store', 'Yours to adjust', 'The colours of the difference — and a GitLab or GitHub Enterprise of your own'],
   ['popup', 'One permission, asked once', 'GitHub serves image previews from a separate domain'],
 ];
 
@@ -83,13 +86,18 @@ async function compose(page, buffer, title, subtitle) {
   return page.screenshot({ scale: 'css' });
 }
 
-/** Окно расширения: API браузера подменяем, снимать ради него нечего. */
-async function popupShot(page) {
+/**
+ * Страницы расширения: окно и настройки.
+ *
+ * Снимать их на живом браузере нечего — за ними нет ни сети, ни страницы;
+ * зато нужен API браузера, которого у file:// нет. Поэтому он подменяется.
+ */
+async function stubBrowser(page) {
   const messages = JSON.parse(await readFile(join(root, 'src/_locales/en/messages.json'), 'utf8'));
-  const { version } = JSON.parse(await readFile(join(root, 'src/manifest.json'), 'utf8'));
+  const manifest = JSON.parse(await readFile(join(root, 'src/manifest.json'), 'utf8'));
 
   await page.addInitScript(
-    ([locale, manifestVersion]) => {
+    ([locale, ownManifest]) => {
       const getMessage = (key, substitutions = []) => {
         const entry = locale[key];
         if (!entry) return '';
@@ -101,22 +109,80 @@ async function popupShot(page) {
         return text;
       };
       globalThis.chrome = {
-        i18n: { getMessage },
-        runtime: { getManifest: () => ({ version: manifestVersion }) },
-        storage: { sync: { get: async (defaults) => defaults, set: async () => {} } },
-        // Снимок показывает окно в его обычном виде: доступ уже выдан.
-        permissions: { contains: async () => true, request: async () => true },
+        i18n: { getMessage, getUILanguage: () => 'en' },
+        runtime: { getManifest: () => ownManifest, getURL: (path) => path },
+        storage: {
+          sync: { get: async (defaults) => defaults, set: async () => {} },
+          local: { get: async (defaults) => defaults, set: async () => {}, remove: async () => {} },
+        },
+        // Снимок показывает страницы в их обычном виде: доступ уже выдан, а
+        // на странице настроек — по серверу каждого вида, иначе оба списка
+        // на кадре пустые и рассказывают не о том.
+        permissions: {
+          contains: async () => true,
+          request: async () => true,
+          getAll: async () => ({
+            origins: [
+              'https://viewscreen.githubusercontent.com/*',
+              'https://gitlab.com/*',
+              'https://gitlab.example.com/*',
+              'https://github.example.com/*',
+              'https://viewscreen.github.example.com/*',
+            ],
+          }),
+        },
+        scripting: {
+          getRegisteredContentScripts: async () => [],
+          registerContentScripts: async () => {},
+          unregisterContentScripts: async () => {},
+        },
       };
     },
-    [messages, version],
+    [messages, manifest],
   );
+}
 
-  await page.goto(`file://${join(extension, 'popup/popup.html')}`);
-  const size = await page.evaluate(() => {
-    const { width, height } = document.body.getBoundingClientRect();
-    return { width: Math.ceil(width), height: Math.ceil(height) };
-  });
-  return page.screenshot({ clip: { x: 0, y: 0, ...size } });
+/**
+ * Снимает страницу расширения.
+ *
+ * Окно узкое и помещается целиком. Страница настроек длинная: снятая целиком,
+ * на витринном кадре она ужимается до нечитаемой ленты. Поэтому у неё берётся
+ * кусок от одного раздела до другого — и кончается он на границе раздела, а
+ * не на половине строки.
+ *
+ * @param from откуда резать, селектор раздела; без него — вся страница
+ * @param to   докуда: до конца этого раздела
+ */
+async function pageShot(page, path, { width, from, to } = {}) {
+  await stubBrowser(page);
+  if (width) await page.setViewportSize({ width, height: 900 });
+  await page.goto(`file://${join(extension, path)}`);
+  // Надписи и списки расставляются после ответа хранилища — снимок раньше
+  // этого показал бы полупустую страницу.
+  await page.waitForFunction(() => document.querySelector('h1')?.textContent?.trim());
+  await sleep(300);
+
+  const box = await page.evaluate(
+    ([start, finish]) => {
+      const body = document.body.getBoundingClientRect();
+      if (!start) {
+        return { x: 0, y: 0, width: Math.ceil(body.width), height: Math.ceil(body.height) };
+      }
+      const top = document.querySelector(start).getBoundingClientRect();
+      const bottom = document.querySelector(finish).getBoundingClientRect();
+      const padding = 20;
+      return {
+        x: Math.max(0, Math.floor(body.x - padding)),
+        y: Math.max(0, Math.floor(top.y + scrollY - padding)),
+        width: Math.ceil(body.width + padding * 2),
+        height: Math.ceil(bottom.bottom - top.y + padding * 2),
+      };
+    },
+    [from, to],
+  );
+  // fullPage — всегда: страница настроек длиннее окна, и без этого снимок
+  // обрезался бы по его нижнему краю, а не по тому, что просили.
+  return page.screenshot({ clip: box, fullPage: true });
 }
 
 const profile = await mkdtemp(join(tmpdir(), 'ghpd-shots-'));
@@ -162,16 +228,43 @@ try {
 
   written['frame-changes'] = await shoot();
 
+  // Кнопки переключателя ищем по подписи, а не по номеру: их состав растёт,
+  // и номер однажды начинает показывать соседний кадр — молча.
+  const showFrame = (label) =>
+    frame().evaluate((name) => {
+      const button = [...document.querySelectorAll('.ghpd-views .ghpd-view-button')].find(
+        (node) => node.textContent.trim() === name,
+      );
+      if (!button) throw new Error(`нет кадра «${name}»`);
+      button.click();
+    }, label);
+
+  await showFrame('overlay');
+  written['frame-overlay'] = await shoot();
+
+  await showFrame('diff');
   await frame().evaluate(() => document.querySelector('.ghpd-crop-toggle').click());
   written['frame-full'] = await shoot();
 
-  await frame().evaluate(() => {
-    // Четвёртая кнопка переключателя — три кадра рядом.
-    document.querySelectorAll('.ghpd-views .ghpd-view-button')[3].click();
-  });
+  await showFrame('3-up');
   written['frame-3up'] = await shoot();
 
-  written.popup = await popupShot(await context.newPage());
+  written.popup = await pageShot(await context.newPage(), 'popup/popup.html');
+
+  // Страница настроек нужна дважды и в разном виде. README читают сверху
+  // вниз, и там она нужна целиком — начиная с языка. На витринной карточке
+  // целая страница ужимается до нечитаемой ленты, поэтому ей достаётся кусок
+  // от раздела до раздела: цвета разницы и свои серверы, то есть то, ради
+  // чего настройки открывают. Про доступ на витрине рассказывает соседняя
+  // карточка с окном расширения.
+  written.options = await pageShot(await context.newPage(), 'options/options.html', {
+    width: 720,
+  });
+  written['options-store'] = await pageShot(await context.newPage(), 'options/options.html', {
+    width: 720,
+    from: 'section:nth-of-type(3)',
+    to: '#enterprise',
+  });
 
   // Подложку рисуем в отдельной вкладке нужного размера.
   const canvas = await context.newPage();
@@ -187,6 +280,9 @@ try {
   }
 
   for (const [name, buffer] of Object.entries(written)) {
+    // Кадры с приставкой «-store» существуют только ради витрины: в README
+    // они были бы вторым снимком того же самого, обрезанным иначе.
+    if (name.endsWith('-store')) continue;
     await writeFile(join(shots, `${name}.png`), buffer);
   }
   for (const [index, [name, title, subtitle]] of STORE.entries()) {

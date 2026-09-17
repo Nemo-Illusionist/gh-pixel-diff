@@ -84,6 +84,10 @@ runs in your browser.
 
 ![Three frames side by side](docs/screenshots/frame-3up.png)
 
+The overlay puts the difference straight onto the new version, in full colour:
+
+![The difference over the new version](docs/screenshots/frame-overlay.png)
+
 ## Installation
 
 **Chrome, Edge, any Chromium** — [in the Chrome Web Store][store]. One button,
@@ -177,6 +181,8 @@ toolbar and press **Grant access**. The window is only that — the state of the
 access and a row of links; everything else lives on the settings page.
 
 ![The extension popup](docs/screenshots/popup.png)
+
+![The settings page](docs/screenshots/options.png)
 
 The settings page opens from the same window, by the **Settings** link — and in
 Safari from Settings → Extensions → GitHub Pixel Diff → **Settings**. Next to it
