@@ -1182,8 +1182,27 @@ test('три кадра рядом не сохраняются одной кар
   await waitForResult(page);
   await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
 
+  // Пункт не пропадает, а гаснет: меню из одного ползунка выглядит сломанным.
   await openMenu(page);
-  await expect(page.locator('.ghpd-save')).toBeHidden();
+  await expect(page.locator('.ghpd-save')).toBeDisabled();
+});
+
+test('состав «⋯» не меняется: неуместное гаснет, а не пропадает', async ({ page }) => {
+  // В «3-up» нечего сохранять, в обрезке нечего обводить — и если прятать оба
+  // пункта, под «⋯» остаётся один ползунок, а меню выглядит сломанным.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+  await openMenu(page);
+
+  await expect(page.locator('.ghpd-menu-panel .ghpd-slider')).toBeVisible();
+  await expect(page.locator('.ghpd-outline-toggle')).toBeVisible();
+  await expect(page.locator('.ghpd-outline-toggle')).toBeDisabled();
+  await expect(page.locator('.ghpd-save')).toBeVisible();
+  await expect(page.locator('.ghpd-save')).toBeDisabled();
 });
 
 test('под курсором видно, какой был пиксель и каким стал', async ({ page }) => {

@@ -245,7 +245,18 @@
   text-decoration: none;
 }
 
-.ghpd-menu-panel button:hover { background: var(--bgColor-neutral-muted, #818b981f); }
+.ghpd-menu-panel button:hover:not(:disabled) {
+  background: var(--bgColor-neutral-muted, #818b981f);
+}
+
+/* Погасший пункт: он есть, но сейчас не к месту — рамки нет в обрезке, а трёх
+   кадров рядом не сохранить одной картинкой. Пропадать ему незачем: меню из
+   одного ползунка выглядит сломанным. */
+.ghpd-menu-panel button:disabled {
+  color: var(--fgColor-muted, #59636e);
+  opacity: 0.5;
+  cursor: default;
+}
 
 .ghpd-menu-panel button:focus-visible {
   outline: 2px solid var(--fgColor-accent, #0969da);

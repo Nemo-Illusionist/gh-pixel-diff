@@ -340,12 +340,15 @@
       // вернуться обратно, — поэтому кнопка сброса называет его вслух.
       zoomReset.hidden = !single || zoom.scale <= 1;
       if (!zoomReset.hidden) zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
-      // Рамка есть только в полном кадре — там же и переключатель.
-      outlineToggle.hidden = cropped || !result.bounds;
+      // Состав меню постоянный: то, что сейчас не к месту, гаснет, а не
+      // пропадает. Иначе в кадре «3-up» под «⋯» оставался один ползунок, и
+      // меню выглядело сломанным.
+      // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
+      outlineToggle.disabled = cropped || !result.bounds;
       outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
       // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
       // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
-      save.hidden = !single;
+      save.disabled = !single;
     }
 
     cropToggle.addEventListener('click', () => {
