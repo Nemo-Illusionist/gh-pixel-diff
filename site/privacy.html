@@ -55,7 +55,9 @@
     and revocable at any time from the browser's extension settings.</li>
   </ul>
   <p>No image, file name, repository name, URL, or account information is
-  stored.</p>
+  stored. Your settings — the threshold, the interface language, the colours of
+  the difference, the addresses of your own instances — are kept by the browser
+  and travel only through its own sync, if you have it on.</p>
 
   <h2>What it accesses</h2>
   <p>The extension runs on two addresses:
@@ -68,11 +70,14 @@
   <p>The comparison happens entirely on your machine. The images never leave
   it.</p>
 
-  <p>If you add a GitLab of your own on the settings page, that instance's
-  address joins the list — you grant it by hand, one host at a time, and revoke
-  it from the same page or from the browser's own settings. The extension
-  behaves there exactly as it does on <code>gitlab.com</code>, and on a page
-  that is not GitLab it does nothing at all.</p>
+  <p>If you add a GitLab or a GitHub Enterprise of your own on the settings
+  page, that instance's address joins the list — you grant it by hand, one host
+  at a time, and revoke it from the same page or from the browser's own
+  settings. A GitHub Enterprise is granted together with its
+  <code>viewscreen</code> subdomain, where GitHub draws the preview. The
+  extension behaves there exactly as it does on <code>gitlab.com</code> and on
+  <code>github.com</code>, and on a page with no image diff on it it does
+  nothing at all.</p>
 
   <h2>This page</h2>
   <p>The comparison page on this site works the same way: the images you drop

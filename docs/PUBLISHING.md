@@ -250,14 +250,24 @@ three-pixel shift you can see, not a picture you have to hunt through.
 
 - A threshold slider: raise it to ignore compression noise, lower it to catch
   everything.
-- Before / after / diff, and all three side by side, sharing one scale and one
-  crop.
+- Zoom and pan: Ctrl + scroll or a trackpad pinch, dragging to move. Magnified
+  pixels stay square, so a one-pixel shift is something you can look at.
+- Edits in different corners are separate places, and the caption walks between
+  them one at a time.
+- A pixel inspector: point at the frame and see which pixel that is and what
+  colour it was before and after.
+- Save what you are looking at as a PNG, ready for a comment or a ticket.
+- Before / after / diff / overlay, and three frames side by side, sharing one
+  scale and one crop.
 - Images that changed size are aligned and compared anyway.
 - SVG and other vector images are rasterised before comparison.
 - Works on the images the site has already loaded — nothing is uploaded
   anywhere.
-- A GitLab of your own: add its address on the settings page, grant access,
-  and the mode appears in that instance too.
+- Yours to adjust on the settings page: the interface language, the colour of
+  the difference, and a second colour for telling darker edits from lighter
+  ones.
+- A GitLab or GitHub Enterprise of your own: add its address on the settings
+  page, grant access, and the mode appears in that instance too.
 - No merge request at hand? Two images of your own compare the same way at
   https://nemo-illusionist.github.io/gh-pixel-diff/
 

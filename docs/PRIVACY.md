@@ -24,6 +24,9 @@ Two kinds of settings, and only settings:
   any time from the browser's extension settings.
 
 No image, file name, repository name, URL, or account information is stored.
+Your settings — the threshold, the interface language, the colours of the
+difference, the addresses of your own instances — are kept by the browser and
+travel only through its own sync, if you have it on.
 
 ## What it accesses
 
@@ -36,11 +39,13 @@ read your repositories, and does not touch any other site.
 
 The comparison happens entirely on your machine. The images never leave it.
 
-If you add a GitLab of your own on the settings page, that instance's address
-joins the list — you grant it by hand, one host at a time, and revoke it from
-the same page or from the browser's own settings. The extension behaves there
-exactly as it does on `gitlab.com`, and on a page that is not GitLab it does
-nothing at all.
+If you add a GitLab or a GitHub Enterprise of your own on the settings page,
+that instance's address joins the list — you grant it by hand, one host at a
+time, and revoke it from the same page or from the browser's own settings. A
+GitHub Enterprise is granted together with its `viewscreen` subdomain, where
+GitHub draws the preview. The extension behaves there exactly as it does on
+`gitlab.com` and on `github.com`, and on a page with no image diff on it the
+extension does nothing at all.
 
 The comparison page on this site works the same way: the images you drop there
 are read by the browser and never uploaded. There is no server behind the page —
