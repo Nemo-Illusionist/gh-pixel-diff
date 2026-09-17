@@ -56,13 +56,17 @@ button:hover { background: color-mix(in srgb, canvastext 14%, transparent); }
 
 code { font-size: 12px; word-break: break-all; }
 
-#add {
+/* Формы добавления серверов — по одной на вид, и выглядят они одинаково:
+   разный вид одного и того же действия читается как разное действие. */
+#add,
+#add-github {
   display: flex;
   gap: 8px;
   margin: 16px 0 0;
 }
 
-#host {
+#host,
+#host-github {
   font: inherit;
   flex: 1;
   min-width: 0;
