@@ -191,3 +191,22 @@ test('возврат к языку браузера убирает и строк
     .poll(() => page.evaluate(() => globalThis.ghpdStore.local['ghpd:messages'] ?? null))
     .toBeNull();
 });
+
+
+test('цвета разницы выбираются и возвращаются к обычным', async ({ page }) => {
+  await openOptions(page);
+
+  await page.fill('#color-darker', '#ff8800');
+  await page.dispatchEvent('#color-darker', 'change');
+
+  await expect
+    .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.darker))
+    .toBe('#ff8800');
+
+  await page.click('#colors-reset');
+
+  await expect(page.locator('#color-darker')).toHaveValue('#d1242f');
+  await expect
+    .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.darker))
+    .toBe('#d1242f');
+});
