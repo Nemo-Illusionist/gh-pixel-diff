@@ -975,30 +975,39 @@ test('по двум правкам в разных концах кадра мо�
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
+  // По умолчанию показаны все изменения разом — прежний ответ панели. Ходьба
+  // по местам добавлена к нему, а не вместо него.
+  await expect(page.locator('.ghpd-meta')).toContainText('2 changed places');
+  const все = await canvasState(page);
+
+  await page.click('.ghpd-cluster-step[aria-label="next change"]');
+
   await expect(page.locator('.ghpd-meta')).toContainText('change 1 of 2');
   const первое = await canvasState(page);
+  expect(первое.отпечаток).not.toBe(все.отпечаток);
 
   await page.click('.ghpd-cluster-step[aria-label="next change"]');
 
   await expect(page.locator('.ghpd-meta')).toContainText('change 2 of 2');
-  const второе = await canvasState(page);
-  expect(второе.отпечаток).not.toBe(первое.отпечаток);
+  expect((await canvasState(page)).отпечаток).not.toBe(первое.отпечаток);
 
-  // Ходим по кругу: после последнего — снова первое.
+  // Круг проходит через «все», а не мимо: после последнего места — снова всё.
   await page.click('.ghpd-cluster-step[aria-label="next change"]');
 
-  await expect(page.locator('.ghpd-meta')).toContainText('change 1 of 2');
-  expect(await canvasState(page)).toEqual(первое);
+  await expect(page.locator('.ghpd-meta')).toContainText('2 changed places');
+  expect(await canvasState(page)).toEqual(все);
 
-  // И назад — тоже по кругу.
+  // И назад — тоже по кругу, сразу к последнему месту.
   await page.click('.ghpd-cluster-step[aria-label="previous change"]');
 
   await expect(page.locator('.ghpd-meta')).toContainText('change 2 of 2');
 });
 
-test('в полном кадре обведены все места, а не только выбранное', async ({ page }) => {
-  // Переход «дальше» уводит туда, где на кадре ничего не отмечено, — если
-  // обвести только выбранное место. Поэтому обводим все, выбранное ярче.
+test('рамка одна, пока место не выбрано, и на каждом месте — своя', async ({ page }) => {
+  // Общая рамка отвечает на вопрос «где вообще смотреть». Раздробить её на
+  // три еле заметных прямоугольника — значит не ответить вовсе. Но когда по
+  // местам ходят, обведено должно быть каждое: иначе переход «дальше» уводит
+  // туда, где на кадре ничего не отмечено.
   await page.setViewportSize({ width: 900, height: 700 });
   await openFrame(page, svgTwoSpots());
   await injectExtension(page);
@@ -1006,26 +1015,35 @@ test('в полном кадре обведены все места, а не т�
   await waitForResult(page);
   await page.click('.ghpd-crop-toggle');
 
-  const половины = await page.evaluate((selector) => {
-    const canvas = document.querySelector(selector);
-    const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-    const found = { верх: 0, низ: 0 };
-    for (let i = 0; i < data.length; i += 4) {
-      // Янтарный узнаём по порядку составляющих: красного больше зелёного,
-      // зелёного больше синего. Так он узнаётся и бледным — рамки вокруг
-      // невыбранных мест рисуются полупрозрачными. Цвета самой разницы этому
-      // не отвечают: у красного (209, 36, 47) зелёного меньше, чем синего.
-      if (data[i] > data[i + 1] && data[i + 1] > data[i + 2] && data[i] - data[i + 2] > 40) {
-        const y = Math.floor(i / 4 / canvas.width);
-        if (y < canvas.height / 2) found.верх++;
-        else found.низ++;
+  /**
+   * Строки с янтарным и высота всего обведённого.
+   *
+   * У одной рамки бока идут сплошь — строк ровно столько, какова её высота.
+   * У двух отдельных рамок между ними просвет, и строк заметно меньше.
+   */
+  const рамки = () =>
+    page.evaluate((selector) => {
+      const canvas = document.querySelector(selector);
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      const rows = new Set();
+      for (let i = 0; i < data.length; i += 4) {
+        // Янтарный узнаём по порядку составляющих: красного больше зелёного,
+        // зелёного больше синего. Цвета самой разницы этому не отвечают.
+        if (data[i] > data[i + 1] && data[i + 1] > data[i + 2] && data[i] - data[i + 2] > 40) {
+          rows.add(Math.floor(i / 4 / canvas.width));
+        }
       }
-    }
-    return found;
-  }, FRAME_CANVAS);
+      const all = [...rows];
+      return { строк: all.length, высота: Math.max(...all) - Math.min(...all) + 1 };
+    }, FRAME_CANVAS);
 
-  expect(половины.верх).toBeGreaterThan(0);
-  expect(половины.низ).toBeGreaterThan(0);
+  const общая = await рамки();
+  expect(общая.строк).toBe(общая.высота);
+
+  await page.click('.ghpd-cluster-step[aria-label="next change"]');
+
+  const порознь = await рамки();
+  expect(порознь.строк).toBeLessThan(порознь.высота / 2);
 });
 
 test('одна правка — переходов нет', async ({ page }) => {
@@ -1193,12 +1211,13 @@ test('строки от другого языка не берутся', async ({
   await expect(page.locator('.ghpd-meta')).toContainText('pixels');
 });
 
-test('свои цвета доходят до кадра и до легенды', async ({ page }) => {
+test('свои цвета доходят до кадра', async ({ page }) => {
   // Цвет выбирается в настройках, а красит им маску поток сравнения — между
-  // ними хранилище. Легенда при этом показывает образцы, а не названия:
-  // подпись «красным» после замены цвета врала бы.
+  // ними хранилище.
   await page.setViewportSize({ width: 900, height: 700 });
-  await openFrame(page, svgPair(true), { colors: { darker: '#ff8800', lighter: '#00aa44' } });
+  await openFrame(page, svgPair(true), {
+    colors: { direction: true, changed: '#ff8800', lighter: '#00aa44' },
+  });
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
@@ -1214,12 +1233,6 @@ test('свои цвета доходят до кадра и до легенды'
   }, FRAME_CANVAS);
 
   expect(найдено).toBeGreaterThan(0);
-
-  const образцы = await page.evaluate(() =>
-    [...document.querySelectorAll('.ghpd-legend-swatch')].map((node) => node.style.background),
-  );
-  expect(образцы).toEqual(['rgb(255, 136, 0)', 'rgb(0, 170, 68)']);
-  await expect(page.locator('.ghpd-meta')).toContainText('darker');
 });
 
 test('на своём GitHub Enterprise режим встаёт так же', async ({ page }) => {

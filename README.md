@@ -31,20 +31,19 @@ runs in your browser.
   with the changed areas outlined — the outline can be turned off, and the
   choice is remembered.
 - **Changes in different corners are separate places, and you can walk between
-  them**: `‹ change 2 of 5 ›` in the caption crops to one place at a time, in
-  reading order. A single fragment holding two distant edits is the whole frame
-  again — which is the same as no crop at all. In the full frame every place is
-  outlined, the current one brighter.
+  them**: the caption says `‹ 3 changed places ›`, and stepping crops to one
+  place at a time, in reading order. By default all of them are shown at once,
+  the way they always were — a single fragment holding two distant edits is the
+  whole frame again. While a place is chosen, every place is outlined and the
+  current one is brighter.
 - Counts how many pixels changed and what share of the frame that is.
 - A threshold slider — from "catch even anti-aliasing" to "only what the eye
   sees" — styled like the Onion Skin one.
-- The colour says which way the edit went: red where the picture got darker —
-  text or an element appeared — and blue where it got lighter. One red for
-  everything made "added" and "removed" look the same. **The pair can be
-  changed** on the settings page: red gets lost on a red interface, and red
-  with blue is not told apart by every kind of colour blindness. The legend
-  under the frame shows swatches, not colour names, so it stays true whatever
-  you pick.
+- The difference is painted in one colour, and **the colour can be changed** on
+  the settings page — red gets lost on a red interface. Turn on *colour says
+  which way the edit went* there and the frame gets a second one: the first
+  marks what got darker — text or an element appeared — and the second what got
+  lighter.
 - **Zoom and pan**: Ctrl + scroll (or a trackpad pinch) magnifies the frame,
   dragging moves it, a double click jumps in and back, and the keyboard does the
   same with `+`, `-`, `0` and the arrows. Magnified pixels stay square rather
