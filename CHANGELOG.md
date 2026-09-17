@@ -4,6 +4,31 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.13.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.12.0...v0.13.0) (2026-09-17)
+
+
+### Features
+
+* add a GitHub Enterprise of your own on the settings page ([#49](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/49)) ([b521790](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/b52179078fc5e65a548ae9333301a8d907bddb10))
+* choose the colours of the difference ([#50](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/50)) ([33ead8c](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/33ead8c2f48ec64ef3046a8133de40d317564121))
+* choose the interface language on the settings page ([#48](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/48)) ([051fcc7](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/051fcc7021e4982a9c4ce5597578405173b2f802))
+* save the frame you are looking at as a PNG ([#46](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/46)) ([af358fd](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/af358fd8696ceb2dfa522630e887e1feed674129))
+* say which pixel is under the cursor and what colour it was ([#47](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/47)) ([3255410](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/3255410526e0d23fb0fd907f7af71c7663978104))
+* walk between the places that changed ([#45](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/45)) ([ab3a0d6](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/ab3a0d682e5c9341999efe3f58878a9d5319476c))
+* zoom into the frame and drag it around ([#43](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/43)) ([d2d9c4d](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/d2d9c4d9373c17c2778d93f8176a5aa880a45e45))
+
+
+### Bug Fixes
+
+* bring back the yellow marks for anti-aliasing ([#54](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/54)) ([f4ffa58](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/f4ffa583aaef9419112dfd3cf5ab657bd3f157e1))
+* give the caption and the crop their old answers back ([#52](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/52)) ([2e79ae4](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/2e79ae47e3481cbefe22cc54176007e160ceaa9a))
+* the outline is red again, and the settings page says less ([#53](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/53)) ([fb28344](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/fb28344594efbfc609f63d74e89dd8add1923934))
+
+
+### Documentation
+
+* reshoot the screenshots and refresh the store texts ([#51](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/51)) ([3448160](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/3448160fb63dff210e90fedc74d4c1a08a0f7ab7))
+
 ## [0.12.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.11.0...v0.12.0) (2026-09-15)
 
 
