@@ -225,22 +225,43 @@ test('возврат к языку браузера убирает и строк
     .toBeNull();
 });
 
-test('цвета разницы выбираются и возвращаются к обычным', async ({ page }) => {
+test('цвет разницы выбирается и возвращается к обычному', async ({ page }) => {
   await openOptions(page);
 
-  await page.fill('#color-darker', '#ff8800');
-  await page.dispatchEvent('#color-darker', 'change');
+  await page.fill('#color-changed', '#ff8800');
+  await page.dispatchEvent('#color-changed', 'change');
 
   await expect
-    .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.darker))
+    .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.changed))
     .toBe('#ff8800');
 
   await page.click('#colors-reset');
 
-  await expect(page.locator('#color-darker')).toHaveValue('#d1242f');
+  await expect(page.locator('#color-changed')).toHaveValue('#d1242f');
   await expect
-    .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.darker))
+    .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.changed))
     .toBe('#d1242f');
+});
+
+test('второй цвет появляется только вместе с направлением', async ({ page }) => {
+  // Без направления второй цвет ничего не значит и только путает: разница
+  // по умолчанию одного цвета, как и была.
+  await openOptions(page);
+
+  await expect(page.locator('#direction')).not.toBeChecked();
+  await expect(page.locator('#direction-colors')).toBeHidden();
+
+  await page.check('#direction');
+
+  await expect(page.locator('#direction-colors')).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => globalThis.ghpdStore.sync.colors?.direction))
+    .toBe(true);
+
+  await page.click('#colors-reset');
+
+  await expect(page.locator('#direction')).not.toBeChecked();
+  await expect(page.locator('#direction-colors')).toBeHidden();
 });
 
 test('свой GitHub Enterprise просит и хост, и адрес превью', async ({ page }) => {

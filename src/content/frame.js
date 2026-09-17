@@ -10,7 +10,7 @@
   const { diffPrepared, preparePair, readImagePair } = global.GhPixelDiff;
   const api = global.browser ?? global.chrome;
   const { locale, plural, t } = global.GhPixelDiffI18n;
-  const { attachProbe, attachZoom, colorLegend, createZoom, drawCrop, frameFileName, saveCanvas,
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, saveCanvas,
     zoomLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
 
@@ -278,9 +278,13 @@
     const zoom = createZoom(() => {
       if (result) render();
     });
-    // Какое из мест изменений выбрано. Номер, а не сам прямоугольник: при
-    // каждом пересчёте порога места считаются заново.
-    let focusIndex = 0;
+    // Какое из мест изменений выбрано; -1 — все сразу, и так по умолчанию.
+    // Обрезка по всем изменениям — прежний ответ панели, и терять его ради
+    // переходов нельзя: чаще всего правка одна, и ходить там некуда.
+    //
+    // Номер, а не сам прямоугольник: при каждом пересчёте порога места
+    // считаются заново.
+    let focusIndex = -1;
 
     const render = () => {
       const single = shownFrame !== 'triple';
@@ -288,9 +292,9 @@
       triple.hidden = single;
 
       const clusters = result.clusters ?? [];
-      if (focusIndex >= clusters.length) focusIndex = 0;
+      if (focusIndex >= clusters.length) focusIndex = -1;
       // Пока место одно, выбирать не из чего — и обрезка остаётся прежней.
-      const focus = clusters.length > 1 ? clusters[focusIndex] : null;
+      const focus = clusters.length > 1 && focusIndex >= 0 ? clusters[focusIndex] : null;
 
       const box = single
         ? drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus })
@@ -308,12 +312,13 @@
       );
       // Цвет теперь значит направление правки, и сказать об этом надо там
       // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
-      if (result.changed > 0) meta.append(' · ', colorLegend(colors));
       if (clusters.length > 1) {
         meta.append(
           ' · ',
           prevChange,
-          ` ${t('clusterPosition', focusIndex + 1, clusters.length)} `,
+          focusIndex < 0
+            ? ` ${plural('places', clusters.length)} `
+            : ` ${t('clusterPosition', focusIndex + 1, clusters.length)} `,
           nextChange,
         );
       }
@@ -375,7 +380,14 @@
     const stepChange = (delta) => {
       const total = result?.clusters?.length ?? 0;
       if (total < 2) return;
-      focusIndex = (focusIndex + delta + total) % total;
+      // Состояний на одно больше, чем мест: «все» — такое же состояние, и
+      // круг через него проходит, а не мимо.
+      focusIndex = ((focusIndex + 1 + delta + total + 1) % (total + 1)) - 1;
+      if (focusIndex < 0) {
+        zoom.reset();
+        render();
+        return;
+      }
       // В полном кадре переход не меняет обрезку — значит должен навести
       // увеличение, иначе нажатие выглядит как ничего не делающее.
       zoom.lookAt(result.clusters[focusIndex]);

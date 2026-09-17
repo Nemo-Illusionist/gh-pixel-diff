@@ -325,28 +325,17 @@
   "optionsLanguageHint": {
     "message": "Касается окна, этой страницы и панели сравнения. Уже открытые страницы останутся на прежнем языке до перезагрузки."
   },
-  "legendDarker": {
-    "message": "стало темнее",
-    "description": "Легенда цвета: здесь картинка потемнела."
-  },
-  "legendLighter": {
-    "message": "светлее",
-    "description": "Легенда цвета: здесь картинка посветлела."
-  },
   "optionsColors": {
     "message": "Цвета разницы"
   },
   "optionsColorsHint": {
     "message": "Красное теряется на красном интерфейсе, а красный с синим различает не всякий дальтонизм. Применится со следующей загрузки страницы."
   },
-  "optionsColorDarker": {
-    "message": "стало темнее"
-  },
   "optionsColorLighter": {
     "message": "стало светлее"
   },
   "optionsColorsReset": {
-    "message": "вернуть обычную пару"
+    "message": "вернуть обычный красный"
   },
   "optionsGithub": {
     "message": "Свой GitHub Enterprise"
@@ -356,5 +345,46 @@
   },
   "optionsGithubHint": {
     "message": "github.example.com"
+  },
+  "placesOne": {
+    "message": "$count$ место изменений",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "placesFew": {
+    "message": "$count$ места изменений",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "placesMany": {
+    "message": "$count$ мест изменений",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "placesOther": {
+    "message": "$count$ мест изменений",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "optionsColorMain": {
+    "message": "разница"
+  },
+  "optionsDirection": {
+    "message": "цветом показывать направление правки"
+  },
+  "optionsDirectionHint": {
+    "message": "С этим кадр получает второй цвет: первым отмечено то, что потемнело — появился текст или элемент, — вторым то, что посветлело."
   }
 }

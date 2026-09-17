@@ -112,6 +112,7 @@ code { font-size: 12px; word-break: break-all; }
 }
 
 .colors .setting { margin: 0; }
+.colors[hidden] { display: none; }
 
 .colors input[type='color'] {
   width: 28px;

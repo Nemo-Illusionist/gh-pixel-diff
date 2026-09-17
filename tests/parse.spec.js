@@ -267,8 +267,8 @@ test('формы множественного числа берутся по я�
 });
 
 test('цвет разницы говорит, потемнело или посветлело', async ({ page }) => {
-  // Одного красного мало: «текст появился» и «текст исчез» — разные события,
-  // и на кадре они должны выглядеть по-разному.
+  // «Текст появился» и «текст исчез» — разные события, и по желанию их можно
+  // различать на кадре: в настройках включается направление правки цветом.
   await page.addScriptTag({
     path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
   });
@@ -279,12 +279,15 @@ test('цвет разницы говорит, потемнело или посв
     const before = new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 255]);
     const after = new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]);
 
-    const result = self.GhPixelDiff.diffPrepared({
-      width,
-      height,
-      dataBefore: new ImageData(before, width, height),
-      dataAfter: new ImageData(after, width, height),
-    });
+    const result = self.GhPixelDiff.diffPrepared(
+      {
+        width,
+        height,
+        dataBefore: new ImageData(before, width, height),
+        dataAfter: new ImageData(after, width, height),
+      },
+      { colors: { ...self.GhPixelDiff.COLORS, direction: true } },
+    );
 
     const at = (x) => [...result.mask.data.slice(x * 4, x * 4 + 4)];
     return { darker: at(0), lighter: at(1), changed: result.changed };
@@ -315,13 +318,17 @@ test('цвета разницы можно заменить своими', async
     };
     const at = (result, x) => [...result.mask.data.slice(x * 4, x * 4 + 3)];
 
+    // По умолчанию направление цветом не показывается: разница одного цвета.
+    const plain = self.GhPixelDiff.diffPrepared(prepared, {});
     const own = self.GhPixelDiff.diffPrepared(prepared, {
-      colors: { darker: '#ff8800', lighter: '#00aa44' },
+      colors: { direction: true, changed: '#ff8800', lighter: '#00aa44' },
     });
     const broken = self.GhPixelDiff.diffPrepared(prepared, {
-      colors: { darker: 'оранжевый', lighter: '' },
+      colors: { direction: true, changed: 'оранжевый', lighter: '' },
     });
     return {
+      plainDarker: at(plain, 0),
+      plainLighter: at(plain, 1),
       darker: at(own, 0),
       lighter: at(own, 1),
       brokenDarker: at(broken, 0),
@@ -329,6 +336,9 @@ test('цвета разницы можно заменить своими', async
     };
   });
 
+  // Без направления обе стороны правки одного цвета — как было всегда.
+  expect(painted.plainDarker).toEqual([209, 36, 47]);
+  expect(painted.plainLighter).toEqual([209, 36, 47]);
   expect(painted.darker).toEqual([255, 136, 0]);
   expect(painted.lighter).toEqual([0, 170, 68]);
   // Непонятное значение — обычная пара, а не пустота.

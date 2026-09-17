@@ -71,23 +71,31 @@ showViews.addEventListener('change', () => {
   Promise.resolve(api.storage.sync.set({ showViews: showViews.checked })).catch(() => {});
 });
 
-// Цвета разницы. Красное теряется на красном интерфейсе, а пара красный /
-// синий различима не при всяком дальтонизме — поэтому её можно заменить.
-const COLORS = { darker: '#d1242f', lighter: '#0969da' };
+// Цвета разницы. По умолчанию разница одного цвета — красное пятно и значит
+// «здесь правка». Направление правки цветом показывается по желанию: ответ
+// ценный, но два цвета вместо одного всегда требуют объяснения. Заменить сам
+// цвет полезно и без этого: красное теряется на красном интерфейсе.
+const COLORS = { direction: false, changed: '#d1242f', lighter: '#0969da' };
 const colorInputs = {
-  darker: document.querySelector('#color-darker'),
+  changed: document.querySelector('#color-changed'),
   lighter: document.querySelector('#color-lighter'),
 };
+const direction = document.querySelector('#direction');
+const directionColors = document.querySelector('#direction-colors');
 
 function showColors(colors) {
   for (const [side, input] of Object.entries(colorInputs)) input.value = colors[side];
+  direction.checked = Boolean(colors.direction);
+  directionColors.hidden = !direction.checked;
 }
 
 function saveColors() {
   const colors = {
-    darker: colorInputs.darker.value,
+    direction: direction.checked,
+    changed: colorInputs.changed.value,
     lighter: colorInputs.lighter.value,
   };
+  directionColors.hidden = !colors.direction;
   Promise.resolve(api.storage.sync.set({ colors })).catch(() => {});
 }
 
@@ -100,6 +108,7 @@ for (const input of Object.values(colorInputs)) {
   // на закрытии: пишем по второму, иначе в хранилище летит сотня значений.
   input.addEventListener('change', saveColors);
 }
+direction.addEventListener('change', saveColors);
 
 document.querySelector('#colors-reset').addEventListener('click', () => {
   showColors(COLORS);
