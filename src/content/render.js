@@ -10,13 +10,15 @@
   /** Запас вокруг изменений при обрезке: правку удобнее видеть в контексте. */
   const CROP_PADDING = 40;
   /**
-   * Цвет обводки — янтарный, не красный и не синий.
+   * Цвет обводки — тот же, что у самой разницы.
    *
-   * Красный и синий теперь заняты смыслом: ими покрашено само изменение.
-   * Рамка — не данные, а указатель, и путать её с находкой нельзя. Янтарный
-   * различим и рядом с красным, и рядом с синим, в том числе при дальтонизме.
+   * Рамка показывает, где искать то, что покрашено внутри неё, и красить её
+   * во что-то своё значит завести на кадре третий смысл там, где хватает
+   * одного. Свой цвет у неё был, пока разница красилась двумя красками и
+   * рамке среди них не было места; теперь разница снова одного цвета — и
+   * рамка возвращается к нему.
    */
-  const OUTLINE_COLOR = '#bf8700';
+  const OUTLINE_COLOR = '#d1242f';
   /** Насколько бледной становится подложка под разницей. */
   const UNDERLAY_ALPHA = 0.35;
   /** Насколько бледнее рамки вокруг тех мест, которые сейчас не выбраны. */
@@ -122,6 +124,8 @@
    */
   function drawCrop(canvas, full, result, view) {
     const { cropped, outline, zoom, focus } = view;
+    // Цвет разницы можно поменять в настройках — рамка идёт за ним.
+    const outlineColor = view.colors?.changed || OUTLINE_COLOR;
     const shownFrame = view.frame;
     full.width = result.width;
     full.height = result.height;
@@ -208,7 +212,7 @@
       // преобразованием, что и картинку.
       ctx.scale(factor, factor);
       ctx.translate(-shown.x, -shown.y);
-      ctx.strokeStyle = OUTLINE_COLOR;
+      ctx.strokeStyle = outlineColor;
       ctx.lineWidth = line / factor;
       for (const box of boxes) {
         ctx.globalAlpha = !focus || box === focus ? 1 : OTHER_OUTLINE_ALPHA;

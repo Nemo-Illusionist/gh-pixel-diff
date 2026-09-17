@@ -233,18 +233,49 @@ async function injectExtension(page) {
 }
 
 /** Сколько на холсте пикселей цвета обводки. */
-const outlinePixels = (page) =>
-  page.evaluate(() => {
-    const canvas = document.querySelector('.ghpd-canvas');
+/** Сколько на холсте красного — и разницы, и рамки: цвет у них общий. */
+const redPixels = (page, selector = '.ghpd-canvas') =>
+  page.evaluate((target) => {
+    const canvas = document.querySelector(target);
     const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
     let found = 0;
     for (let i = 0; i < data.length; i += 4) {
-      // Янтарный — цвет рамки. Красный и синий не годятся: ими покрашено
-      // само изменение, и считать их значит считать находку вместо указателя.
-      if (data[i] === 191 && data[i + 1] === 135 && data[i + 2] === 0) found++;
+      if (data[i] > 150 && data[i + 1] < 90 && data[i + 2] < 100) found++;
     }
     return found;
-  });
+  }, selector);
+
+/**
+ * Красное на холсте: его строки, высота и самая длинная сплошная полоса.
+ *
+ * Рамка того же цвета, что и разница, — по цвету их не различить, зато по
+ * форме легко. У рамки есть прямая сторона в десятки пикселей и сплошные
+ * бока: строк ровно столько, какова её высота. Изменения — это буквы: они
+ * коротки и с просветами.
+ */
+const redShape = (page, selector = '.ghpd-canvas') =>
+  page.evaluate((target) => {
+    const canvas = document.querySelector(target);
+    const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    const red = (i) => data[i] > 150 && data[i + 1] < 90 && data[i + 2] < 100;
+    const rows = new Set();
+    let полоса = 0;
+    for (let y = 0; y < canvas.height; y++) {
+      let run = 0;
+      for (let x = 0; x < canvas.width; x++) {
+        if (red((y * canvas.width + x) * 4)) {
+          rows.add(y);
+          run++;
+          if (run > полоса) полоса = run;
+        } else {
+          run = 0;
+        }
+      }
+    }
+    const all = [...rows];
+    if (!all.length) return { строк: 0, высота: 0, полоса: 0 };
+    return { строк: all.length, высота: Math.max(...all) - Math.min(...all) + 1, полоса };
+  }, selector);
 
 /** Ждёт, пока сравнение посчитается и подпись перестанет быть «Comparing…». */
 async function waitForResult(page) {
@@ -390,8 +421,16 @@ test('в полном кадре изменения обведены', async ({ 
   await page.click('.ghpd-crop-toggle');
 
   // Кадр целиком показывается уменьшенным, и несколько пикселей на нём не
-  // разглядеть — поэтому место правки обводится красным.
-  expect(await outlinePixels(page)).toBeGreaterThan(0);
+  // разглядеть — поэтому место правки обводится. Рамка узнаётся по форме:
+  // её бока идут сплошь, от верхнего края до нижнего.
+  // Рамка того же цвета, что и разница, и отличить её можно только по тому,
+  // что с ней красного заметно больше: периметр вокруг всего изменившегося
+  // длиннее самих изменений.
+  const обведено = await redPixels(page);
+  await page.click('.ghpd-outline-toggle');
+  const голый = await redPixels(page);
+
+  expect(обведено).toBeGreaterThan(голый + 100);
 });
 
 test('рамку вокруг изменений можно убрать', async ({ page }) => {
@@ -401,10 +440,11 @@ test('рамку вокруг изменений можно убрать', async
   await waitForResult(page);
   await page.click('.ghpd-crop-toggle');
 
-  expect(await outlinePixels(page)).toBeGreaterThan(0);
+  const обведено = await redPixels(page);
 
   await page.click('.ghpd-outline-toggle');
-  expect(await outlinePixels(page)).toBe(0);
+  const голый = await redPixels(page);
+  expect(голый).toBeLessThan(обведено - 100);
 
   // Выбор запоминается — как и порог.
   expect(store['ghpd:outline']).toBe('off');
@@ -413,7 +453,7 @@ test('рамку вокруг изменений можно убрать', async
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
   await page.click('.ghpd-crop-toggle');
-  expect(await outlinePixels(page)).toBe(0);
+  expect(await redPixels(page)).toBe(голый);
 });
 
 test('помнит выбранный режим на следующей картинке', async ({ page }) => {
@@ -1015,27 +1055,7 @@ test('рамка одна, пока место не выбрано, и на ка
   await waitForResult(page);
   await page.click('.ghpd-crop-toggle');
 
-  /**
-   * Строки с янтарным и высота всего обведённого.
-   *
-   * У одной рамки бока идут сплошь — строк ровно столько, какова её высота.
-   * У двух отдельных рамок между ними просвет, и строк заметно меньше.
-   */
-  const рамки = () =>
-    page.evaluate((selector) => {
-      const canvas = document.querySelector(selector);
-      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-      const rows = new Set();
-      for (let i = 0; i < data.length; i += 4) {
-        // Янтарный узнаём по порядку составляющих: красного больше зелёного,
-        // зелёного больше синего. Цвета самой разницы этому не отвечают.
-        if (data[i] > data[i + 1] && data[i + 1] > data[i + 2] && data[i] - data[i + 2] > 40) {
-          rows.add(Math.floor(i / 4 / canvas.width));
-        }
-      }
-      const all = [...rows];
-      return { строк: all.length, высота: Math.max(...all) - Math.min(...all) + 1 };
-    }, FRAME_CANVAS);
+  const рамки = () => redShape(page, FRAME_CANVAS);
 
   const общая = await рамки();
   expect(общая.строк).toBe(общая.высота);
