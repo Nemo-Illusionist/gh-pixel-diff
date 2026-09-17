@@ -440,6 +440,7 @@
             height: prepared.height,
             scale: prepared.scale,
             sizeChanged: prepared.sizeChanged,
+            common: prepared.common,
             before: prepared.dataBefore.data.buffer,
             after: prepared.dataAfter.data.buffer,
           }, [prepared.dataBefore.data.buffer, prepared.dataAfter.data.buffer]);
