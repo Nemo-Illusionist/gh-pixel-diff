@@ -346,6 +346,57 @@ test('цвета разницы можно заменить своими', async
   expect(painted.brokenLighter).toEqual([9, 105, 218]);
 });
 
+test('сглаживание отмечено, но изменением не считается', async ({ page }) => {
+  // Жёлтым отмечено «здесь сдвинулось на полпикселя»: пиксели различаются,
+  // но похожи на сглаживание. Считать их изменениями нельзя — от смены шрифта
+  // кадр краснел бы целиком. Но и прятать незачем: это ответ, и раньше он был
+  // виден. Рисуются такие отметки вполсилы — и по этому же признаку не
+  // попадают ни в счёт, ни в границы изменений.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const result = await page.evaluate(() => {
+    const width = 12;
+    const height = 12;
+    const shade = (paint) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const value = paint(x);
+          const i = (y * width + x) * 4;
+          data[i] = value;
+          data[i + 1] = value;
+          data[i + 2] = value;
+          data[i + 3] = 255;
+        }
+      }
+      return new ImageData(data, width, height);
+    };
+
+    // Одна и та же вертикальная линия, нарисованная с разным попаданием в
+    // пиксельную сетку: слева она темнее, справа размазана на соседа.
+    const diff = self.GhPixelDiff.diffPrepared({
+      width,
+      height,
+      dataBefore: shade((x) => (x === 5 ? 0 : x === 6 ? 200 : 255)),
+      dataAfter: shade((x) => (x === 5 ? 60 : x === 6 ? 140 : 255)),
+    });
+
+    const alphas = {};
+    for (let i = 3; i < diff.mask.data.length; i += 4) {
+      alphas[diff.mask.data[i]] = (alphas[diff.mask.data[i]] ?? 0) + 1;
+    }
+    return { alphas, changed: diff.changed, bounds: diff.bounds };
+  });
+
+  // Половина столбцов ушла в находки, половина — в отметки сглаживания.
+  expect(result.alphas[128]).toBeGreaterThan(0);
+  expect(result.changed).toBe(result.alphas[255]);
+  // Границы считаются по находкам: отметки их собой не раздвигают.
+  expect(result.bounds.width).toBe(1);
+});
+
 test('совпавшие пиксели в маске прозрачны', async ({ page }) => {
   // Маска — только изменения: подложку под них выбирает тот, кто рисует.
   await page.addScriptTag({

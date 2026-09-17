@@ -37,6 +37,9 @@ runs in your browser.
   whole frame again. While a place is chosen, every place is outlined and the
   current one is brighter.
 - Counts how many pixels changed and what share of the frame that is.
+- Pixels that differ but look like anti-aliasing are marked in yellow, at half
+  strength, and are not counted as changes — a half-pixel shift is worth seeing
+  without turning the whole frame red.
 - A threshold slider — from "catch even anti-aliasing" to "only what the eye
   sees" — styled like the Onion Skin one.
 - The difference is painted in one colour, and **the colour can be changed** on
