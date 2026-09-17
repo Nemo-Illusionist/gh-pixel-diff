@@ -313,7 +313,7 @@
     "message": "Colours of the difference"
   },
   "optionsColorsHint": {
-    "message": "Red gets lost on a red interface, and red with blue is not told apart by every kind of colour blindness. Applies from the next page load."
+    "message": "Red gets lost on a red interface. Applies from the next page load."
   },
   "optionsColorLighter": {
     "message": "got lighter"
@@ -353,6 +353,6 @@
     "message": "colour says which way the edit went"
   },
   "optionsDirectionHint": {
-    "message": "With this on, the frame gets a second colour: the first marks what got darker — text or an element appeared — and the second what got lighter."
+    "message": "With this on, the frame gets a second colour: the first marks what got darker — text or an element appeared — and the second what got lighter. Red with blue is not told apart by every kind of colour blindness, so both colours are yours to change."
   }
 }

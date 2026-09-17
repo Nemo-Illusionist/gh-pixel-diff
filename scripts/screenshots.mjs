@@ -29,9 +29,9 @@ const isViewscreen = (url) => url.includes('viewscreen.githubusercontent.com/dif
 // отличается от первого одной обрезкой, а рассказать хочется о разном.
 const STORE = [
   ['frame-changes', 'Pixel diff, cropped to what changed', 'The mode sits next to 2-up, Swipe and Onion Skin'],
-  ['frame-overlay', 'The difference over the new version', 'Red where it got darker, blue where it got lighter'],
+  ['frame-overlay', 'The difference over the new version', 'The edit in its own surroundings, not on a grey ghost'],
   ['frame-3up', 'Before, after and the diff side by side', 'Every frame shares one scale and one crop'],
-  ['options', 'Yours to adjust', 'The colours of the difference — and a GitLab or GitHub Enterprise of your own'],
+  ['options-store', 'Yours to adjust', 'The colours of the difference — and a GitLab or GitHub Enterprise of your own'],
   ['popup', 'One permission, asked once', 'GitHub serves image previews from a separate domain'],
 ];
 
@@ -180,7 +180,9 @@ async function pageShot(page, path, { width, from, to } = {}) {
     },
     [from, to],
   );
-  return page.screenshot({ clip: box, fullPage: Boolean(from) });
+  // fullPage — всегда: страница настроек длиннее окна, и без этого снимок
+  // обрезался бы по его нижнему краю, а не по тому, что просили.
+  return page.screenshot({ clip: box, fullPage: true });
 }
 
 const profile = await mkdtemp(join(tmpdir(), 'ghpd-shots-'));
@@ -248,10 +250,17 @@ try {
   written['frame-3up'] = await shoot();
 
   written.popup = await pageShot(await context.newPage(), 'popup/popup.html');
-  // Витрине показываем то, ради чего страницу настроек открывают: цвета
-  // разницы и свои серверы. Заголовок с доступом остаётся за кадром — про
-  // доступ рассказывает соседний кадр с окном расширения.
+
+  // Страница настроек нужна дважды и в разном виде. README читают сверху
+  // вниз, и там она нужна целиком — начиная с языка. На витринной карточке
+  // целая страница ужимается до нечитаемой ленты, поэтому ей достаётся кусок
+  // от раздела до раздела: цвета разницы и свои серверы, то есть то, ради
+  // чего настройки открывают. Про доступ на витрине рассказывает соседняя
+  // карточка с окном расширения.
   written.options = await pageShot(await context.newPage(), 'options/options.html', {
+    width: 720,
+  });
+  written['options-store'] = await pageShot(await context.newPage(), 'options/options.html', {
     width: 720,
     from: 'section:nth-of-type(3)',
     to: '#enterprise',
@@ -271,6 +280,9 @@ try {
   }
 
   for (const [name, buffer] of Object.entries(written)) {
+    // Кадры с приставкой «-store» существуют только ради витрины: в README
+    // они были бы вторым снимком того же самого, обрезанным иначе.
+    if (name.endsWith('-store')) continue;
     await writeFile(join(shots, `${name}.png`), buffer);
   }
   for (const [index, [name, title, subtitle]] of STORE.entries()) {
