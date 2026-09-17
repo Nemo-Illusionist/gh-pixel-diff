@@ -4,6 +4,23 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.14.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.13.1...v0.14.0) (2026-09-17)
+
+
+### Features
+
+* stitch shifted rows before comparing ([#57](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/57)) ([6199c9e](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/6199c9e66ccb5451a80516e279f39aa3ee37e449))
+
+
+### Bug Fixes
+
+* stitching and the size strip go under one beta switch ([#60](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/60)) ([31546f9](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/31546f953538340ba3b2d3eaebd076fb4b704e8f))
+
+
+### Refactors
+
+* facts in the caption, hands in the row below ([#61](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/61)) ([21f0969](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/21f09699ce0f2d018ee37c1945d039ef2237b604))
+
 ## [0.13.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.13.0...v0.13.1) (2026-09-17)
 
 
