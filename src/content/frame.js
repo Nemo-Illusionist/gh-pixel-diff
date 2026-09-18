@@ -545,10 +545,26 @@
 
     return {
       element: view,
-      showViews(visible) {
+      /**
+       * @param {boolean} visible показывать ли переключатель кадров.
+       * @param {boolean} [settled] известна ли настройка. До ответа хранилища
+       *        переключатель просто спрятан — показать его позже дешевле, чем
+       *        моргнуть им, — и запомненный кадр в это время трогать нельзя.
+       */
+      showViews(visible, settled = true) {
         // Прячется только сам переключатель: строка управления под кадром
         // остаётся — в ней кадр, переходы и «⋯», — и высота её не меняется.
         views.hidden = !visible;
+        // И не запирает в том кадре, который был выбран до него: из «3-up»
+        // иначе не выйти, а сохранение в нём погашено.
+        if (!settled || visible || shownFrame === 'diff') return;
+        shownFrame = 'diff';
+        saveSetting(FRAME_KEY, shownFrame);
+        for (const [name, node] of viewButtons) {
+          node.classList.toggle('selected', name === shownFrame);
+          node.setAttribute('aria-pressed', String(name === shownFrame));
+        }
+        if (result) render();
       },
       show() {
         view.hidden = false;
@@ -570,7 +586,7 @@
 
     // Настройка из окна расширения: читается асинхронно, поэтому переключатель
     // до ответа спрятан — показать его позже дешевле, чем моргнуть им.
-    panel.showViews(false);
+    panel.showViews(false, false);
     readShowViews().then((visible) => panel.showViews(visible));
     api?.storage?.onChanged?.addListener((changes, area) => {
       if (area === 'sync' && changes.showViews) panel.showViews(changes.showViews.newValue !== false);

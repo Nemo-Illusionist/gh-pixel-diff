@@ -75,6 +75,59 @@
     </div>
   </section>
 
+  <!-- Настройка сравнения: всё то же, что на странице настроек расширения.
+       Свёрнута: на первом экране важнее две половины, а не наладка. Хранится
+       в localStorage этой страницы — хранилища расширения здесь нет. -->
+  <details class="tune" id="tune">
+    <summary data-i18n="siteTune"></summary>
+
+    <h3 data-i18n="optionsLanguage"></h3>
+    <label class="setting">
+      <!-- Список наполняется из самих локалей: переписанный руками разойдётся
+           с ними на первой же новой. -->
+      <select id="language"></select>
+    </label>
+    <p class="note" data-i18n="siteLanguageHint"></p>
+
+    <h3 data-i18n="optionsPanel"></h3>
+    <label class="setting">
+      <input id="show-views" type="checkbox" checked>
+      <span data-i18n="popupShowViews"></span>
+    </label>
+    <p class="note" data-i18n="optionsShowViewsHint"></p>
+
+    <h3 data-i18n="optionsColors"></h3>
+    <div class="tune-row">
+      <label class="setting">
+        <input id="color-changed" type="color" value="#d1242f">
+        <span data-i18n="optionsColorMain"></span>
+      </label>
+      <button class="tune-reset" id="colors-reset" type="button" data-i18n="optionsColorsReset"></button>
+    </div>
+    <p class="note" data-i18n="siteColorsHint"></p>
+
+    <!-- Второй цвет появляется только вместе с направлением: без него он
+         ничего не значит и только путает. -->
+    <label class="setting">
+      <input id="direction" type="checkbox">
+      <span data-i18n="optionsDirection"></span>
+    </label>
+    <div class="tune-row" id="direction-colors" hidden>
+      <label class="setting">
+        <input id="color-lighter" type="color" value="#0969da">
+        <span data-i18n="optionsColorLighter"></span>
+      </label>
+    </div>
+    <p class="note" data-i18n="optionsDirectionHint"></p>
+
+    <h3 data-i18n="optionsBeta"></h3>
+    <label class="setting">
+      <input id="beta" type="checkbox">
+      <span data-i18n="optionsBetaOn"></span>
+    </label>
+    <p class="note" data-i18n="optionsBetaHint"></p>
+  </details>
+
   <p class="failure" id="failure" hidden></p>
 </main>
 

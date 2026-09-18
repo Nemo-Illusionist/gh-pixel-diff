@@ -149,7 +149,15 @@ async function stubExtension(page, settings = {}, stored = {}) {
           // @ts-ignore
           set: (values) => globalThis.ghpdStorageSet(values),
         },
-        onChanged: { addListener: () => {} },
+        // Слушателя запоминаем: настройка, изменённая в окне расширения,
+        // доезжает до открытой панели именно этим событием, и проверить это
+        // иначе нечем.
+        onChanged: {
+          addListener: (listener) => {
+            // @ts-ignore
+            globalThis.__ghpdSettingsChanged = listener;
+          },
+        },
       },
     };
   }, messages);
@@ -1185,6 +1193,27 @@ test('три кадра рядом не сохраняются одной кар
   // Пункт не пропадает, а гаснет: меню из одного ползунка выглядит сломанным.
   await openMenu(page);
   await expect(page.locator('.ghpd-save')).toBeDisabled();
+});
+
+test('спрятанный переключатель не запирает в «3-up»', async ({ page }) => {
+  // Из «3-up» выходят переключателем; если его спрятать настройкой, выйти
+  // нечем — а сохранение в нём погашено. Значит панель возвращает «разницу».
+  await page.setViewportSize({ width: 900, height: 700 });
+  const store = await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+  await expect(page.locator('.ghpd-view .ghpd-triple')).toBeVisible();
+
+  await page.evaluate(() =>
+    globalThis.__ghpdSettingsChanged?.({ showViews: { newValue: false } }, 'sync'),
+  );
+
+  await expect(page.locator('.ghpd-views')).toBeHidden();
+  await expect(page.locator('.ghpd-view .ghpd-triple')).toBeHidden();
+  await expect(page.locator('.ghpd-view > .ghpd-shell > .ghpd-stage > .ghpd-canvas')).toBeVisible();
+  expect(store['ghpd:frame']).toBe('diff');
 });
 
 test('состав «⋯» не меняется: неуместное гаснет, а не пропадает', async ({ page }) => {

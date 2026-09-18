@@ -207,7 +207,9 @@
     let session = null;
     let starting = null;
     let cropped = true;
-    let shownFrame = FRAMES[readSetting(FRAME_KEY)] ? readSetting(FRAME_KEY) : 'diff';
+    // Спрятанный переключатель не должен запирать в том кадре, который был
+    // выбран до него: из «3-up» иначе не выйти, а сохранение в нём погашено.
+    let shownFrame = FRAMES[readSetting(FRAME_KEY)] && showViews ? readSetting(FRAME_KEY) : 'diff';
     let outline = readSetting(OUTLINE_KEY) !== 'off';
     // Увеличение, в отличие от порога и рамки, не запоминается: это не
     // настройка, а взгляд на конкретное место конкретного кадра.

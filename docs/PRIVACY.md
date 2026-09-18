@@ -51,6 +51,12 @@ The comparison page on this site works the same way: the images you drop there
 are read by the browser and never uploaded. There is no server behind the page —
 it is a static file on GitHub Pages.
 
+What you set there under *Tune the comparison* — the interface language, the
+colours of the difference, the beta, the threshold, the outline and the last
+frame shown — is kept in the browser's own `localStorage` for that page. It
+never leaves the browser, and clearing the site's data removes it. No image,
+file name or size is stored.
+
 ## Third parties
 
 None. No data is shared, sold, or transferred to anyone, and no code is loaded
