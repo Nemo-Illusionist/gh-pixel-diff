@@ -4,6 +4,18 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.15.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.14.0...v0.15.0) (2026-09-24)
+
+
+### Features
+
+* the standalone page gets everything the extension has ([#62](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/62)) ([15d83be](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/15d83bed172c43cf4360ab7dcf84d82b88957d19))
+
+
+### Bug Fixes
+
+* the settings page was unreadable on a phone ([#64](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/64)) ([9e28c63](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/9e28c63a62aed9beccf726523ae7db74a4fbaf42))
+
 ## [0.14.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.13.1...v0.14.0) (2026-09-17)
 
 
