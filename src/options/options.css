@@ -9,6 +9,11 @@ body {
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   color: canvastext;
   background: canvas;
+  /* Safari на телефоне сам увеличивает шрифт в узкой колонке, и заголовки
+     перестают отличаться от текста, а строки ломаются посреди слова.
+     Размеры здесь выбраны — пусть остаются выбранными. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 h1 { margin: 0 0 24px; font-size: 20px; }
@@ -49,12 +54,26 @@ button {
 
 button:hover { background: color-mix(in srgb, canvastext 14%, transparent); }
 
+/* Выбор языка вырастает до размера прочих полей: чип в две буквы высотой
+   на телефоне не нажмёшь, да и не найдёшь. */
+select {
+  font: inherit;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, canvastext 30%, transparent);
+  background: canvas;
+  color: inherit;
+}
+
 .note {
   margin: 12px 0 0;
   color: color-mix(in srgb, canvastext 60%, transparent);
 }
 
-code { font-size: 12px; word-break: break-all; }
+/* Адреса длинные, а колонка узкая. `anywhere` рвёт слово лишь тогда, когда
+   оно иначе не помещается; `break-all` рвал его всегда — и «gitlab.com»
+   читался как «gitla b.com». */
+code { font-size: 12px; overflow-wrap: anywhere; }
 
 /* Формы добавления серверов — по одной на вид, и выглядят они одинаково:
    разный вид одного и того же действия читается как разное действие. */
@@ -96,7 +115,7 @@ code { font-size: 12px; word-break: break-all; }
   border-top: 1px solid color-mix(in srgb, canvastext 15%, transparent);
 }
 
-.hosts li span { flex: 1; min-width: 0; word-break: break-all; }
+.hosts li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 
 .hosts button {
   padding: 3px 10px;
@@ -126,4 +145,34 @@ code { font-size: 12px; word-break: break-all; }
   border-radius: 4px;
   background: none;
   cursor: pointer;
+}
+
+/* Телефон. Пальцем целятся хуже, чем курсором, и промах по «Убрать» дороже
+   промаха по пустому месту: поднимаем высоту кнопок и полей до той, которую
+   Apple и Google считают минимальной для касания.
+
+   Форма добавления сервера при этом раскладывается в две строки: поле для
+   адреса в одну строку с кнопкой оставляет на сам адрес пару сантиметров. */
+@media (max-width: 480px) {
+  body { padding: 20px 16px 40px; }
+
+  button,
+  select,
+  #host,
+  #host-github {
+    min-height: 44px;
+  }
+
+  .hosts button { min-height: 36px; }
+
+  #add,
+  #add-github {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Галочку и её подпись на телефоне нажимают вместе, а не прицельно в
+     квадратик: строке нужна высота. */
+  .setting { padding: 4px 0; }
+  .setting input { width: 18px; height: 18px; margin-top: 3px; }
 }

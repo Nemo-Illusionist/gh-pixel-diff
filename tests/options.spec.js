@@ -176,6 +176,15 @@ async function openOptions(page, granted = []) {
   await page.goto(`${SITE}/options/options.html`);
 }
 
+test('обе страницы расширения объявляют ширину экрана', () => {
+  // Без этого Safari на телефоне раскладывает страницу в 980 пикселей и
+  // подгоняет её под экран: шрифты раздуваются его автоподбором, а строки
+  // ломаются посреди слова — «gitlab.com» читается как «gitla b.com».
+  for (const path of ['../src/options/options.html', '../src/popup/popup.html']) {
+    expect(read(path)).toContain('name="viewport"');
+  }
+});
+
 /** Что сейчас зарегистрировано в браузере от нашего имени. */
 const registered = (page) => page.evaluate(() => globalThis.ghpdScripts);
 
@@ -337,4 +346,27 @@ test('убрать сервер — снять оба разрешения и р
   await expect(page.locator('#hosts-github li')).toHaveCount(0);
   expect(await page.evaluate(() => globalThis.ghpdPermissions.origins)).toEqual([]);
   expect(await registered(page)).toEqual([]);
+});
+
+test('на телефоне страница помещается в экран, и по ней можно попасть пальцем', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openOptions(page, ['https://gitlab.example.com/*']);
+
+  // Вбок страница не разъезжается: горизонтальная прокрутка на телефоне —
+  // это половина текста за краем экрана.
+  const ширина = await page.evaluate(() => ({
+    документ: document.documentElement.scrollWidth,
+    окно: window.innerWidth,
+  }));
+  expect(ширина.документ).toBe(ширина.окно);
+
+  // Пальцем целятся хуже, чем курсором, и промах по «Убрать» дороже промаха
+  // по пустому месту: 44 пикселя — та высота, ниже которой не опускаются.
+  const высоты = await page.evaluate(() =>
+    [...document.querySelectorAll('#language, #host, #add button')].map((node) =>
+      Math.round(node.getBoundingClientRect().height),
+    ),
+  );
+  expect(высоты).toHaveLength(3);
+  for (const высота of высоты) expect(высота).toBeGreaterThanOrEqual(44);
 });
