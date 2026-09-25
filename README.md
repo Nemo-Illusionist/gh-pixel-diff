@@ -79,6 +79,13 @@ the settings stay there as well.
   a guess besides — on flat content, an empty list or plain margins, rows are
   indistinguishable and can be stitched any which way, and then the frame gets
   marks where nothing changed.
+- **Before and after are dressed like GitHub's own 2-up**: the name above the
+  frame — red on one, green on the other — a border of the same colour, and the
+  image size below, with whichever of the two sizes changed picked out in
+  colour. The border colour says which version you are looking at even when the
+  frame switcher is hidden in the settings. Only those two frames pay any height
+  for the name: above the diff and the overlay there is none, where it would
+  only repeat the button.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame

@@ -224,7 +224,25 @@ try {
   await ready(() => /pixels/.test(document.querySelector('.ghpd-meta')?.textContent ?? ''));
 
   // Снимаем сам фрейм: его рамка и есть граница панели.
+  //
+  // Высоту фрейма задаёт GitHub, и делает он это не сразу: сперва отдаёт
+  // полоску в полтораста пикселей, а уже потом растит её под содержимое.
+  // Снимок, сделанный в этот промежуток, выходит с кадром, ужатым в точку, —
+  // ждём, пока высота перестанет меняться.
+  const grown = async () => {
+    let previous = 0;
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const box = await (await frame().frameElement()).boundingBox();
+      const height = Math.round(box?.height ?? 0);
+      if (height > 200 && height === previous) return;
+      previous = height;
+      await sleep(250);
+    }
+    throw new Error('фрейм так и не вырос');
+  };
+
   const shoot = async () => {
+    await grown();
     await sleep(400);
     return (await frame().frameElement()).screenshot();
   };

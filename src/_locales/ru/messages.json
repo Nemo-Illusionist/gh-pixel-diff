@@ -122,6 +122,14 @@
     "message": "3-up",
     "description": "Кнопка переключателя: все три кадра сразу."
   },
+  "frameWidth": {
+    "message": "Ш: ",
+    "description": "Ширина картинки под кадром: «Ш: 500px | В: 528px»."
+  },
+  "frameHeight": {
+    "message": "В: ",
+    "description": "Высота картинки под кадром."
+  },
   "popupShowViews": {
     "message": "Показывать переключатель «до / после / разница»"
   },

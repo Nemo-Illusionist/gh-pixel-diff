@@ -841,6 +841,84 @@ test('разные размеры «до» и «после» не ломают �
   expect(meta).toMatch(/^[\d,]+ pixels/);
 });
 
+test('«до» и «после» одеты, как в 2-up самого GitHub', async ({ page }) => {
+  // Красная рамка у «до», зелёная у «после», подпись сверху, размер снизу —
+  // и тот из двух размеров, что изменился, выделен цветом своей версии.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, { before: svgSized(200, 300), after: svgSized(200, 400) });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const одежда = () =>
+    page.evaluate(() => {
+      const plate = document.querySelector('.ghpd-view .ghpd-stage > .ghpd-plate');
+      const canvas = plate.querySelector('.ghpd-canvas');
+      const name = plate.querySelector('.ghpd-plate-label');
+      const meta = document.querySelector('.ghpd-meta');
+      return {
+        сторона: canvas.dataset.side ?? null,
+        // Имя — над кадром, как у GitHub; цвет берёт от версии.
+        имя: name.textContent,
+        цветИмени: getComputedStyle(name).color,
+        подпись: meta.textContent,
+        рамка: getComputedStyle(canvas).borderTopColor,
+        выделено: [...meta.querySelectorAll('.ghpd-size-changed')].map((n) => n.textContent),
+      };
+    });
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(1)');
+  const до = await одежда();
+  expect(до.сторона).toBe('before');
+  expect(до.имя).toBe('before');
+  expect(до.цветИмени).toBe('rgb(209, 36, 47)');
+  // Размер — снизу, в строке фактов: своей строки он не получил.
+  expect(до.подпись).toContain('W: 200px | H: 300px');
+  // Ширина совпала, высота — нет: выделена только она.
+  expect(до.выделено).toEqual(['300px']);
+  expect(до.рамка).toBe('rgb(207, 34, 46)');
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(2)');
+  const после = await одежда();
+  expect(после.сторона).toBe('after');
+  expect(после.имя).toBe('after');
+  expect(после.цветИмени).toBe('rgb(26, 127, 55)');
+  expect(после.подпись).toContain('W: 200px | H: 400px');
+  expect(после.выделено).toEqual(['400px']);
+  expect(после.рамка).toBe('rgb(26, 127, 55)');
+
+  // У разницы версии нет: ни цвета рамки, ни имени, ни размера — она не
+  // «одна из двух», и показывать там нечего.
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(3)');
+  const разница = await одежда();
+  expect(разница.сторона).toBeNull();
+  // Над разницей имени нет: оно повторило бы кнопку под кадром, а строку
+  // кадр оплачивает своей высотой. Заодно и рамка остаётся обычной.
+  expect(разница.имя).toBe('');
+  expect(разница.выделено).toEqual([]);
+  expect(разница.рамка).toBe('rgb(208, 215, 222)');
+});
+
+test('переключение кадров не двигает строку управления', async ({ page }) => {
+  // Имя версии и размер живут в строке фактов, а не в своей: своя отняла бы
+  // у кадра высоту на всех кадрах разом и дёргала бы панель на каждое
+  // переключение.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, { before: svgSized(200, 300), after: svgSized(200, 400) });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const низ = () =>
+    page.evaluate(() => Math.round(document.querySelector('.ghpd-bar').getBoundingClientRect().top));
+
+  const было = await низ();
+  for (const кадр of [1, 2, 3, 4]) {
+    await page.click(`.ghpd-views .ghpd-view-button:nth-child(${кадр})`);
+    expect(await низ()).toBe(было);
+  }
+});
+
 test('картинка нулевого размера — внятное сообщение', async ({ page }) => {
   const empty = '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0"></svg>';
   await openFrame(page, { before: empty, after: empty });
@@ -874,13 +952,14 @@ test('три кадра рядом влезают по ширине', async ({ p
     const boxes = canvases.map((node) => node.getBoundingClientRect());
     return {
       сколько: canvases.length,
-      одиночныйСпрятан: document.querySelector('.ghpd-view .ghpd-stage > .ghpd-canvas').hidden,
+      одиночныйСпрятан: document.querySelector('.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas').hidden,
       // Переключатель остаётся на месте: это он и переключил.
       переключательВиден: !document.querySelector('.ghpd-views').hidden,
       влезают: boxes.every((box) => box.left >= view.left - 1 && box.right <= view.right + 1),
       // Все три одного размера: сравнивать глазами иначе невозможно.
       ширины: boxes.map((box) => Math.round(box.width)),
-      подписи: [...document.querySelectorAll('.ghpd-triple-label')].map((n) => n.textContent),
+      подписи: [...document.querySelectorAll('.ghpd-triple .ghpd-plate-label')].map((n) => n.textContent),
+      размеры: [...document.querySelectorAll('.ghpd-triple-size')].map((n) => n.textContent),
     };
   });
 
@@ -890,6 +969,8 @@ test('три кадра рядом влезают по ширине', async ({ p
   expect(layout.влезают).toBe(true);
   expect(new Set(layout.ширины).size).toBe(1);
   expect(layout.подписи).toEqual(['before', 'after', 'diff']);
+  // Размер стоит под кадром, отдельной строкой — как у GitHub.
+  expect(layout.размеры).toEqual(['W: 400px | H: 1200px', 'W: 400px | H: 1200px', '']);
 });
 
 test('три кадра показывают разные картинки', async ({ page }) => {
@@ -914,7 +995,7 @@ test('три кадра показывают разные картинки', asy
 });
 
 /** Одиночный кадр панели — тот, который увеличивают. */
-const FRAME_CANVAS = '.ghpd-view .ghpd-stage > .ghpd-canvas';
+const FRAME_CANVAS = '.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas';
 
 /** Что сейчас на холсте: размер, угловой пиксель и отпечаток содержимого. */
 const canvasState = (page) =>
@@ -1212,7 +1293,7 @@ test('спрятанный переключатель не запирает в �
 
   await expect(page.locator('.ghpd-views')).toBeHidden();
   await expect(page.locator('.ghpd-view .ghpd-triple')).toBeHidden();
-  await expect(page.locator('.ghpd-view > .ghpd-shell > .ghpd-stage > .ghpd-canvas')).toBeVisible();
+  await expect(page.locator('.ghpd-view > .ghpd-shell > .ghpd-stage > .ghpd-plate > .ghpd-canvas')).toBeVisible();
   expect(store['ghpd:frame']).toBe('diff');
 });
 
@@ -1459,7 +1540,7 @@ test('запомненный режим ждёт, пока фрейм вырас
   await waitForResult(page);
 
   const canvas = await page.evaluate(() => {
-    const node = document.querySelector('.ghpd-view .ghpd-stage > .ghpd-canvas');
+    const node = document.querySelector('.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas');
     const box = node.getBoundingClientRect();
     // Сравниваем с самим кадром: в точку он ужимается, когда фрейм — полоска.
     return { доляВысоты: box.height / node.height, доляШирины: box.width / node.width };
@@ -1489,7 +1570,7 @@ test('кадр по центру, даже если подпись шире', as
     };
     return {
       вид: middle('.ghpd-view'),
-      холст: middle('.ghpd-view .ghpd-stage > .ghpd-canvas'),
+      холст: middle('.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas'),
       подпись: middle('.ghpd-meta'),
     };
   });

@@ -575,14 +575,50 @@
    * Сцена поэтому только растёт. Предел ей — тот же, что и кадру: больше
    * своего потолка кадр не бывает, а окно может и уменьшиться, и тогда
    * запомненная высота вытолкнула бы ползунок за край.
+   *
+   * @param {Element} box что меряем — кадр вместе с именем над ним.
+   * @param {Element} [limitedBy] чему задан потолок. Предел по высоте стоит на
+   *        холсте, а меряем мы кадр с именем: между ними ещё одна строка, и
+   *        без этой поправки сцена держалась бы ниже, чем надо.
    */
-  function holdStage(stage, canvas) {
-    const height = canvas.getBoundingClientRect().height;
+  function holdStage(stage, box, limitedBy = box) {
+    const height = box.getBoundingClientRect().height;
     if (!height) return;
-    const ceiling = Number.parseFloat(getComputedStyle(canvas).maxHeight);
+    const limit = Number.parseFloat(getComputedStyle(limitedBy).maxHeight);
+    const around = limitedBy === box ? 0 : height - limitedBy.getBoundingClientRect().height;
     const held = Number.parseFloat(stage.style.minHeight) || 0;
-    const wanted = Math.min(Math.max(height, held), ceiling || Infinity);
+    const wanted = Math.min(Math.max(height, held), limit ? limit + around : Infinity);
     stage.style.minHeight = `${Math.ceil(wanted)}px`;
+  }
+
+  /**
+   * Размер картинки под кадром — как в 2-up у GitHub: «W: 200px | H: 300px»,
+   * и тот из двух, что изменился, выделен цветом своей версии. «Высота
+   * другая» — это ответ, а не мелочь.
+   *
+   * Отдаём узлами, а не строкой: цветным должно быть одно число, а не весь
+   * размер. Ставит их тот, кто зовёт, — в подпись или в имя кадра, — потому
+   * что своей строки под это заводить нельзя: каждая новая строка под кадром
+   * отнимает у него высоту, а в «разнице» размер и вовсе не нужен.
+   *
+   * @param {{width: number, height: number, other: ?{width: number,
+   *          height: number}, units: {width: string, height: string}}} view
+   * @returns {Array<Node|string>}
+   */
+  function frameSize(view) {
+    const parts = [];
+    for (const [at, what] of ['width', 'height'].entries()) {
+      const name = document.createElement('strong');
+      name.textContent = view.units[what];
+      const number = document.createElement('span');
+      number.textContent = `${view[what]}px`;
+      if (view.other && view.other[what] !== view[what]) {
+        number.className = 'ghpd-size-changed';
+      }
+      if (at) parts.push(' | ');
+      parts.push(name, number);
+    }
+    return parts;
   }
 
   /**
@@ -671,6 +707,7 @@
     saveCanvas,
     frameFileName,
     holdStage,
+    frameSize,
     createMenu,
     twoWayLabel,
     attachProbe,
