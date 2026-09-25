@@ -318,6 +318,38 @@
     // считаются заново.
     let focusIndex = -1;
 
+    /**
+     * Сколько высоты занято всем, что не кадр: подписью, строкой пикселя,
+     * строкой управления, отступами между ними.
+     *
+     * Числом этот запас держать нельзя. На узком экране подпись переносится
+     * на две строки, а строка управления — на две или три, и кадр, посчитанный
+     * по старому числу, наезжал на кнопки: панель складывалась в кашу.
+     * Поэтому меряем сами строки — так же, как меряется панель режимов
+     * GitHub над нами.
+     */
+    const reserveForRows = () => {
+      const rowGap = (node) => Number.parseFloat(getComputedStyle(node).rowGap) || 0;
+      const shown = (node) => [...node.children].filter((child) => !child.hidden);
+      const style = getComputedStyle(view);
+      let taken =
+        Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+      const rows = shown(view);
+      taken += rowGap(view) * Math.max(0, rows.length - 1);
+      for (const row of rows) {
+        if (row !== shell) {
+          taken += row.getBoundingClientRect().height;
+          continue;
+        }
+        const inner = shown(shell);
+        taken += rowGap(shell) * Math.max(0, inner.length - 1);
+        for (const node of inner) {
+          if (node !== stage) taken += node.getBoundingClientRect().height;
+        }
+      }
+      document.documentElement.style.setProperty('--ghpd-reserve', `${Math.ceil(taken)}px`);
+    };
+
     const render = () => {
       const single = shownFrame !== 'triple';
       canvas.hidden = !single;
@@ -333,7 +365,6 @@
         : drawTriple(focus);
       fitCanvas(canvas);
       canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
-      holdStage(stage, single ? plate : triple, canvas);
       const percent = result.ratio * 100;
       // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
       const shown = result.changed === 0 ? '0' : percent >= 0.01 ? percent.toFixed(2) : '<0.01';
@@ -459,6 +490,12 @@
       // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
       // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
       save.disabled = !single;
+
+      // Запас под нижние строки — последним делом: их высоту мы только что и
+      // задали. Сцену держим уже по новому запасу, иначе она осталась бы той
+      // высоты, что была при прежнем.
+      reserveForRows();
+      holdStage(stage, single ? plate : triple, canvas);
     };
 
     /** Рисует все три кадра сразу; размер возвращаем по разнице — она общая. */
@@ -469,6 +506,19 @@
       }
       return box;
     };
+
+    // Ширина окна решает и то, переносятся ли нижние строки, и то, стоят ли
+    // три кадра рядом или столбиком. Пересчитать это может только отрисовка,
+    // а событий при перетаскивании окна приходит много — поэтому не чаще
+    // одного раза на кадр.
+    let resizing = 0;
+    addEventListener('resize', () => {
+      if (!result || resizing) return;
+      resizing = requestAnimationFrame(() => {
+        resizing = 0;
+        if (result) render();
+      });
+    });
 
     cropToggle.addEventListener('click', () => {
       cropped = !cropped;
