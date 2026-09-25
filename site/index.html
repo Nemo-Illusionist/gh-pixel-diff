@@ -57,7 +57,11 @@
     </div>
     <!-- Сцена под кадр: её высота не ездит вслед за размером кадра. -->
     <div class="panel-frame ghpd-stage">
-      <canvas class="ghpd-canvas" id="canvas"></canvas>
+      <!-- Имя версии — над кадром, как в 2-up у самого GitHub. -->
+      <div class="ghpd-plate" id="plate">
+        <span class="ghpd-plate-label" id="plate-name"></span>
+        <canvas class="ghpd-canvas" id="canvas"></canvas>
+      </div>
       <div class="ghpd-triple" id="triple" hidden></div>
     </div>
     <p class="ghpd-meta" id="meta"></p>

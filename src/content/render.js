@@ -576,13 +576,18 @@
    * своего потолка кадр не бывает, а окно может и уменьшиться, и тогда
    * запомненная высота вытолкнула бы ползунок за край.
    *
+   * @param {Element} box что меряем — кадр вместе с именем над ним.
+   * @param {Element} [limitedBy] чему задан потолок. Предел по высоте стоит на
+   *        холсте, а меряем мы кадр с именем: между ними ещё одна строка, и
+   *        без этой поправки сцена держалась бы ниже, чем надо.
    */
-  function holdStage(stage, canvas) {
-    const height = canvas.getBoundingClientRect().height;
+  function holdStage(stage, box, limitedBy = box) {
+    const height = box.getBoundingClientRect().height;
     if (!height) return;
-    const ceiling = Number.parseFloat(getComputedStyle(canvas).maxHeight);
+    const limit = Number.parseFloat(getComputedStyle(limitedBy).maxHeight);
+    const around = limitedBy === box ? 0 : height - limitedBy.getBoundingClientRect().height;
     const held = Number.parseFloat(stage.style.minHeight) || 0;
-    const wanted = Math.min(Math.max(height, held), ceiling || Infinity);
+    const wanted = Math.min(Math.max(height, held), limit ? limit + around : Infinity);
     stage.style.minHeight = `${Math.ceil(wanted)}px`;
   }
 

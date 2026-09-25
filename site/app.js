@@ -73,6 +73,8 @@
   const panel = document.querySelector('#panel');
   const stage = document.querySelector('.panel-frame');
   const canvas = document.querySelector('#canvas');
+  const plate = document.querySelector('#plate');
+  const plateName = document.querySelector('#plate-name');
   const triple = document.querySelector('#triple');
   const meta = document.querySelector('#meta');
   const failure = document.querySelector('#failure');
@@ -187,15 +189,17 @@
   nextChange.addEventListener('click', () => stepChange(1));
 
   const tripleLabels = new Map();
+  const triplePlates = new Map();
   const tripleCanvases = ['before', 'after', 'diff'].map((name) => {
+    // Имя сверху, размер снизу — как в 2-up у GitHub.
     const item = el('div', 'ghpd-triple-item');
     const target = el('canvas', 'ghpd-canvas');
-    // Имя и размер — в одной строке под кадром, той же, что была здесь
-    // всегда: новая строка отняла бы высоту у самих кадров.
-    const caption = el('div', 'ghpd-triple-label', t(FRAMES[name]));
+    const caption = el('div', 'ghpd-plate-label', t(FRAMES[name]));
+    const itemSize = el('div', 'ghpd-triple-size');
     if (name === 'before' || name === 'after') target.dataset.side = name;
     tripleLabels.set(name, caption);
-    item.append(target, caption);
+    triplePlates.set(name, { name: caption, size: itemSize });
+    item.append(caption, target, itemSize);
     triple.append(item);
     return [name, target];
   });
@@ -239,7 +243,7 @@
       }
     }
 
-    holdStage(stage, single ? canvas : triple);
+    holdStage(stage, single ? plate : triple, canvas);
 
     const percent = result.ratio * 100;
     // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
@@ -270,26 +274,33 @@
       );
     }
 
-    // Кадр одет по образцу GitHub: «до» в красной рамке, «после» в
-    // зелёной. Цвет рамки ничего не стоит по высоте и отвечает на вопрос
-    // «какая это версия» даже тогда, когда переключатель кадров спрятан.
+    // Кадр одет по образцу GitHub: имя версии над кадром, «до» в красной
+    // рамке, «после» в зелёной.
     const side = single && (shownFrame === 'before' || shownFrame === 'after')
       ? shownFrame
       : null;
     if (side) canvas.dataset.side = side;
     else delete canvas.dataset.side;
+    plateName.className = `ghpd-plate-label${side ? ` ghpd-side-${side}` : ''}`;
+    // В тройке пластина ни к чему: там у каждого кадра своё имя.
+    plate.hidden = !single;
+    // Имя стоит только над «до» и «после» — как у GitHub, где подписаны
+    // ровно две версии. Над разницей и наложением оно повторило бы кнопку
+    // под кадром, а строку эту кадр оплачивает своей высотой.
+    plate.classList.toggle('ghpd-plate-named', Boolean(side));
+    plateName.hidden = !side;
+    plateName.textContent = side ? t(FRAMES[shownFrame]) : '';
 
-    // Имя версии и размер картинки — в той же строке фактов: отдельная
-    // строка под кадром отнимала бы у него высоту на всех кадрах разом, а
-    // у разницы и наложения размера всё равно нет.
+    // Размер картинки — снизу, как у GitHub, но в строке фактов, которая и
+    // так есть: своя строка отняла бы у кадра ещё двадцать пикселей ради
+    // того, что бывает только у двух кадров из пяти.
     //
     // Размер натуральный, а не показанный: фрагмент и увеличение меняют то,
     // что на экране, но не то, какого размера файл.
     if (side) {
       const own = side === 'after' ? result.after : result.before;
       const other = side === 'after' ? result.before : result.after;
-      const name = el('strong', `ghpd-side ghpd-side-${side}`, t(FRAMES[shownFrame]));
-      meta.append(' · ', name, ' ');
+      meta.append(' · ');
       meta.append(
         ...frameSize({
           width: own.naturalWidth,
@@ -298,19 +309,22 @@
           units: { width: t('frameWidth'), height: t('frameHeight') },
         }),
       );
+      for (const node of meta.querySelectorAll('.ghpd-size-changed')) {
+        node.classList.add(`ghpd-side-${side}`);
+      }
     }
 
-    // Три кадра рядом: цвет рамки по версии, имя и размер — в подписи.
-    for (const [name, label] of tripleLabels) {
-      // Имя — в своём теге: цвет версии нужен ему, а размеру рядом идёт
-      // приглушённый цвет подписи, как у GitHub в его же 2-up.
-      label.className = `ghpd-triple-label ghpd-side-${name}`;
-      label.replaceChildren(el('strong', `ghpd-side ghpd-side-${name}`, t(FRAMES[name])));
+    // Три кадра рядом: имя сверху, размер снизу — ровно как у GitHub.
+    for (const [name, parts] of triplePlates) {
+      parts.name.className = `ghpd-plate-label${
+        name === 'diff' ? '' : ` ghpd-side-${name}`
+      }`;
+      parts.name.textContent = t(FRAMES[name]);
+      parts.size.replaceChildren();
       if (name === 'diff') continue;
       const mine = name === 'after' ? result.after : result.before;
       const opposite = name === 'after' ? result.before : result.after;
-      label.append(
-        ' ',
+      parts.size.append(
         ...frameSize({
           width: mine.naturalWidth,
           height: mine.naturalHeight,

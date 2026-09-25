@@ -69,12 +69,38 @@
   border-color: var(--borderColor-success-emphasis, #1a7f37);
 }
 
-/* Имя версии — её же цветом, и в подписи, и под кадром в тройке. */
+/* Кадр вместе с именем над ним — как в 2-up у GitHub. Строка имени занята
+   всегда, у любого кадра, поэтому высоту она ни у кого не отнимает зря. */
+.ghpd-plate[hidden] { display: none; }
+
+.ghpd-plate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ghpd-plate-label[hidden] { display: none; }
+
+.ghpd-plate-label {
+  flex: none;
+  min-height: 15px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  color: var(--fgColor-muted, #59636e);
+}
+
+/* Имя версии — её же цветом. */
 .ghpd-side-before { color: var(--fgColor-danger, #d1242f); }
 .ghpd-side-after { color: var(--fgColor-success, #1a7f37); }
 
 /* Изменившийся размер — цветом той версии, о которой речь. */
+.ghpd-size-changed.ghpd-side-before,
 .ghpd-side-before .ghpd-size-changed { color: var(--fgColor-danger, #d1242f); }
+.ghpd-size-changed.ghpd-side-after,
 .ghpd-side-after .ghpd-size-changed { color: var(--fgColor-success, #1a7f37); }
 .ghpd-meta .ghpd-size-changed { font-weight: 600; }
 
@@ -428,9 +454,15 @@
   gap: 4px;
 }
 
-.ghpd-triple-label {
+.ghpd-triple .ghpd-plate-label { font-size: 11px; }
+
+/* Размер под каждым из трёх — приглушённый, как у GitHub под его кадрами. */
+.ghpd-triple-size {
   flex: none;
+  min-height: 15px;
   font-size: 11px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
   color: var(--fgColor-muted, #59636e);
 }
 

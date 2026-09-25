@@ -222,21 +222,23 @@
     const triple = el('div', 'ghpd-triple');
     triple.hidden = true;
     const tripleCanvases = new Map();
-    const tripleLabels = new Map();
+    const triplePlates = new Map();
     for (const [name, key] of Object.entries(FRAMES)) {
       // Триптих остаётся тройкой: наложение — вариант разницы, и четвёртым
       // кадром рядом оно только сузит остальные три.
       if (name === 'triple' || name === 'overlay') continue;
+      // Имя сверху, размер снизу — как в 2-up у GitHub. Строка имени под
+      // кадры не занимает лишнего: она та же, что была здесь всегда, просто
+      // переехала наверх, а снизу встал размер.
       const item = el('div', 'ghpd-triple-item');
       const tripleCanvas = el('canvas', 'ghpd-canvas');
       tripleCanvas.setAttribute('role', 'img');
-      // Имя и размер — в одной строке под кадром, той же, что была здесь
-      // всегда: новая строка отняла бы высоту у самих кадров.
-      const itemLabel = el('span', 'ghpd-triple-label', t(key));
+      const itemName = el('span', 'ghpd-plate-label', t(key));
+      const itemSize = el('span', 'ghpd-triple-size');
       if (name === 'before' || name === 'after') tripleCanvas.dataset.side = name;
-      item.append(tripleCanvas, itemLabel);
+      item.append(itemName, tripleCanvas, itemSize);
       tripleCanvases.set(name, tripleCanvas);
-      tripleLabels.set(name, itemLabel);
+      triplePlates.set(name, { name: itemName, size: itemSize });
       triple.append(item);
     }
 
@@ -275,8 +277,16 @@
 
     // Кадр живёт в сцене: её размер не зависит от того, что в ней показано,
     // и подпись с ползунком не ездят вслед за высотой кадра.
+    // Имя версии — над кадром, как в 2-up у самого GitHub. Строка занята
+    // всегда: у «до» и «после» именем в цвете версии, у разницы, наложения
+    // и тройки — просто именем кадра. Пустой она не бывает, значит и
+    // высоту ни у кого не отнимает зря.
+    const plate = el('div', 'ghpd-plate');
+    const plateName = el('span', 'ghpd-plate-label');
+    plate.append(plateName, canvas);
+
     const stage = el('div', 'ghpd-stage');
-    stage.append(canvas, triple);
+    stage.append(plate, triple);
     shell.append(stage, meta, probe);
     view.append(shell);
 
@@ -323,7 +333,7 @@
         : drawTriple(focus);
       fitCanvas(canvas);
       canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
-      holdStage(stage, single ? canvas : triple);
+      holdStage(stage, single ? plate : triple, canvas);
       const percent = result.ratio * 100;
       // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
       const shown = result.changed === 0 ? '0' : percent >= 0.01 ? percent.toFixed(2) : '<0.01';
@@ -362,26 +372,33 @@
 
       // Строка управления: состав у неё постоянный, меняется только
       // видимость — кнопки не переезжают с места на место.
-      // Кадр одет по образцу GitHub: «до» в красной рамке, «после» в
-      // зелёной. Цвет рамки ничего не стоит по высоте и отвечает на вопрос
-      // «какая это версия» даже тогда, когда переключатель кадров спрятан.
+      // Кадр одет по образцу GitHub: имя версии над кадром, «до» в красной
+      // рамке, «после» в зелёной.
       const side = single && (shownFrame === 'before' || shownFrame === 'after')
         ? shownFrame
         : null;
       if (side) canvas.dataset.side = side;
       else delete canvas.dataset.side;
+      plateName.className = `ghpd-plate-label${side ? ` ghpd-side-${side}` : ''}`;
+      // В тройке пластина ни к чему: там у каждого кадра своё имя.
+      plate.hidden = !single;
+      // Имя стоит только над «до» и «после» — как у GitHub, где подписаны
+      // ровно две версии. Над разницей и наложением оно повторило бы кнопку
+      // под кадром, а строку эту кадр оплачивает своей высотой.
+      plate.classList.toggle('ghpd-plate-named', Boolean(side));
+      plateName.hidden = !side;
+      plateName.textContent = side ? t(FRAMES[shownFrame]) : '';
 
-      // Имя версии и размер картинки — в той же строке фактов: отдельная
-      // строка под кадром отнимала бы у него высоту на всех кадрах разом, а
-      // у разницы и наложения размера всё равно нет.
+      // Размер картинки — снизу, как у GitHub, но в строке фактов, которая и
+      // так есть: своя строка отняла бы у кадра ещё двадцать пикселей ради
+      // того, что бывает только у двух кадров из пяти.
       //
       // Размер натуральный, а не показанный: фрагмент и увеличение меняют то,
       // что на экране, но не то, какого размера файл.
       if (side) {
         const own = side === 'after' ? result.after : result.before;
         const other = side === 'after' ? result.before : result.after;
-        const name = el('strong', `ghpd-side ghpd-side-${side}`, t(FRAMES[shownFrame]));
-        meta.append(' · ', name, ' ');
+        meta.append(' · ');
         meta.append(
           ...frameSize({
             width: own.naturalWidth,
@@ -390,19 +407,22 @@
             units: { width: t('frameWidth'), height: t('frameHeight') },
           }),
         );
+        for (const node of meta.querySelectorAll('.ghpd-size-changed')) {
+          node.classList.add(`ghpd-side-${side}`);
+        }
       }
 
-      // Три кадра рядом: цвет рамки по версии, имя и размер — в подписи.
-      for (const [name, label] of tripleLabels) {
-        // Имя — в своём теге: цвет версии нужен ему, а размеру рядом идёт
-        // приглушённый цвет подписи, как у GitHub в его же 2-up.
-        label.className = `ghpd-triple-label ghpd-side-${name}`;
-        label.replaceChildren(el('strong', `ghpd-side ghpd-side-${name}`, t(FRAMES[name])));
+      // Три кадра рядом: имя сверху, размер снизу — ровно как у GitHub.
+      for (const [name, parts] of triplePlates) {
+        parts.name.className = `ghpd-plate-label${
+          name === 'diff' ? '' : ` ghpd-side-${name}`
+        }`;
+        parts.name.textContent = t(FRAMES[name]);
+        parts.size.replaceChildren();
         if (name === 'diff') continue;
         const mine = name === 'after' ? result.after : result.before;
         const opposite = name === 'after' ? result.before : result.after;
-        label.append(
-          ' ',
+        parts.size.append(
           ...frameSize({
             width: mine.naturalWidth,
             height: mine.naturalHeight,
