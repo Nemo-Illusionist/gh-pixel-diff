@@ -77,3 +77,15 @@
       var(--ghpd-name-height, 21px) - 20px
   );
 }
+
+/* Встав друг под друга, три кадра делят уже не ширину, а высоту: каждому —
+   треть свободного места фрейма за вычетом своих имени и размера. Отступы
+   между ними — те же 12 точек, что задаёт колонке panel.css. */
+@container ghpd-stage (max-width: 839px) {
+  .ghpd-triple .ghpd-canvas {
+    max-height: calc(
+      (100vh - var(--ghpd-bar-height, 40px) - var(--ghpd-reserve, 90px) - 24px) / 3 -
+        var(--ghpd-name-height, 21px) - 20px
+    );
+  }
+}
