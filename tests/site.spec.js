@@ -101,6 +101,27 @@ test('переключатель показывает три кадра сраз
   }
 });
 
+test('на узком экране три кадра встают друг под друга и на странице', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await load(page);
+  await expect(meta(page)).toContainText(/pixels?/);
+
+  await page.locator('.ghpd-view-button', { hasText: '3-up' }).click();
+
+  const layout = await page.evaluate(() => {
+    const boxes = [...document.querySelectorAll('#triple .ghpd-canvas')].map((node) =>
+      node.getBoundingClientRect(),
+    );
+    return {
+      столбиком: boxes.every((box, at) => at === 0 || box.top >= boxes[at - 1].bottom - 1),
+      наОднойВертикали: new Set(boxes.map((box) => Math.round(box.left))).size,
+    };
+  });
+
+  expect(layout.столбиком).toBe(true);
+  expect(layout.наОднойВертикали).toBe(1);
+});
+
 test('порог меняет число найденных пикселей', async ({ page }) => {
   await load(page);
   await expect(meta(page)).toContainText(/pixels?/);

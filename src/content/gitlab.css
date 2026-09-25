@@ -34,3 +34,10 @@
 .ghpd-panel .ghpd-triple .ghpd-canvas {
   max-height: calc(100vh - 240px);
 }
+
+/* На узком экране три кадра стоят друг под другом и делят высоту окна. */
+@container ghpd-stage (max-width: 839px) {
+  .ghpd-panel .ghpd-triple .ghpd-canvas {
+    max-height: calc((100vh - 240px - 24px) / 3);
+  }
+}

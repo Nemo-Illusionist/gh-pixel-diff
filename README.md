@@ -58,8 +58,10 @@ the settings stay there as well.
 - A before / after / diff / **overlay** / **3-up** switcher under the frame:
   any one version, all three side by side, or the difference painted straight
   onto the new version in full colour — always in the same scale and the same
-  crop, which the native 2-up and Swipe cannot do. The choice is remembered,
-  and the switcher can be turned off on the settings page.
+  crop, which the native 2-up and Swipe cannot do. On a narrow screen the three
+  stand one above the other — at the same widths where GitHub stacks its own
+  before and after. The choice is remembered, and the switcher can be turned
+  off on the settings page.
 - **A pixel inspector**: point at the frame and the line under it says which
   pixel that is and what colour it was before and after — swatches and hex
   codes. "Is that really the same grey?" no longer needs an eyedropper in

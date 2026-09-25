@@ -973,6 +973,39 @@ test('три кадра рядом влезают по ширине', async ({ p
   expect(layout.размеры).toEqual(['W: 400px | H: 1200px', 'W: 400px | H: 1200px', '']);
 });
 
+test('на узком экране три кадра встают друг под друга', async ({ page }) => {
+  // Так же ведёт себя сам GitHub: его «до» и «после» на телефоне стоят
+  // столбиком, а не жмутся в две колонки по полэкрана.
+  await page.setViewportSize({ width: 390, height: 900 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+
+  const layout = await page.evaluate(() => {
+    const boxes = [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')].map((node) =>
+      node.getBoundingClientRect(),
+    );
+    const view = document.querySelector('.ghpd-view').getBoundingClientRect();
+    return {
+      столбиком: boxes.every((box, at) => at === 0 || box.top >= boxes[at - 1].bottom - 1),
+      наОднойВертикали: new Set(boxes.map((box) => Math.round(box.left))).size,
+      влезаютПоШирине: boxes.every((box) => box.left >= view.left - 1 && box.right <= view.right + 1),
+      влезаютПоВысоте: boxes.at(-1).bottom <= view.bottom + 1,
+      // Столбик не повод уменьшать кадр до полоски: ширины он берёт больше,
+      // чем взял бы третью.
+      шире: Math.round(boxes[0].width) > Math.round(view.width / 3),
+    };
+  });
+
+  expect(layout.столбиком).toBe(true);
+  expect(layout.наОднойВертикали).toBe(1);
+  expect(layout.влезаютПоШирине).toBe(true);
+  expect(layout.влезаютПоВысоте).toBe(true);
+  expect(layout.шире).toBe(true);
+});
+
 test('три кадра показывают разные картинки', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);
