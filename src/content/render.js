@@ -576,63 +576,44 @@
    * своего потолка кадр не бывает, а окно может и уменьшиться, и тогда
    * запомненная высота вытолкнула бы ползунок за край.
    *
-   * @param {Element} box что меряем — обычно пластину с кадром целиком.
-   * @param {Element} [limitedBy] чему задан потолок. Предел по высоте стоит на
-   *        холсте, а меряем мы пластину: между ними ещё подпись и размер, и
-   *        без этой поправки сцена держалась бы на две строки ниже, чем надо.
    */
-  function holdStage(stage, box, limitedBy = box) {
-    const height = box.getBoundingClientRect().height;
+  function holdStage(stage, canvas) {
+    const height = canvas.getBoundingClientRect().height;
     if (!height) return;
-    const limit = Number.parseFloat(getComputedStyle(limitedBy).maxHeight);
-    const around = limitedBy === box ? 0 : height - limitedBy.getBoundingClientRect().height;
+    const ceiling = Number.parseFloat(getComputedStyle(canvas).maxHeight);
     const held = Number.parseFloat(stage.style.minHeight) || 0;
-    const wanted = Math.min(Math.max(height, held), limit ? limit + around : Infinity);
+    const wanted = Math.min(Math.max(height, held), ceiling || Infinity);
     stage.style.minHeight = `${Math.ceil(wanted)}px`;
   }
 
   /**
-   * Одевает кадр по образцу GitHub: у него «до» обведено красным, «после» —
-   * зелёным, над кадром стоит подпись, под кадром — размер картинки, и тот
-   * из двух размеров, что изменился, выделен цветом.
+   * Размер картинки под кадром — как в 2-up у GitHub: «W: 200px | H: 300px»,
+   * и тот из двух, что изменился, выделен цветом своей версии. «Высота
+   * другая» — это ответ, а не мелочь.
    *
-   * Повторяем это своим, а не берём его классы: они живут в таблице стилей
-   * фрейма GitHub, и на GitLab с отдельной страницей их попросту нет, а
-   * внутри фрейма они принадлежат GitHub и меняются без предупреждения.
-   * Правил всего восемь, и стоят они на тех же токенах оформления.
+   * Отдаём узлами, а не строкой: цветным должно быть одно число, а не весь
+   * размер. Ставит их тот, кто зовёт, — в подпись или в имя кадра, — потому
+   * что своей строки под это заводить нельзя: каждая новая строка под кадром
+   * отнимает у него высоту, а в «разнице» размер и вовсе не нужен.
    *
-   * Подпись и размер держат высоту всегда, даже пустые: иначе переключение
-   * кадров дёргало бы всё, что ниже.
-   *
-   * @param {{plate: Element, label: Element, size: Element}} parts
-   * @param {{side: ?string, name: string, width: number, height: number,
-   *          other: ?{width: number, height: number}, units: {width: string,
-   *          height: string}}} view
+   * @param {{width: number, height: number, other: ?{width: number,
+   *          height: number}, units: {width: string, height: string}}} view
+   * @returns {Array<Node|string>}
    */
-  function dressFrame(parts, view) {
-    const { plate, label, size } = parts;
-    if (view.side) plate.dataset.side = view.side;
-    else delete plate.dataset.side;
-    label.textContent = view.name ?? '';
-
-    size.replaceChildren();
-    // Размер показываем только у «до» и «после»: у разницы и наложения он
-    // один на оба кадра, и сравнивать его не с чем.
-    if (!view.side) return;
-    const sides = [
-      ['width', view.units.width, view.width],
-      ['height', view.units.height, view.height],
-    ];
-    for (const [at, [what, unit, value]] of sides.entries()) {
+  function frameSize(view) {
+    const parts = [];
+    for (const [at, what] of ['width', 'height'].entries()) {
       const name = document.createElement('strong');
-      name.textContent = unit;
+      name.textContent = view.units[what];
       const number = document.createElement('span');
-      number.textContent = `${value}px`;
-      // Изменившийся размер красим: «высота другая» — это ответ, а не мелочь.
-      if (view.other && view.other[what] !== value) number.className = 'ghpd-size-changed';
-      if (at) size.append(' | ');
-      size.append(name, number);
+      number.textContent = `${view[what]}px`;
+      if (view.other && view.other[what] !== view[what]) {
+        number.className = 'ghpd-size-changed';
+      }
+      if (at) parts.push(' | ');
+      parts.push(name, number);
     }
+    return parts;
   }
 
   /**
@@ -721,7 +702,7 @@
     saveCanvas,
     frameFileName,
     holdStage,
-    dressFrame,
+    frameSize,
     createMenu,
     twoWayLabel,
     attachProbe,

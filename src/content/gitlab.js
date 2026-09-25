@@ -13,7 +13,7 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachProbe, attachZoom, createZoom, drawCrop, dressFrame, frameFileName, holdStage, saveCanvas,
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, frameSize, holdStage, saveCanvas,
     zoomLabel, createMenu, twoWayLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
   const { t, plural, locale } = global.GhPixelDiffI18n;
@@ -132,16 +132,16 @@
     const full = document.createElement('canvas');
 
     triple.hidden = true;
-    const triplePlates = new Map();
+    const tripleLabels = new Map();
     const tripleCanvases = ['before', 'after', 'diff'].map((name) => {
-      // Каждый из трёх — такая же пластина, как одиночный кадр: подпись
-      // сверху, размер снизу, цвет рамки по версии.
-      const item = el('div', 'ghpd-triple-item ghpd-plate');
+      const item = el('div', 'ghpd-triple-item');
       const target = el('canvas', 'ghpd-canvas');
-      const itemLabel = el('div', 'ghpd-plate-label', t(FRAMES[name]));
-      const itemSize = el('p', 'ghpd-plate-size');
-      item.append(itemLabel, target, itemSize);
-      triplePlates.set(name, { plate: item, label: itemLabel, size: itemSize });
+      // Имя и размер — в одной строке под кадром, той же, что была здесь
+      // всегда: новая строка отняла бы высоту у самих кадров.
+      const itemLabel = el('div', 'ghpd-triple-label', t(FRAMES[name]));
+      if (name === 'before' || name === 'after') target.dataset.side = name;
+      item.append(target, itemLabel);
+      tripleLabels.set(name, itemLabel);
       triple.append(item);
       return [name, target];
     });
@@ -204,16 +204,8 @@
 
     // Кадр живёт в сцене: её размер не зависит от того, что в ней показано,
     // и подпись со строкой управления не ездят вслед за высотой кадра.
-    // Кадр в «пластине» по образцу GitHub: подпись сверху, размер снизу,
-    // цветная рамка на самом холсте. Обе строки держат высоту всегда, даже
-    // пустые, — переключение кадров не должно ничего дёргать.
-    const plate = el('div', 'ghpd-plate');
-    const plateLabel = el('span', 'ghpd-plate-label');
-    const plateSize = el('p', 'ghpd-plate-size');
-    plate.append(plateLabel, canvas, plateSize);
-
     const stage = el('div', 'ghpd-stage');
-    stage.append(plate, triple);
+    stage.append(canvas, triple);
     shell.append(stage, meta, probe, bar);
     panel.append(shell);
 
@@ -307,7 +299,7 @@
         }
       }
 
-      holdStage(stage, single ? plate : triple, canvas);
+      holdStage(stage, single ? canvas : triple);
 
       const percent = result.ratio * 100;
       // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
@@ -338,40 +330,54 @@
         );
       }
 
-      // Кадр одет по образцу GitHub: «до» в красной рамке, «после» в зелёной,
-      // подпись сверху, размер картинки снизу. Размер — натуральный, а не
-      // показанный: фрагмент и увеличение меняют то, что на экране, но не то,
-      // какого размера файл.
-      const side = shownFrame === 'before' || shownFrame === 'after' ? shownFrame : null;
-      const own = side === 'after' ? result.after : result.before;
-      const other = side === 'after' ? result.before : result.after;
-      dressFrame(
-        { plate, label: plateLabel, size: plateSize },
-        {
-          side: single ? side : null,
-          // Именуем только «до» и «после», как GitHub: над разницей подпись
-        // лишь повторила бы кнопку под ней. Высоту строка держит всегда.
-        name: single && side ? t(FRAMES[shownFrame]) : '',
-          width: own?.naturalWidth,
-          height: own?.naturalHeight,
-          other: other && { width: other.naturalWidth, height: other.naturalHeight },
-          units: { width: t('frameWidth'), height: t('frameHeight') },
-        },
-      );
+      // Кадр одет по образцу GitHub: «до» в красной рамке, «после» в
+      // зелёной. Цвет рамки ничего не стоит по высоте и отвечает на вопрос
+      // «какая это версия» даже тогда, когда переключатель кадров спрятан.
+      const side = single && (shownFrame === 'before' || shownFrame === 'after')
+        ? shownFrame
+        : null;
+      if (side) canvas.dataset.side = side;
+      else delete canvas.dataset.side;
 
-      // Три кадра рядом — те же пластины: «до» красное, «после» зелёное,
-      // разница нейтральна.
-      for (const [name, parts] of triplePlates) {
+      // Имя версии и размер картинки — в той же строке фактов: отдельная
+      // строка под кадром отнимала бы у него высоту на всех кадрах разом, а
+      // у разницы и наложения размера всё равно нет.
+      //
+      // Размер натуральный, а не показанный: фрагмент и увеличение меняют то,
+      // что на экране, но не то, какого размера файл.
+      if (side) {
+        const own = side === 'after' ? result.after : result.before;
+        const other = side === 'after' ? result.before : result.after;
+        const name = el('strong', `ghpd-side ghpd-side-${side}`, t(FRAMES[shownFrame]));
+        meta.append(' · ', name, ' ');
+        meta.append(
+          ...frameSize({
+            width: own.naturalWidth,
+            height: own.naturalHeight,
+            other: other && { width: other.naturalWidth, height: other.naturalHeight },
+            units: { width: t('frameWidth'), height: t('frameHeight') },
+          }),
+        );
+      }
+
+      // Три кадра рядом: цвет рамки по версии, имя и размер — в подписи.
+      for (const [name, label] of tripleLabels) {
+        // Имя — в своём теге: цвет версии нужен ему, а размеру рядом идёт
+        // приглушённый цвет подписи, как у GitHub в его же 2-up.
+        label.className = `ghpd-triple-label ghpd-side-${name}`;
+        label.replaceChildren(el('strong', `ghpd-side ghpd-side-${name}`, t(FRAMES[name])));
+        if (name === 'diff') continue;
         const mine = name === 'after' ? result.after : result.before;
         const opposite = name === 'after' ? result.before : result.after;
-        dressFrame(parts, {
-          side: name === 'before' || name === 'after' ? name : null,
-          name: t(FRAMES[name]),
-          width: mine?.naturalWidth,
-          height: mine?.naturalHeight,
-          other: opposite && { width: opposite.naturalWidth, height: opposite.naturalHeight },
-          units: { width: t('frameWidth'), height: t('frameHeight') },
-        });
+        label.append(
+          ' ',
+          ...frameSize({
+            width: mine.naturalWidth,
+            height: mine.naturalHeight,
+            other: opposite && { width: opposite.naturalWidth, height: opposite.naturalHeight },
+            units: { width: t('frameWidth'), height: t('frameHeight') },
+          }),
+        );
       }
 
       // «все» или «2/5»: короткая подпись стоит на месте, а длинная фраза

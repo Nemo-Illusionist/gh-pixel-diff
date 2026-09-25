@@ -61,51 +61,22 @@
 /* Кадр «до» обведён красным, «после» — зелёным: то же, что делает GitHub в
    своём 2-up, и по цвету рамки видно, на какую версию смотришь, даже когда
    переключатель кадров спрятан настройкой. */
-.ghpd-plate[data-side='before'] .ghpd-canvas {
+.ghpd-canvas[data-side='before'] {
   border-color: var(--borderColor-danger-emphasis, #cf222e);
 }
 
-.ghpd-plate[data-side='after'] .ghpd-canvas {
+.ghpd-canvas[data-side='after'] {
   border-color: var(--borderColor-success-emphasis, #1a7f37);
 }
 
-/* Кадр вместе с подписью и размером. Обе строки держат высоту всегда, даже
-   пустые: иначе переключение кадров дёргало бы всё, что под ними. */
-.ghpd-plate {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
-}
+/* Имя версии — её же цветом, и в подписи, и под кадром в тройке. */
+.ghpd-side-before { color: var(--fgColor-danger, #d1242f); }
+.ghpd-side-after { color: var(--fgColor-success, #1a7f37); }
 
-.ghpd-plate-label {
-  flex: none;
-  min-height: 15px;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 15px;
-  color: var(--fgColor-muted, #59636e);
-}
-
-.ghpd-plate[data-side='before'] .ghpd-plate-label { color: var(--fgColor-danger, #d1242f); }
-.ghpd-plate[data-side='after'] .ghpd-plate-label { color: var(--fgColor-success, #1a7f37); }
-
-.ghpd-plate-size {
-  flex: none;
-  margin: 0;
-  min-height: 15px;
-  font-size: 12px;
-  line-height: 15px;
-  font-variant-numeric: tabular-nums;
-  color: var(--fgColor-muted, #59636e);
-}
-
-/* Изменившийся размер — цветом той версии, о которой речь: «высота другая»
-   это ответ, а не мелочь. */
-.ghpd-plate[data-side='before'] .ghpd-size-changed { color: var(--fgColor-danger, #d1242f); }
-.ghpd-plate[data-side='after'] .ghpd-size-changed { color: var(--fgColor-success, #1a7f37); }
+/* Изменившийся размер — цветом той версии, о которой речь. */
+.ghpd-side-before .ghpd-size-changed { color: var(--fgColor-danger, #d1242f); }
+.ghpd-side-after .ghpd-size-changed { color: var(--fgColor-success, #1a7f37); }
+.ghpd-meta .ghpd-size-changed { font-weight: 600; }
 
 /* Увеличенный кадр можно таскать — и курсор должен об этом сказать. */
 .ghpd-canvas.ghpd-zoomed { cursor: grab; }
@@ -457,8 +428,9 @@
   gap: 4px;
 }
 
-.ghpd-triple .ghpd-plate-label,
-.ghpd-triple .ghpd-plate-size {
+.ghpd-triple-label {
+  flex: none;
   font-size: 11px;
+  color: var(--fgColor-muted, #59636e);
 }
 

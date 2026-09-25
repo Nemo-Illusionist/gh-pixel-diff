@@ -80,10 +80,11 @@ the settings stay there as well.
   indistinguishable and can be stitched any which way, and then the frame gets
   marks where nothing changed.
 - **Before and after are dressed like GitHub's own 2-up**: a red border and a
-  red label on one, green on the other, the image size under the frame — and
+  red name on one, green on the other, the image size next to the name — and
   whichever of the two sizes changed is picked out in colour. The border colour
   says which version you are looking at even when the frame switcher is hidden
-  in the settings.
+  in the settings. None of it costs the frame any height: the name and the size
+  live in a line that is there anyway.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame
