@@ -106,6 +106,14 @@
     "message": "3-up",
     "description": "Кнопка переключателя: все три кадра сразу."
   },
+  "frameWidth": {
+    "message": "W: ",
+    "description": "Image width under the frame: «W: 500px | H: 528px»."
+  },
+  "frameHeight": {
+    "message": "H: ",
+    "description": "Image height under the frame."
+  },
   "popupShowViews": {
     "message": "Show the before / after / diff switcher"
   },

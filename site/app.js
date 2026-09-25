@@ -6,7 +6,7 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, holdStage, saveCanvas,
+  const { attachProbe, attachZoom, createZoom, drawCrop, dressFrame, frameFileName, holdStage, saveCanvas,
     zoomLabel, createMenu, twoWayLabel } = global.GhPixelDiffRender;
   const { t, plural, locale } = global.GhPixelDiffI18n;
 
@@ -73,6 +73,9 @@
   const panel = document.querySelector('#panel');
   const stage = document.querySelector('.panel-frame');
   const canvas = document.querySelector('#canvas');
+  const plate = document.querySelector('#plate');
+  const plateLabel = document.querySelector('#plate-label');
+  const plateSize = document.querySelector('#plate-size');
   const triple = document.querySelector('#triple');
   const meta = document.querySelector('#meta');
   const failure = document.querySelector('#failure');
@@ -187,12 +190,17 @@
   nextChange.addEventListener('click', () => stepChange(1));
 
   const tripleLabels = new Map();
+  const triplePlates = new Map();
   const tripleCanvases = ['before', 'after', 'diff'].map((name) => {
-    const item = el('div', 'ghpd-triple-item');
+    // Каждый из трёх — такая же пластина, как одиночный кадр: подпись
+    // сверху, размер снизу, цвет рамки по версии.
+    const item = el('div', 'ghpd-triple-item ghpd-plate');
     const target = el('canvas', 'ghpd-canvas');
-    const caption = el('div', 'ghpd-triple-label', t(FRAMES[name]));
+    const caption = el('div', 'ghpd-plate-label', t(FRAMES[name]));
+    const itemSize = el('p', 'ghpd-plate-size');
     tripleLabels.set(name, caption);
-    item.append(target, caption);
+    triplePlates.set(name, { plate: item, label: caption, size: itemSize });
+    item.append(caption, target, itemSize);
     triple.append(item);
     return [name, target];
   });
@@ -236,7 +244,7 @@
       }
     }
 
-    holdStage(stage, single ? canvas : triple);
+    holdStage(stage, single ? plate : triple, canvas);
 
     const percent = result.ratio * 100;
     // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
@@ -265,6 +273,42 @@
           `${result.after.naturalWidth}×${result.after.naturalHeight}`,
         )}`,
       );
+    }
+
+    // Кадр одет по образцу GitHub: «до» в красной рамке, «после» в зелёной,
+    // подпись сверху, размер картинки снизу. Размер — натуральный, а не
+    // показанный: фрагмент и увеличение меняют то, что на экране, но не то,
+    // какого размера файл.
+    const side = shownFrame === 'before' || shownFrame === 'after' ? shownFrame : null;
+    const own = side === 'after' ? result.after : result.before;
+    const other = side === 'after' ? result.before : result.after;
+    dressFrame(
+      { plate, label: plateLabel, size: plateSize },
+      {
+        side: single ? side : null,
+        // Именуем только «до» и «после», как GitHub: над разницей подпись
+        // лишь повторила бы кнопку под ней. Высоту строка держит всегда.
+        name: single && side ? t(FRAMES[shownFrame]) : '',
+        width: own?.naturalWidth,
+        height: own?.naturalHeight,
+        other: other && { width: other.naturalWidth, height: other.naturalHeight },
+        units: { width: t('frameWidth'), height: t('frameHeight') },
+      },
+    );
+
+    // Три кадра рядом — те же пластины: «до» красное, «после» зелёное,
+    // разница нейтральна.
+    for (const [name, parts] of triplePlates) {
+      const mine = name === 'after' ? result.after : result.before;
+      const opposite = name === 'after' ? result.before : result.after;
+      dressFrame(parts, {
+        side: name === 'before' || name === 'after' ? name : null,
+        name: t(FRAMES[name]),
+        width: mine?.naturalWidth,
+        height: mine?.naturalHeight,
+        other: opposite && { width: opposite.naturalWidth, height: opposite.naturalHeight },
+        units: { width: t('frameWidth'), height: t('frameHeight') },
+      });
     }
 
     // «все» или «2/5»: короткая подпись стоит на месте, а длинная фраза

@@ -57,7 +57,13 @@
     </div>
     <!-- Сцена под кадр: её высота не ездит вслед за размером кадра. -->
     <div class="panel-frame ghpd-stage">
-      <canvas class="ghpd-canvas" id="canvas"></canvas>
+      <!-- Кадр в «пластине» по образцу GitHub: подпись сверху, размер снизу,
+           цветная рамка на самом холсте. -->
+      <div class="ghpd-plate" id="plate">
+        <span class="ghpd-plate-label" id="plate-label"></span>
+        <canvas class="ghpd-canvas" id="canvas"></canvas>
+        <p class="ghpd-plate-size" id="plate-size"></p>
+      </div>
       <div class="ghpd-triple" id="triple" hidden></div>
     </div>
     <p class="ghpd-meta" id="meta"></p>

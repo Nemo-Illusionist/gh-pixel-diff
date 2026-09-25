@@ -575,14 +575,64 @@
    * Сцена поэтому только растёт. Предел ей — тот же, что и кадру: больше
    * своего потолка кадр не бывает, а окно может и уменьшиться, и тогда
    * запомненная высота вытолкнула бы ползунок за край.
+   *
+   * @param {Element} box что меряем — обычно пластину с кадром целиком.
+   * @param {Element} [limitedBy] чему задан потолок. Предел по высоте стоит на
+   *        холсте, а меряем мы пластину: между ними ещё подпись и размер, и
+   *        без этой поправки сцена держалась бы на две строки ниже, чем надо.
    */
-  function holdStage(stage, canvas) {
-    const height = canvas.getBoundingClientRect().height;
+  function holdStage(stage, box, limitedBy = box) {
+    const height = box.getBoundingClientRect().height;
     if (!height) return;
-    const ceiling = Number.parseFloat(getComputedStyle(canvas).maxHeight);
+    const limit = Number.parseFloat(getComputedStyle(limitedBy).maxHeight);
+    const around = limitedBy === box ? 0 : height - limitedBy.getBoundingClientRect().height;
     const held = Number.parseFloat(stage.style.minHeight) || 0;
-    const wanted = Math.min(Math.max(height, held), ceiling || Infinity);
+    const wanted = Math.min(Math.max(height, held), limit ? limit + around : Infinity);
     stage.style.minHeight = `${Math.ceil(wanted)}px`;
+  }
+
+  /**
+   * Одевает кадр по образцу GitHub: у него «до» обведено красным, «после» —
+   * зелёным, над кадром стоит подпись, под кадром — размер картинки, и тот
+   * из двух размеров, что изменился, выделен цветом.
+   *
+   * Повторяем это своим, а не берём его классы: они живут в таблице стилей
+   * фрейма GitHub, и на GitLab с отдельной страницей их попросту нет, а
+   * внутри фрейма они принадлежат GitHub и меняются без предупреждения.
+   * Правил всего восемь, и стоят они на тех же токенах оформления.
+   *
+   * Подпись и размер держат высоту всегда, даже пустые: иначе переключение
+   * кадров дёргало бы всё, что ниже.
+   *
+   * @param {{plate: Element, label: Element, size: Element}} parts
+   * @param {{side: ?string, name: string, width: number, height: number,
+   *          other: ?{width: number, height: number}, units: {width: string,
+   *          height: string}}} view
+   */
+  function dressFrame(parts, view) {
+    const { plate, label, size } = parts;
+    if (view.side) plate.dataset.side = view.side;
+    else delete plate.dataset.side;
+    label.textContent = view.name ?? '';
+
+    size.replaceChildren();
+    // Размер показываем только у «до» и «после»: у разницы и наложения он
+    // один на оба кадра, и сравнивать его не с чем.
+    if (!view.side) return;
+    const sides = [
+      ['width', view.units.width, view.width],
+      ['height', view.units.height, view.height],
+    ];
+    for (const [at, [what, unit, value]] of sides.entries()) {
+      const name = document.createElement('strong');
+      name.textContent = unit;
+      const number = document.createElement('span');
+      number.textContent = `${value}px`;
+      // Изменившийся размер красим: «высота другая» — это ответ, а не мелочь.
+      if (view.other && view.other[what] !== value) number.className = 'ghpd-size-changed';
+      if (at) size.append(' | ');
+      size.append(name, number);
+    }
   }
 
   /**
@@ -671,6 +721,7 @@
     saveCanvas,
     frameFileName,
     holdStage,
+    dressFrame,
     createMenu,
     twoWayLabel,
     attachProbe,
