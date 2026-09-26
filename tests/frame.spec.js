@@ -90,6 +90,25 @@ function svgSized(width, height) {
 }
 
 /**
+ * Высокая пара, у которой ещё и разный размер: подпись к такой паре длинная —
+ * и на узком экране переносится на две строки.
+ */
+function svgTallResized() {
+  const frame = (height, offset, color) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 375 ${height}" ` +
+    `width="375" height="${height}">` +
+    `<rect width="375" height="${height}" fill="#0d1117"/>` +
+    [40, 300, 600]
+      .map(
+        (y, index) =>
+          `<rect x="20" y="${y + offset}" width="${60 + index * 30}" height="14" fill="${color}"/>`,
+      )
+      .join('') +
+    '</svg>';
+  return { before: frame(759, 0, '#c9d1d9'), after: frame(755, 4, '#f85149') };
+}
+
+/**
  * Подкладывает то, что расширение получает от браузера: тексты, адреса своих
  * файлов и хранилище. Хранилище держим на стороне теста — настоящее переживает
  * перезагрузку страницы, и заглушка должна вести себя так же.
@@ -1624,4 +1643,37 @@ test('подпись на языке интерфейса', async ({ page }) => 
   // Управление рядом и тоже на языке интерфейса.
   // У кнопки две подписи, показана одна — читаем именно её.
   expect(await page.innerText('.ghpd-crop-toggle')).toBe('whole frame');
+});
+
+test('на узком экране нижние строки не наезжают друг на друга', async ({ page }) => {
+  // Запас высоты под подпись, строку пикселя и строку управления когда-то был
+  // постоянным числом. На телефоне и подпись, и строка управления переносятся,
+  // кадру доставалось место, которого уже нет, — и он выдавливал их друг на
+  // друга: панель складывалась в кашу.
+  await page.setViewportSize({ width: 390, height: 780 });
+  await openFrame(page, svgTallResized(), { beta: true });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const rows = await page.evaluate(() => {
+    const box = (selector) => document.querySelector(selector).getBoundingClientRect();
+    const view = box('.ghpd-view');
+    const meta = box('.ghpd-meta');
+    const probe = box('.ghpd-probe');
+    const bar = box('.ghpd-bar');
+    const overlap = (a, b) => Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+    return {
+      // Подпись и правда перенеслась: без переноса проверять было бы нечего.
+      подписьВДвеСтроки: meta.height > 20,
+      подписьНаКнопках: overlap(meta, bar),
+      пикселНаКнопках: overlap(probe, bar),
+      всёВнутри: bar.bottom <= view.bottom + 1,
+    };
+  });
+
+  expect(rows.подписьВДвеСтроки).toBe(true);
+  expect(rows.подписьНаКнопках).toBeLessThanOrEqual(0);
+  expect(rows.пикселНаКнопках).toBeLessThanOrEqual(0);
+  expect(rows.всёВнутри).toBe(true);
 });
