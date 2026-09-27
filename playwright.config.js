@@ -20,6 +20,12 @@ export default defineConfig({
   use: { trace: 'retain-on-failure' },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
-    { name: 'firefox', use: { browserName: 'firefox' } },
+    // Живой тест поднимает Chromium сам, с настоящим расширением внутри:
+    // второму движку он ничего не проверит, зато сходит на GitHub ещё раз.
+    {
+      name: 'firefox',
+      use: { browserName: 'firefox' },
+      testIgnore: /live\.spec\.js/,
+    },
   ],
 });
