@@ -275,13 +275,15 @@ markup.
 | Target | State |
 |---|---|
 | Chrome / Chromium | Verified on a live pull request page, covered by a test |
-| Firefox | The build passes `web-ext lint` with no warnings; never run in the browser |
+| Firefox | The whole test suite runs in Gecko as well, and the build passes `web-ext lint` with no warnings; never installed from the store by hand |
+| Firefox for Android | The manifest offers the add-on to it; the panel, the popup and the settings page are laid out for a narrow screen, but nobody has held a phone with it yet |
 | Safari, macOS | The scheme compiles; enabling the extension is manual |
 | Safari, iOS | The scheme compiles, the container installs and launches in the simulator (`npm run run:ios`); enabling is manual |
 
-The panel itself is the same content script in all three browsers, so testing in
-Chromium covers both the comparison logic and the layout. What stays unknown is
-exactly the installation — it differs per browser.
+The panel itself is the same content script in all three browsers, and the tests
+load it the way a browser would rather than as a packaged extension — so they
+run in Gecko as readily as in Chromium, and both engines are checked on every
+push. What stays unknown is exactly the installation — it differs per browser.
 
 ## How it works
 
@@ -319,7 +321,8 @@ npm run screenshots  # README and store screenshots, from the live pull request
 ```
 
 On every push and pull request GitHub runs the offline tests in that same
-Playwright image and checks the Firefox build with `web-ext lint`. The live test
+Playwright image — in Chromium and in Gecko, the same tests twice — and checks
+the Firefox build with `web-ext lint`. The live test
 is a separate run — weekly and on demand: it breaks because of someone else's
 changes, not ours, and shouldn't block a pull request.
 
