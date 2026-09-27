@@ -4,6 +4,18 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.17.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.16.1...v0.17.0) (2026-09-27)
+
+
+### Features
+
+* the add-on is offered to Firefox for Android, and the tests run in Gecko ([#74](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/74)) ([5866751](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/586675104faea0b428d5f7920a5a8e78f2ab4924))
+
+
+### Documentation
+
+* shots retaken after 0.16.1 ([#72](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/72)) ([626c32c](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/626c32cde70ed050f5cf87ac2dc3f5225abbcea5))
+
 ## [0.16.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.16.0...v0.16.1) (2026-09-26)
 
 
