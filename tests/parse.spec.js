@@ -404,7 +404,7 @@ test('сшивка, которая не помогла, отбрасываетс
   expect(answer.сшито).toBeLessThanOrEqual(answer.какЕсть);
 });
 
-test('в бете край, которого нет у одной из версий, не считается изменением', async ({ page }) => {
+test('в бете край, которого нет у одной из версий, не красится вовсе', async ({ page }) => {
   // Кадр стал короче — и недостающие строки, сравненные с пустотой, дают
   // сплошную полосу и десятки тысяч «изменившихся» пикселей. На настоящем
   // снимке это девять десятых всей находки: правка тонет в полосе, о которой
@@ -443,17 +443,19 @@ test('в бете край, которого нет у одной из верс�
       { beta: true },
     );
 
-    let half = 0;
-    for (let i = 3; i < diff.mask.data.length; i += 4) if (diff.mask.data[i] === 128) half++;
-    return { changed: diff.changed, ratio: diff.ratio, bounds: diff.bounds, half };
+    let painted = 0;
+    for (let i = 3; i < diff.mask.data.length; i += 4) if (diff.mask.data[i]) painted++;
+    return { changed: diff.changed, ratio: diff.ratio, bounds: diff.bounds, painted };
   });
 
   // Общая часть совпала целиком — значит изменений нет.
   expect(result.changed).toBe(0);
   expect(result.ratio).toBe(0);
   expect(result.bounds).toBeNull();
-  // Но полоса на кадре отмечена — вполсилы, как сглаживание.
-  expect(result.half).toBe(2 * 10);
+  // И полоса не крашена ничем: ни в счёт, ни в границы она не идёт, а
+  // залитая даже вполсилы, она перекрикивала бы саму находку — на снимке,
+  // похудевшем на треть, розовым заливало бы эту самую треть.
+  expect(result.painted).toBe(0);
 });
 
 test('считает изменившиеся пиксели', async ({ page }) => {
