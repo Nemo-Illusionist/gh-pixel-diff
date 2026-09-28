@@ -4,6 +4,14 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.18.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.18.0...v0.18.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* a frame that lost a block in the middle is compared, not repainted ([#88](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/88)) ([73ace3d](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/73ace3d277bbd99cff306be303cff92ea343279a))
+* the stitching switch belongs to one picture, not to the whole page ([#86](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/86)) ([f50c8f6](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/f50c8f6bd79fd9809eac114e49bfeeb43d990658))
+
 ## [0.18.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.17.2...v0.18.0) (2026-09-28)
 
 
