@@ -42,11 +42,20 @@ await build('firefox', (manifest) => {
   // кто сидит на 128–139; функционально нам хватает 128 —
   // `scripting.registerContentScripts` и `optional_host_permissions` там уже
   // есть.
+  //
+  // `gecko_android` — то, по чему витрина понимает, что дополнение годится и
+  // для телефона: без этого ключа она считает его настольным и на Android
+  // просто не предлагает. Ничего сверх настольной сборки для этого не нужно —
+  // движок тот же, а разметка панели, окна и настроек рассчитана на узкий
+  // экран.
   manifest.browser_specific_settings = {
     gecko: {
       id: FIREFOX_ID,
       strict_min_version: '128.0',
       data_collection_permissions: { required: ['none'] },
+    },
+    gecko_android: {
+      strict_min_version: '128.0',
     },
   };
 });

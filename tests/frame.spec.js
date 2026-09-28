@@ -61,6 +61,24 @@ function svgTwoSpots() {
   return { before: frame('#c9d1d9', '#c9d1d9'), after: frame('#f85149', '#f85149') };
 }
 
+/**
+ * Пара, где содержимое переехало вниз: сверху вставлена полоса, всё
+ * остальное то же самое. Попиксельно такая пара различается целиком.
+ */
+function svgShifted() {
+  const frame = (offset) =>
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300">' +
+    '<rect width="200" height="300" fill="#0d1117"/>' +
+    [40, 90, 140].
+      map(
+        (y, index) =>
+          `<rect x="20" y="${y + offset}" width="${60 + index * 30}" height="14" fill="#c9d1d9"/>`,
+      )
+      .join('') +
+    '</svg>';
+  return { before: frame(0), after: frame(30) };
+}
+
 /** Вектор заданного размера с полоской посередине. */
 function svgSized(width, height) {
   return (
@@ -69,6 +87,25 @@ function svgSized(width, height) {
     `<rect width="${width}" height="${height}" fill="#0d1117"/>` +
     `<rect x="10" y="${Math.round(height / 2)}" width="40" height="8" fill="#c9d1d9"/></svg>`
   );
+}
+
+/**
+ * Высокая пара, у которой ещё и разный размер: подпись к такой паре длинная —
+ * и на узком экране переносится на две строки.
+ */
+function svgTallResized() {
+  const frame = (height, offset, color) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 375 ${height}" ` +
+    `width="375" height="${height}">` +
+    `<rect width="375" height="${height}" fill="#0d1117"/>` +
+    [40, 300, 600]
+      .map(
+        (y, index) =>
+          `<rect x="20" y="${y + offset}" width="${60 + index * 30}" height="14" fill="${color}"/>`,
+      )
+      .join('') +
+    '</svg>';
+  return { before: frame(759, 0, '#c9d1d9'), after: frame(755, 4, '#f85149') };
 }
 
 /**
@@ -131,7 +168,15 @@ async function stubExtension(page, settings = {}, stored = {}) {
           // @ts-ignore
           set: (values) => globalThis.ghpdStorageSet(values),
         },
-        onChanged: { addListener: () => {} },
+        // Слушателя запоминаем: настройка, изменённая в окне расширения,
+        // доезжает до открытой панели именно этим событием, и проверить это
+        // иначе нечем.
+        onChanged: {
+          addListener: (listener) => {
+            // @ts-ignore
+            globalThis.__ghpdSettingsChanged = listener;
+          },
+        },
       },
     };
   }, messages);
@@ -284,6 +329,17 @@ async function waitForResult(page) {
     .toMatch(/pixels/);
 }
 
+/**
+ * Порог, рамка и сохранение живут под «⋯»: до них надо сперва добраться.
+ * Меню от нажатия внутри себя не закрывается, поэтому открывать его на каждое
+ * действие незачем — но и повторное открытие ничего не ломает.
+ */
+async function openMenu(page) {
+  if (await page.locator('.ghpd-menu-panel').isHidden()) {
+    await page.click('.ghpd-menu-button');
+  }
+}
+
 test('встаёт четвёртой кнопкой, родные не трогает', async ({ page }) => {
   await openFrame(page);
   await injectExtension(page);
@@ -427,6 +483,7 @@ test('в полном кадре изменения обведены', async ({ 
   // что с ней красного заметно больше: периметр вокруг всего изменившегося
   // длиннее самих изменений.
   const обведено = await redPixels(page);
+  await openMenu(page);
   await page.click('.ghpd-outline-toggle');
   const голый = await redPixels(page);
 
@@ -442,6 +499,7 @@ test('рамку вокруг изменений можно убрать', async
 
   const обведено = await redPixels(page);
 
+  await openMenu(page);
   await page.click('.ghpd-outline-toggle');
   const голый = await redPixels(page);
   expect(голый).toBeLessThan(обведено - 100);
@@ -485,6 +543,7 @@ test('ползунок слушается клавиатуры и помнит �
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
+  await openMenu(page);
   await page.focus('.ghpd-slider');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
@@ -537,6 +596,7 @@ test('считает в отдельном потоке', async ({ page }) => {
   expect(await page.evaluate(() => globalThis.workersStarted)).toBe(1);
 
   // Смена порога идёт туда же и не заводит второго потока.
+  await openMenu(page);
   await page.focus('.ghpd-slider');
   await page.keyboard.press('ArrowRight');
   await expect
@@ -733,6 +793,7 @@ test('настройки переживают запрет хранилища ф
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
+  await openMenu(page);
   await page.focus('.ghpd-slider');
   await page.keyboard.press('ArrowRight');
   expect(store['ghpd:threshold']).toBe('0.11');
@@ -799,6 +860,136 @@ test('разные размеры «до» и «после» не ломают �
   expect(meta).toMatch(/^[\d,]+ pixels/);
 });
 
+test('версия меньшего размера показана своим размером, а не чужим', async ({ page }) => {
+  // Холст сравнения берётся по большей из версий, и меньшая лежит на нём с
+  // пустым краем. Показать этот край — значит нарисовать кадр 200×120
+  // размером 400×300 и поспорить с подписью под ним: у GitHub в 2-up каждая
+  // версия своего размера, и правильно так.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, { before: svgSized(400, 300), after: svgSized(200, 120) });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  // Весь кадр, а не фрагмент: в обрезке смотрят на место правки, и оно общее.
+  await page.click('.ghpd-crop-toggle');
+
+  // Вектор растрируется с запасом, поэтому сравниваем не с числами из
+  // разметки, а стороны между собой: важно отношение, а не масштаб.
+  const размер = async (кадр) => {
+    await page.click(`.ghpd-views .ghpd-view-button:nth-child(${кадр})`);
+    return page.evaluate(() => {
+      const canvas = document.querySelector('.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas');
+      return { width: canvas.width, height: canvas.height };
+    });
+  };
+
+  const до = await размер(1);
+  const после = await размер(2);
+  const разница = await размер(3);
+
+  expect(после.width / до.width).toBeCloseTo(200 / 400, 2);
+  expect(после.height / до.height).toBeCloseTo(120 / 300, 2);
+  // Разница по-прежнему на общем холсте: она про обе версии сразу.
+  expect(разница).toEqual(до);
+
+  // И в «3-up» то же самое: три холста, у каждого свой размер.
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+  const трое = await page.evaluate(() =>
+    [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')].map((node) => ({
+      width: node.width,
+      height: node.height,
+    })),
+  );
+  expect(трое[1].width / трое[0].width).toBeCloseTo(200 / 400, 2);
+  expect(трое[2]).toEqual(трое[0]);
+
+  // Обрезка считается по общему холсту и у меньшей версии вылезает за её
+  // край — там кадр подрезается по ней же.
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(1)');
+  await page.click('.ghpd-crop-toggle');
+  const фрагмент = await размер(2);
+  expect(фрагмент.width).toBeLessThanOrEqual(после.width);
+  expect(фрагмент.height).toBeLessThanOrEqual(после.height);
+});
+
+test('«до» и «после» одеты, как в 2-up самого GitHub', async ({ page }) => {
+  // Красная рамка у «до», зелёная у «после», подпись сверху, размер снизу —
+  // и тот из двух размеров, что изменился, выделен цветом своей версии.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, { before: svgSized(200, 300), after: svgSized(200, 400) });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const одежда = () =>
+    page.evaluate(() => {
+      const plate = document.querySelector('.ghpd-view .ghpd-stage > .ghpd-plate');
+      const canvas = plate.querySelector('.ghpd-canvas');
+      const name = plate.querySelector('.ghpd-plate-label');
+      const meta = document.querySelector('.ghpd-meta');
+      return {
+        сторона: canvas.dataset.side ?? null,
+        // Имя — над кадром, как у GitHub; цвет берёт от версии.
+        имя: name.textContent,
+        цветИмени: getComputedStyle(name).color,
+        подпись: meta.textContent,
+        рамка: getComputedStyle(canvas).borderTopColor,
+        выделено: [...meta.querySelectorAll('.ghpd-size-changed')].map((n) => n.textContent),
+      };
+    });
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(1)');
+  const до = await одежда();
+  expect(до.сторона).toBe('before');
+  expect(до.имя).toBe('before');
+  expect(до.цветИмени).toBe('rgb(209, 36, 47)');
+  // Размер — снизу, в строке фактов: своей строки он не получил.
+  expect(до.подпись).toContain('W: 200px | H: 300px');
+  // Ширина совпала, высота — нет: выделена только она.
+  expect(до.выделено).toEqual(['300px']);
+  expect(до.рамка).toBe('rgb(207, 34, 46)');
+
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(2)');
+  const после = await одежда();
+  expect(после.сторона).toBe('after');
+  expect(после.имя).toBe('after');
+  expect(после.цветИмени).toBe('rgb(26, 127, 55)');
+  expect(после.подпись).toContain('W: 200px | H: 400px');
+  expect(после.выделено).toEqual(['400px']);
+  expect(после.рамка).toBe('rgb(26, 127, 55)');
+
+  // У разницы версии нет: ни цвета рамки, ни имени, ни размера — она не
+  // «одна из двух», и показывать там нечего.
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(3)');
+  const разница = await одежда();
+  expect(разница.сторона).toBeNull();
+  // Над разницей имени нет: оно повторило бы кнопку под кадром, а строку
+  // кадр оплачивает своей высотой. Заодно и рамка остаётся обычной.
+  expect(разница.имя).toBe('');
+  expect(разница.выделено).toEqual([]);
+  expect(разница.рамка).toBe('rgb(208, 215, 222)');
+});
+
+test('переключение кадров не двигает строку управления', async ({ page }) => {
+  // Имя версии и размер живут в строке фактов, а не в своей: своя отняла бы
+  // у кадра высоту на всех кадрах разом и дёргала бы панель на каждое
+  // переключение.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, { before: svgSized(200, 300), after: svgSized(200, 400) });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const низ = () =>
+    page.evaluate(() => Math.round(document.querySelector('.ghpd-bar').getBoundingClientRect().top));
+
+  const было = await низ();
+  for (const кадр of [1, 2, 3, 4]) {
+    await page.click(`.ghpd-views .ghpd-view-button:nth-child(${кадр})`);
+    expect(await низ()).toBe(было);
+  }
+});
+
 test('картинка нулевого размера — внятное сообщение', async ({ page }) => {
   const empty = '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0"></svg>';
   await openFrame(page, { before: empty, after: empty });
@@ -832,13 +1023,14 @@ test('три кадра рядом влезают по ширине', async ({ p
     const boxes = canvases.map((node) => node.getBoundingClientRect());
     return {
       сколько: canvases.length,
-      одиночныйСпрятан: document.querySelector('.ghpd-view .ghpd-stage > .ghpd-canvas').hidden,
+      одиночныйСпрятан: document.querySelector('.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas').hidden,
       // Переключатель остаётся на месте: это он и переключил.
       переключательВиден: !document.querySelector('.ghpd-views').hidden,
       влезают: boxes.every((box) => box.left >= view.left - 1 && box.right <= view.right + 1),
       // Все три одного размера: сравнивать глазами иначе невозможно.
       ширины: boxes.map((box) => Math.round(box.width)),
-      подписи: [...document.querySelectorAll('.ghpd-triple-label')].map((n) => n.textContent),
+      подписи: [...document.querySelectorAll('.ghpd-triple .ghpd-plate-label')].map((n) => n.textContent),
+      размеры: [...document.querySelectorAll('.ghpd-triple-size')].map((n) => n.textContent),
     };
   });
 
@@ -848,6 +1040,41 @@ test('три кадра рядом влезают по ширине', async ({ p
   expect(layout.влезают).toBe(true);
   expect(new Set(layout.ширины).size).toBe(1);
   expect(layout.подписи).toEqual(['before', 'after', 'diff']);
+  // Размер стоит под кадром, отдельной строкой — как у GitHub.
+  expect(layout.размеры).toEqual(['W: 400px | H: 1200px', 'W: 400px | H: 1200px', '']);
+});
+
+test('на узком экране три кадра встают друг под друга', async ({ page }) => {
+  // Так же ведёт себя сам GitHub: его «до» и «после» на телефоне стоят
+  // столбиком, а не жмутся в две колонки по полэкрана.
+  await page.setViewportSize({ width: 390, height: 900 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+
+  const layout = await page.evaluate(() => {
+    const boxes = [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')].map((node) =>
+      node.getBoundingClientRect(),
+    );
+    const view = document.querySelector('.ghpd-view').getBoundingClientRect();
+    return {
+      столбиком: boxes.every((box, at) => at === 0 || box.top >= boxes[at - 1].bottom - 1),
+      наОднойВертикали: new Set(boxes.map((box) => Math.round(box.left))).size,
+      влезаютПоШирине: boxes.every((box) => box.left >= view.left - 1 && box.right <= view.right + 1),
+      влезаютПоВысоте: boxes.at(-1).bottom <= view.bottom + 1,
+      // Столбик не повод уменьшать кадр до полоски: ширины он берёт больше,
+      // чем взял бы третью.
+      шире: Math.round(boxes[0].width) > Math.round(view.width / 3),
+    };
+  });
+
+  expect(layout.столбиком).toBe(true);
+  expect(layout.наОднойВертикали).toBe(1);
+  expect(layout.влезаютПоШирине).toBe(true);
+  expect(layout.влезаютПоВысоте).toBe(true);
+  expect(layout.шире).toBe(true);
 });
 
 test('три кадра показывают разные картинки', async ({ page }) => {
@@ -872,7 +1099,7 @@ test('три кадра показывают разные картинки', asy
 });
 
 /** Одиночный кадр панели — тот, который увеличивают. */
-const FRAME_CANVAS = '.ghpd-view .ghpd-stage > .ghpd-canvas';
+const FRAME_CANVAS = '.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas';
 
 /** Что сейчас на холсте: размер, угловой пиксель и отпечаток содержимого. */
 const canvasState = (page) =>
@@ -924,13 +1151,14 @@ test('щипок увеличивает кадр, а обычная прокру
 
   expect(await wheelOver(page, { ctrl: false, deltaY: -300 })).toBe(false);
   expect(await canvasState(page)).toEqual(было);
-  expect(await page.textContent('.ghpd-meta')).not.toContain('zoom');
+  // Пока увеличения нет, и сбрасывать нечего — кнопка спрятана.
+  await expect(page.locator('.ghpd-zoom-reset')).toBeHidden();
 
   expect(await wheelOver(page, { ctrl: true, deltaY: -300 })).toBe(true);
   const стало = await canvasState(page);
 
   expect(стало.отпечаток).not.toBe(было.отпечаток);
-  expect(await page.textContent('.ghpd-meta')).toContain('zoom');
+  await expect(page.locator('.ghpd-zoom-reset')).toContainText('zoom');
 });
 
 test('увеличение не меняет размер холста, а только то, что в нём', async ({ page }) => {
@@ -1016,31 +1244,33 @@ test('по двум правкам в разных концах кадра мо�
   await waitForResult(page);
 
   // По умолчанию показаны все изменения разом — прежний ответ панели. Ходьба
-  // по местам добавлена к нему, а не вместо него.
+  // по местам добавлена к нему, а не вместо него. Сколько их всего — сказано
+  // в подписи, а «все / 2 из 5» стоит у стрелок и не меняет ширины.
   await expect(page.locator('.ghpd-meta')).toContainText('2 changed places');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('all');
   const все = await canvasState(page);
 
   await page.click('.ghpd-cluster-step[aria-label="next change"]');
 
-  await expect(page.locator('.ghpd-meta')).toContainText('change 1 of 2');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('1/2');
   const первое = await canvasState(page);
   expect(первое.отпечаток).not.toBe(все.отпечаток);
 
   await page.click('.ghpd-cluster-step[aria-label="next change"]');
 
-  await expect(page.locator('.ghpd-meta')).toContainText('change 2 of 2');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('2/2');
   expect((await canvasState(page)).отпечаток).not.toBe(первое.отпечаток);
 
   // Круг проходит через «все», а не мимо: после последнего места — снова всё.
   await page.click('.ghpd-cluster-step[aria-label="next change"]');
 
-  await expect(page.locator('.ghpd-meta')).toContainText('2 changed places');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('all');
   expect(await canvasState(page)).toEqual(все);
 
   // И назад — тоже по кругу, сразу к последнему месту.
   await page.click('.ghpd-cluster-step[aria-label="previous change"]');
 
-  await expect(page.locator('.ghpd-meta')).toContainText('change 2 of 2');
+  await expect(page.locator('.ghpd-nav-label')).toHaveText('2/2');
 });
 
 test('рамка одна, пока место не выбрано, и на каждом месте — своя', async ({ page }) => {
@@ -1067,14 +1297,14 @@ test('рамка одна, пока место не выбрано, и на ка
 });
 
 test('одна правка — переходов нет', async ({ page }) => {
-  // Стрелки «‹ 1 из 1 ›» никуда не ведут и только занимают место в подписи.
+  // Стрелки «‹ 1 из 1 ›» никуда не ведут — группа переходов просто спрятана.
   await page.setViewportSize({ width: 900, height: 700 });
   await openFrame(page);
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
-  await expect(page.locator('.ghpd-cluster-step')).toHaveCount(0);
+  await expect(page.locator('.ghpd-nav')).toBeHidden();
 });
 
 test('показанный кадр сохраняется картинкой', async ({ page }) => {
@@ -1087,6 +1317,7 @@ test('показанный кадр сохраняется картинкой', 
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
+  await openMenu(page);
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click('.ghpd-save'),
@@ -1125,6 +1356,7 @@ test('имя файла говорит, какой кадр сохранён', a
   // Второй кадр переключателя — «после».
   await page.click('.ghpd-views .ghpd-view-button:nth-child(2)');
 
+  await openMenu(page);
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click('.ghpd-save'),
@@ -1133,9 +1365,10 @@ test('имя файла говорит, какой кадр сохранён', a
   expect(download.suggestedFilename()).toBe('shot.after.png');
 });
 
-test('три кадра рядом не сохраняются одной картинкой', async ({ page }) => {
-  // Их три холста, и «эта картинка» перестаёт быть одной картинкой: кнопка
-  // обещала бы то, чего сделать не может.
+test('три кадра рядом сохраняются одной картинкой', async ({ page }) => {
+  // Их три холста, но в файл уходит один: склейка в том же порядке и с тем
+  // же зазором, что на экране. Раньше кнопка здесь просто гасла, и это
+  // выглядело поломкой — нажимали-то её именно на «3-up».
   await page.setViewportSize({ width: 900, height: 700 });
   await openFrame(page);
   await injectExtension(page);
@@ -1143,7 +1376,97 @@ test('три кадра рядом не сохраняются одной кар
   await waitForResult(page);
   await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
 
-  await expect(page.locator('.ghpd-save')).toHaveCount(0);
+  await openMenu(page);
+  await expect(page.locator('.ghpd-save')).toBeEnabled();
+
+  const [загрузка] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('.ghpd-save'),
+  ]);
+
+  expect(загрузка.suggestedFilename()).toBe('shot.triple.png');
+
+  // Склейка шире любого из трёх и не выше самого высокого.
+  const размеры = await page.evaluate(() => {
+    const { joinCanvases } = globalThis.GhPixelDiffRender;
+    const трое = [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')];
+    const одна = joinCanvases(трое);
+    return {
+      ширины: трое.map((node) => node.width),
+      высоты: трое.map((node) => node.height),
+      склейка: { width: одна.width, height: одна.height },
+    };
+  });
+
+  const сумма = размеры.ширины.reduce((a, b) => a + b, 0);
+  expect(размеры.склейка.width).toBeGreaterThan(сумма);
+  expect(размеры.склейка.height).toBe(Math.max(...размеры.высоты));
+});
+
+test('спрятанный переключатель не запирает в «3-up»', async ({ page }) => {
+  // Из «3-up» выходят переключателем; если его спрятать настройкой, выйти
+  // нечем — а сохранение в нём погашено. Значит панель возвращает «разницу».
+  await page.setViewportSize({ width: 900, height: 700 });
+  const store = await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+  await expect(page.locator('.ghpd-view .ghpd-triple')).toBeVisible();
+
+  await page.evaluate(() =>
+    globalThis.__ghpdSettingsChanged?.({ showViews: { newValue: false } }, 'sync'),
+  );
+
+  await expect(page.locator('.ghpd-views')).toBeHidden();
+  await expect(page.locator('.ghpd-view .ghpd-triple')).toBeHidden();
+  await expect(page.locator('.ghpd-view > .ghpd-shell > .ghpd-stage > .ghpd-plate > .ghpd-canvas')).toBeVisible();
+  expect(store['ghpd:frame']).toBe('diff');
+});
+
+test('состав «⋯» не меняется: неуместное гаснет, а не пропадает', async ({ page }) => {
+  // В обрезке нечего обводить — и если прятать пункт, под «⋯» остаётся
+  // меньше, чем было, а меню выглядит сломанным.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page);
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+  await openMenu(page);
+
+  await expect(page.locator('.ghpd-menu-panel .ghpd-slider')).toBeVisible();
+  await expect(page.locator('.ghpd-outline-toggle')).toBeVisible();
+  await expect(page.locator('.ghpd-outline-toggle')).toBeDisabled();
+  await expect(page.locator('.ghpd-save')).toBeVisible();
+  // Сшивание переключается откуда угодно и в любом кадре.
+  await expect(page.locator('.ghpd-beta-toggle')).toBeVisible();
+  await expect(page.locator('.ghpd-beta-toggle')).toBeEnabled();
+});
+
+test('сшивание переключается из «⋯» и меняет ответ на месте', async ({ page }) => {
+  // Сшивание помогает не всегда: на одной паре оно убирает ложную красноту,
+  // на другой — прячет половину перестановки. Понять это можно только на
+  // самой паре, поэтому переключатель стоит рядом с кадром, а не только на
+  // странице настроек.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgShifted());
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const было = await page.textContent('.ghpd-meta');
+
+  await openMenu(page);
+  await expect(page.locator('.ghpd-beta-toggle')).toHaveText('stitch shifted rows');
+  await page.click('.ghpd-beta-toggle');
+
+  await expect.poll(() => page.textContent('.ghpd-meta')).not.toBe(было);
+  // Сшитых строк стало видно: кадр переехал целиком, и это уже не правка.
+  expect(await page.textContent('.ghpd-meta')).toContain('rows');
+  // Нажатие поменяло и саму подпись кнопки — обратный ход назван вслух.
+  await openMenu(page);
+  await expect(page.locator('.ghpd-beta-toggle')).toHaveText('compare as is');
 });
 
 test('под курсором видно, какой был пиксель и каким стал', async ({ page }) => {
@@ -1274,11 +1597,11 @@ test('на своём GitHub Enterprise режим встаёт так же', as
   await expect(page.locator('.ghpd-meta')).toContainText(/pixels/);
 });
 
-test('переключение места изменений не двигает ползунок', async ({ page }) => {
+test('переключение места изменений не двигает строку управления', async ({ page }) => {
   // Обрезка по одному месту ниже, чем по всем, и высота кадра меняется от
   // нажатия к нажатию. Пока её задавал сам кадр, вместе с ним ездило и всё,
-  // что под ним: подпись, ползунок, переключатель. Ползунок, уехавший
-  // из-под курсора в тот момент, когда его тянут, — это не мелочь.
+  // что под ним: подпись, переключатель кадров, «⋯». Кнопка, уехавшая
+  // из-под курсора в тот момент, когда по ней целятся, — это не мелочь.
   await page.setViewportSize({ width: 900, height: 700 });
   await openFrame(page, svgTwoSpots());
   await injectExtension(page);
@@ -1287,8 +1610,9 @@ test('переключение места изменений не двигает
 
   const низ = () =>
     page.evaluate(() => ({
-      ползунок: Math.round(document.querySelector('.ghpd-slider').getBoundingClientRect().top),
+      строка: Math.round(document.querySelector('.ghpd-bar').getBoundingClientRect().top),
       кадры: Math.round(document.querySelector('.ghpd-views').getBoundingClientRect().top),
+      ещё: Math.round(document.querySelector('.ghpd-menu-button').getBoundingClientRect().left),
     }));
 
   const было = await низ();
@@ -1306,6 +1630,45 @@ test('переключение места изменений не двигает
   await page.click('.ghpd-crop-toggle');
 
   expect(await низ()).toEqual(целиком);
+});
+
+test('переехавшее вниз содержимое не краснеет целиком', async ({ page }) => {
+  // Добавленный наверху элемент сдвигает всё, что ниже. Без сшивания строк
+  // панель честно сообщает, что изменился весь кадр, — и этим не помогает.
+  await page.setViewportSize({ width: 900, height: 700 });
+  // Сшивание — бета: панель берёт его из настроек, а не включает сама.
+  await openFrame(page, svgShifted(), { beta: true });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const подпись = await page.textContent('.ghpd-meta');
+
+  // Сдвиг назван словами: «+2 −2 rows».
+  expect(подпись).toMatch(/\+\d+ −\d+ rows/);
+  // И найденного заметно меньше, чем без сшивания: переехавшее содержимое
+  // перестало считаться изменившимся.
+  const [, пикселей] = /^([\d,]+) pixels/.exec(подпись);
+  expect(Number(пикселей.replace(/,/g, ''))).toBeLessThan(20000);
+});
+
+test('без беты кадр сравнивается как есть', async ({ page }) => {
+  // Сшивание — догадка, и на однообразном содержимом она садится мимо. Пока
+  // это бета, панель по умолчанию сравнивает кадры как есть, ничего не
+  // предполагая о сдвиге.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgShifted());
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const подпись = await page.textContent('.ghpd-meta');
+
+  expect(подпись).not.toMatch(/rows/);
+  // Переехавшее содержимое считается изменившимся: без сшивания панель
+  // находит вдесятеро больше пикселей, чем с ним.
+  const [, пикселей] = /^([\d,]+) pixels/.exec(подпись);
+  expect(Number(пикселей.replace(/,/g, ''))).toBeGreaterThan(50000);
 });
 
 test('запомненный режим ждёт, пока фрейм вырастет', async ({ page }) => {
@@ -1331,7 +1694,7 @@ test('запомненный режим ждёт, пока фрейм вырас
   await waitForResult(page);
 
   const canvas = await page.evaluate(() => {
-    const node = document.querySelector('.ghpd-view .ghpd-stage > .ghpd-canvas');
+    const node = document.querySelector('.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas');
     const box = node.getBoundingClientRect();
     // Сравниваем с самим кадром: в точку он ужимается, когда фрейм — полоска.
     return { доляВысоты: box.height / node.height, доляШирины: box.width / node.width };
@@ -1361,7 +1724,7 @@ test('кадр по центру, даже если подпись шире', as
     };
     return {
       вид: middle('.ghpd-view'),
-      холст: middle('.ghpd-view .ghpd-stage > .ghpd-canvas'),
+      холст: middle('.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas'),
       подпись: middle('.ghpd-meta'),
     };
   });
@@ -1379,5 +1742,40 @@ test('подпись на языке интерфейса', async ({ page }) => 
   const meta = await page.textContent('.ghpd-meta');
 
   expect(meta).toMatch(/^[\d,]+ pixels · [\d.<]+% of the frame/);
-  expect(meta).toContain('show the whole frame');
+  // Управление рядом и тоже на языке интерфейса.
+  // У кнопки две подписи, показана одна — читаем именно её.
+  expect(await page.innerText('.ghpd-crop-toggle')).toBe('whole frame');
+});
+
+test('на узком экране нижние строки не наезжают друг на друга', async ({ page }) => {
+  // Запас высоты под подпись, строку пикселя и строку управления когда-то был
+  // постоянным числом. На телефоне и подпись, и строка управления переносятся,
+  // кадру доставалось место, которого уже нет, — и он выдавливал их друг на
+  // друга: панель складывалась в кашу.
+  await page.setViewportSize({ width: 390, height: 780 });
+  await openFrame(page, svgTallResized(), { beta: true });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const rows = await page.evaluate(() => {
+    const box = (selector) => document.querySelector(selector).getBoundingClientRect();
+    const view = box('.ghpd-view');
+    const meta = box('.ghpd-meta');
+    const probe = box('.ghpd-probe');
+    const bar = box('.ghpd-bar');
+    const overlap = (a, b) => Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+    return {
+      // Подпись и правда перенеслась: без переноса проверять было бы нечего.
+      подписьВДвеСтроки: meta.height > 20,
+      подписьНаКнопках: overlap(meta, bar),
+      пикселНаКнопках: overlap(probe, bar),
+      всёВнутри: bar.bottom <= view.bottom + 1,
+    };
+  });
+
+  expect(rows.подписьВДвеСтроки).toBe(true);
+  expect(rows.подписьНаКнопках).toBeLessThanOrEqual(0);
+  expect(rows.пикселНаКнопках).toBeLessThanOrEqual(0);
+  expect(rows.всёВнутри).toBe(true);
 });

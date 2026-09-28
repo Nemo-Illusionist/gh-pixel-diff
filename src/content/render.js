@@ -65,20 +65,37 @@
    * В обрезке это выбранное место изменений, а не общий прямоугольник:
    * когда правки в разных концах кадра, общий — это весь кадр, и обрезать
    * по нему нечего. Пока место одно, разницы никакой.
+   *
+   * `own` — собственный размер показанной версии. Он нужен, когда версии
+   * разного размера: холст сравнения берётся по большей из них, и меньшая
+   * лежит на нём с пустым краем. Показывать этот край — значит рисовать
+   * кадр 544×140 размером 1280×906 и спорить с подписью под ним.
    */
-  function baseRect(result, cropped, focus) {
+  function baseRect(result, cropped, focus, own = null) {
+    const limitWidth = Math.round(own?.width ?? result.width);
+    const limitHeight = Math.round(own?.height ?? result.height);
     const box = focus ?? result.bounds;
     if (!cropped || !box) {
-      return { x: 0, y: 0, width: result.width, height: result.height };
+      return { x: 0, y: 0, width: limitWidth, height: limitHeight };
     }
     const x = Math.max(0, box.x - CROP_PADDING);
     const y = Math.max(0, box.y - CROP_PADDING);
-    return {
+    const width = Math.min(result.width - x, box.width + CROP_PADDING * 2);
+    const height = Math.min(result.height - y, box.height + CROP_PADDING * 2);
+    // Обрезка считается по общему холсту, и у меньшей версии она вылезает за
+    // её край. Подрезаем — начало остаётся тем же, значит и содержимое обеих
+    // версий по-прежнему совпадает по месту, просто кадр короче.
+    //
+    // Если же от версии в этом месте не осталось ничего, показываем участок
+    // как есть: пустой кадр здесь и есть ответ — этого куска в ней нет, а
+    // полоска в один пиксель об этом не скажет.
+    const fitted = {
       x,
       y,
-      width: Math.min(result.width - x, box.width + CROP_PADDING * 2),
-      height: Math.min(result.height - y, box.height + CROP_PADDING * 2),
+      width: Math.min(width, limitWidth - x),
+      height: Math.min(height, limitHeight - y),
     };
+    return fitted.width > 0 && fitted.height > 0 ? fitted : { x, y, width, height };
   }
 
   /**
@@ -154,8 +171,10 @@
       source.restore();
       source.drawImage(maskCanvas(result.mask, result.width, result.height), 0, 0);
     } else {
-      // «До» и «после» рисуем в том же размере, что и разницу: у вектора это
-      // увеличенный кадр, и переключение не должно менять масштаб.
+      // Масштаб у «до» и «после» тот же, что у разницы: у вектора это
+      // увеличенный кадр, и переключение не должно его менять. А вот
+      // показанный кусок — по самой версии: ниже из этого холста вырежут
+      // ровно её.
       const image = result[shownFrame];
       source.clearRect(0, 0, result.width, result.height);
       source.drawImage(
@@ -167,7 +186,18 @@
       );
     }
 
-    const base = baseRect(result, cropped, focus);
+    // Своим размером показываем «до» и «после»: холст сравнения берётся по
+    // большей из версий, и рисовать пустой край меньшей — значит спорить с
+    // подписью под кадром. Разница и наложение живут на общем холсте: они
+    // про обе версии сразу.
+    const own =
+      shownFrame === 'before' || shownFrame === 'after'
+        ? {
+            width: result[shownFrame].naturalWidth * result.scale,
+            height: result[shownFrame].naturalHeight * result.scale,
+          }
+        : null;
+    const base = baseRect(result, cropped, focus, own);
     const shown = shownRect(base, zoom);
     // Тот, кто ловит колесо и перетаскивание, должен знать, что сейчас под
     // курсором. Знает это только здесь — значит отсюда и говорим.
@@ -450,6 +480,33 @@
    * `shot.png` в режиме разницы станет `shot.diff.png` — по имени видно и
    * откуда это, и что именно на нём.
    */
+  /**
+   * Склеивает несколько холстов в один — слева направо, по верхнему краю.
+   *
+   * Нужно для сохранения «3-up»: на экране это три холста рядом, а в файл
+   * уходит одна картинка. Зазор и белая подложка — чтобы кадры не слипались
+   * и чтобы прозрачный край меньшей версии не стал чёрным у того, кто
+   * откроет файл на тёмном фоне.
+   */
+  function joinCanvases(canvases, gap = 16) {
+    const shown = canvases.filter((node) => node.width && node.height);
+    if (shown.length < 2) return shown[0] ?? canvases[0];
+    const width = shown.reduce((sum, node) => sum + node.width, 0) + gap * (shown.length - 1);
+    const height = Math.max(...shown.map((node) => node.height));
+    const joined = document.createElement('canvas');
+    joined.width = width;
+    joined.height = height;
+    const ctx = joined.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    let x = 0;
+    for (const node of shown) {
+      ctx.drawImage(node, x, 0);
+      x += node.width + gap;
+    }
+    return joined;
+  }
+
   function frameFileName(source, frame) {
     const base =
       String(source ?? '')
@@ -533,10 +590,13 @@
         return;
       }
 
+      // Строки могли сдвинуться: тогда «до» этого пикселя лежит в другой
+      // строке, а у вставленной строки его нет вовсе.
+      const source = result.rows ? result.rows[y] : y;
       let before;
       let after;
       try {
-        before = samplePixel(result.before, x, y, result.scale);
+        before = source >= 0 ? samplePixel(result.before, x, source, result.scale) : null;
         after = samplePixel(result.after, x, y, result.scale);
       } catch {
         // «Грязный» холст — единственная причина отказа; молчим, а не ломаем
@@ -547,8 +607,9 @@
 
       node.replaceChildren(
         `${x}, ${y} · `,
-        swatch(before),
-        ` ${t('viewBefore')} ${hex(before)} → `,
+        ...(before
+          ? [swatch(before), ` ${t('viewBefore')} ${hex(before)} → `]
+          : [`${t('rowNew')} → `]),
         swatch(after),
         ` ${t('viewAfter')} ${hex(after)}`,
       );
@@ -571,14 +632,126 @@
    * Сцена поэтому только растёт. Предел ей — тот же, что и кадру: больше
    * своего потолка кадр не бывает, а окно может и уменьшиться, и тогда
    * запомненная высота вытолкнула бы ползунок за край.
+   *
+   * @param {Element} box что меряем — кадр вместе с именем над ним.
+   * @param {Element} [limitedBy] чему задан потолок. Предел по высоте стоит на
+   *        холсте, а меряем мы кадр с именем: между ними ещё одна строка, и
+   *        без этой поправки сцена держалась бы ниже, чем надо.
    */
-  function holdStage(stage, canvas) {
-    const height = canvas.getBoundingClientRect().height;
+  function holdStage(stage, box, limitedBy = box) {
+    const height = box.getBoundingClientRect().height;
     if (!height) return;
-    const ceiling = Number.parseFloat(getComputedStyle(canvas).maxHeight);
+    const limit = Number.parseFloat(getComputedStyle(limitedBy).maxHeight);
+    const around = limitedBy === box ? 0 : height - limitedBy.getBoundingClientRect().height;
     const held = Number.parseFloat(stage.style.minHeight) || 0;
-    const wanted = Math.min(Math.max(height, held), ceiling || Infinity);
+    const wanted = Math.min(Math.max(height, held), limit ? limit + around : Infinity);
     stage.style.minHeight = `${Math.ceil(wanted)}px`;
+  }
+
+  /**
+   * Размер картинки под кадром — как в 2-up у GitHub: «W: 200px | H: 300px»,
+   * и тот из двух, что изменился, выделен цветом своей версии. «Высота
+   * другая» — это ответ, а не мелочь.
+   *
+   * Отдаём узлами, а не строкой: цветным должно быть одно число, а не весь
+   * размер. Ставит их тот, кто зовёт, — в подпись или в имя кадра, — потому
+   * что своей строки под это заводить нельзя: каждая новая строка под кадром
+   * отнимает у него высоту, а в «разнице» размер и вовсе не нужен.
+   *
+   * @param {{width: number, height: number, other: ?{width: number,
+   *          height: number}, units: {width: string, height: string}}} view
+   * @returns {Array<Node|string>}
+   */
+  function frameSize(view) {
+    const parts = [];
+    for (const [at, what] of ['width', 'height'].entries()) {
+      const name = document.createElement('strong');
+      name.textContent = view.units[what];
+      const number = document.createElement('span');
+      number.textContent = `${view[what]}px`;
+      if (view.other && view.other[what] !== view[what]) {
+        number.className = 'ghpd-size-changed';
+      }
+      if (at) parts.push(' | ');
+      parts.push(name, number);
+    }
+    return parts;
+  }
+
+  /**
+   * Меню для того, чем пользуются редко.
+   *
+   * Порог, рамка и сохранение нужны не каждый раз, а место под кадром
+   * занимали всегда. Под «⋯» они в одном нажатии и не мешают тем двум вещам,
+   * ради которых панель открывают: сколько изменилось и какой кадр показать.
+   *
+   * Открывается вверх: панель стоит у нижнего края окна просмотра, и вниз
+   * открываться ей некуда.
+   */
+  function createMenu(label) {
+    const root = document.createElement('div');
+    root.className = 'ghpd-menu';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'ghpd-menu-button';
+    button.textContent = '⋯';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-expanded', 'false');
+
+    const panel = document.createElement('div');
+    panel.className = 'ghpd-menu-panel';
+    panel.hidden = true;
+
+    const show = (open) => {
+      panel.hidden = !open;
+      button.setAttribute('aria-expanded', String(open));
+      button.classList.toggle('selected', open);
+    };
+
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      show(panel.hidden);
+    });
+    // Нажатие мимо меню и Esc закрывают его — как и всякое меню в браузере.
+    // Слушаем на документе: панель живёт в чужой странице, и своего слоя, из
+    // которого можно было бы поймать всё, у неё нет.
+    document.addEventListener('click', (event) => {
+      if (!panel.hidden && !root.contains(event.target)) show(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !panel.hidden) {
+        show(false);
+        button.focus();
+      }
+    });
+
+    root.append(button, panel);
+    return { element: root, panel, close: () => show(false) };
+  }
+
+  /**
+   * Кнопка с двумя подписями: «весь кадр» и «фрагмент».
+   *
+   * Обе лежат в одной ячейке сетки, видна одна — и ширина кнопки равна
+   * большей из них, а не текущей. Иначе всё, что правее, ездило бы вслед за
+   * длиной слова, и в каждом языке по-своему.
+   *
+   * @returns {(first: boolean) => void} показать первую подпись или вторую.
+   */
+  function twoWayLabel(button, first, second) {
+    button.classList.add('ghpd-two-way');
+    const [a, b] = [first, second].map((text) => {
+      const span = document.createElement('span');
+      span.textContent = text;
+      return span;
+    });
+    button.replaceChildren(a, b);
+    return (showFirst) => {
+      a.style.visibility = showFirst ? '' : 'hidden';
+      b.style.visibility = showFirst ? 'hidden' : '';
+    };
   }
 
   /** Как показать увеличение человеку: «2,5×», а не «2.4999999×». */
@@ -590,7 +763,11 @@
     drawCrop,
     saveCanvas,
     frameFileName,
+    joinCanvases,
     holdStage,
+    frameSize,
+    createMenu,
+    twoWayLabel,
     attachProbe,
     createZoom,
     attachZoom,

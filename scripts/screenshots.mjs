@@ -190,10 +190,13 @@ const context = await chromium.launchPersistentContext(profile, {
   channel: 'chromium',
   headless: true,
   locale: 'en-US',
-  // Окно поуже: панель тянется во всю ширину страницы, и в широком окне
-  // вокруг кадра остаётся пустое поле. Двойная плотность — чтобы на подложке
-  // снимок уменьшался, а не растягивался.
-  viewport: { width: 1000, height: 820 },
+  // Ширина окна — не про вкус, а про раскладку GitHub. Он сам решает, какой
+  // ширины дать фрейм, и ниже примерно 1400 пикселей кладёт «до» и «после»
+  // друг под друга: фрейм становится узким и высоким, а на витринной
+  // подложке 1280×800 такой снимок ужимается до нечитаемого. При 1400 фрейм
+  // выходит 1022×388 — та же горизонтальная полоса, что была всегда.
+  // Двойная плотность — чтобы на подложке снимок уменьшался, а не тянулся.
+  viewport: { width: 1400, height: 900 },
   deviceScaleFactor: 2,
   args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
@@ -221,7 +224,25 @@ try {
   await ready(() => /pixels/.test(document.querySelector('.ghpd-meta')?.textContent ?? ''));
 
   // Снимаем сам фрейм: его рамка и есть граница панели.
+  //
+  // Высоту фрейма задаёт GitHub, и делает он это не сразу: сперва отдаёт
+  // полоску в полтораста пикселей, а уже потом растит её под содержимое.
+  // Снимок, сделанный в этот промежуток, выходит с кадром, ужатым в точку, —
+  // ждём, пока высота перестанет меняться.
+  const grown = async () => {
+    let previous = 0;
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const box = await (await frame().frameElement()).boundingBox();
+      const height = Math.round(box?.height ?? 0);
+      if (height > 200 && height === previous) return;
+      previous = height;
+      await sleep(250);
+    }
+    throw new Error('фрейм так и не вырос');
+  };
+
   const shoot = async () => {
+    await grown();
     await sleep(400);
     return (await frame().frameElement()).screenshot();
   };
@@ -248,6 +269,13 @@ try {
 
   await showFrame('3-up');
   written['frame-3up'] = await shoot();
+
+  // «⋯»: порог, рамка и сохранение. В README без этого снимка непонятно, куда
+  // делся ползунок, стоявший под кадром прежде.
+  await showFrame('diff');
+  await frame().evaluate(() => document.querySelector('.ghpd-menu-button').click());
+  written['frame-menu'] = await shoot();
+  await frame().evaluate(() => document.querySelector('.ghpd-menu-button').click());
 
   written.popup = await pageShot(await context.newPage(), 'popup/popup.html');
 

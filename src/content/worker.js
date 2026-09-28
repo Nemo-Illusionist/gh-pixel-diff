@@ -23,6 +23,7 @@
         height: data.height,
         scale: data.scale,
         sizeChanged: data.sizeChanged,
+        common: data.common,
         // Вид поверх переданного буфера, без копирования.
         dataBefore: new ImageData(new Uint8ClampedArray(data.before), data.width, data.height),
         dataAfter: new ImageData(new Uint8ClampedArray(data.after), data.width, data.height),
@@ -39,6 +40,7 @@
       const result = diffPrepared(prepared, {
         threshold: data.threshold,
         colors: data.colors,
+        beta: data.beta,
       });
       global.postMessage(
         {
@@ -51,10 +53,15 @@
           ratio: result.ratio,
           bounds: result.bounds,
           clusters: result.clusters,
+          inserted: result.inserted,
+          removed: result.removed,
+          // Карта строк нужна инспектору пикселя: под курсором должен быть
+          // тот самый пиксель «до», а не тот, что оказался на этом месте.
+          rows: result.rows?.buffer ?? null,
           sizeChanged: prepared.sizeChanged,
           mask: result.mask.data.buffer,
         },
-        [result.mask.data.buffer],
+        result.rows ? [result.mask.data.buffer, result.rows.buffer] : [result.mask.data.buffer],
       );
     }
   };

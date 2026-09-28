@@ -1,4 +1,8 @@
 {
+  "languageName": {
+    "message": "Русский",
+    "description": "Имя этого языка на нём самом — для выбора языка."
+  },
   "extName": {
     "message": "GitHub Pixel Diff",
     "description": "Название расширения в браузере и в магазине."
@@ -72,7 +76,15 @@
     }
   },
   "showFullFrame": {
-    "message": "фрагмент $width$×$height$ — показать кадр целиком",
+    "message": "весь кадр",
+    "description": "Кнопка в панели: показать кадр целиком."
+  },
+  "showChangesOnly": {
+    "message": "фрагмент",
+    "description": "Кнопка в панели: вернуться к фрагменту с изменениями."
+  },
+  "cropSize": {
+    "message": "фрагмент $width$×$height$",
     "placeholders": {
       "width": {
         "content": "$1"
@@ -80,10 +92,12 @@
       "height": {
         "content": "$2"
       }
-    }
+    },
+    "description": "Подсказка к кнопке кадра."
   },
-  "showChangesOnly": {
-    "message": "показать только изменения"
+  "moreControls": {
+    "message": "ещё",
+    "description": "Кнопка «⋯»: порог, рамка и сохранение."
   },
   "hideOutline": {
     "message": "убрать рамку"
@@ -107,6 +121,14 @@
   "viewTriple": {
     "message": "3-up",
     "description": "Кнопка переключателя: все три кадра сразу."
+  },
+  "frameWidth": {
+    "message": "Ш: ",
+    "description": "Ширина картинки под кадром: «Ш: 500px | В: 528px»."
+  },
+  "frameHeight": {
+    "message": "В: ",
+    "description": "Высота картинки под кадром."
   },
   "popupShowViews": {
     "message": "Показывать переключатель «до / после / разница»"
@@ -224,6 +246,18 @@
   "siteResult": {
     "message": "Разница"
   },
+  "siteTune": {
+    "message": "Настройка сравнения",
+    "description": "Заголовок блока настроек на отдельной странице."
+  },
+  "siteColorsHint": {
+    "message": "Красное теряется на красном интерфейсе. Здесь цвет применяется сразу.",
+    "description": "Подсказка к цветам на отдельной странице: «со следующей загрузки» тут не к месту."
+  },
+  "siteLanguageHint": {
+    "message": "Эта страница и панель. Применяется сразу — картинки на месте.",
+    "description": "Подсказка к выбору языка на отдельной странице."
+  },
   "popupSettings": {
     "message": "Настройки"
   },
@@ -280,7 +314,7 @@
     "description": "Подсказка на холсте: как пользоваться увеличением."
   },
   "zoomReset": {
-    "message": "увеличение $level$ — сброс",
+    "message": "увеличение $level$",
     "placeholders": {
       "level": {
         "content": "$1"
@@ -299,6 +333,10 @@
       }
     },
     "description": "Подпись переходов между местами изменений."
+  },
+  "clusterAll": {
+    "message": "все",
+    "description": "Переходы по местам: показаны все места сразу."
   },
   "clusterPrev": {
     "message": "предыдущее изменение",
@@ -386,5 +424,32 @@
   },
   "optionsDirectionHint": {
     "message": "Первым цветом отмечено то, что потемнело, вторым — то, что посветлело."
+  },
+  "rowsShifted": {
+    "message": "строк $rows$",
+    "placeholders": {
+      "rows": {
+        "content": "$1"
+      }
+    },
+    "description": "Сдвиг строк: «строк +60 −60»."
+  },
+  "rowNew": {
+    "message": "новая строка"
+  },
+  "optionsBeta": {
+    "message": "Бета"
+  },
+  "optionsBetaOn": {
+    "message": "сшивать сдвинутые строки и не считать край"
+  },
+  "optionsBetaHint": {
+    "message": "Добавленный наверху элемент перестаёт красить весь кадр, а полоса, которой у одной из версий нет, не идёт в счёт. Обе поправки меняют число в подписи; на однообразном содержимом сшивание к тому же садится мимо."
+  },
+  "stitchOn": {
+    "message": "сшивать сдвинутые строки"
+  },
+  "stitchOff": {
+    "message": "сравнивать как есть"
   }
 }

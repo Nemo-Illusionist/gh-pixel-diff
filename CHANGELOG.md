@@ -4,6 +4,81 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.17.2](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.17.1...v0.17.2) (2026-09-28)
+
+
+### Bug Fixes
+
+* cropping stays inside the smaller version, and the popup keeps its width ([#77](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/77)) ([7ed5801](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/7ed580102296dd4460edf65f588fde1acb854a6a))
+
+## [0.17.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.17.0...v0.17.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* a smaller version is shown at its own size ([#75](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/75)) ([abf10a4](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/abf10a405ff54145bb4796b8c4cd764215899a45))
+
+## [0.17.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.16.1...v0.17.0) (2026-09-27)
+
+
+### Features
+
+* the add-on is offered to Firefox for Android, and the tests run in Gecko ([#74](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/74)) ([5866751](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/586675104faea0b428d5f7920a5a8e78f2ab4924))
+
+
+### Documentation
+
+* shots retaken after 0.16.1 ([#72](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/72)) ([626c32c](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/626c32cde70ed050f5cf87ac2dc3f5225abbcea5))
+
+## [0.16.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.16.0...v0.16.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* the bottom rows no longer collide on a narrow screen ([#70](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/70)) ([a4df991](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/a4df991ccd8073876358f19dcf628600f2d2d04c))
+
+
+### Documentation
+
+* popup shots show 0.16.0 ([#68](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/68)) ([9187667](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/9187667efaba1a1008de5a579f4b18caa6b013c9))
+
+## [0.16.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.15.0...v0.16.0) (2026-09-25)
+
+
+### Features
+
+* before and after dressed like GitHub's own 2-up ([#65](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/65)) ([0f0cfb1](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/0f0cfb1325357d7176f74dc0f880895ea52123e8))
+* three frames stack on a narrow screen ([#67](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/67)) ([a7b20e5](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/a7b20e5b49ab68d44ee49ca5eb4c0cdea5092da8))
+
+## [0.15.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.14.0...v0.15.0) (2026-09-24)
+
+
+### Features
+
+* the standalone page gets everything the extension has ([#62](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/62)) ([15d83be](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/15d83bed172c43cf4360ab7dcf84d82b88957d19))
+
+
+### Bug Fixes
+
+* the settings page was unreadable on a phone ([#64](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/64)) ([9e28c63](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/9e28c63a62aed9beccf726523ae7db74a4fbaf42))
+
+## [0.14.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.13.1...v0.14.0) (2026-09-17)
+
+
+### Features
+
+* stitch shifted rows before comparing ([#57](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/57)) ([6199c9e](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/6199c9e66ccb5451a80516e279f39aa3ee37e449))
+
+
+### Bug Fixes
+
+* stitching and the size strip go under one beta switch ([#60](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/60)) ([31546f9](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/31546f953538340ba3b2d3eaebd076fb4b704e8f))
+
+
+### Refactors
+
+* facts in the caption, hands in the row below ([#61](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/61)) ([21f0969](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/21f09699ce0f2d018ee37c1945d039ef2237b604))
+
 ## [0.13.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.13.0...v0.13.1) (2026-09-17)
 
 

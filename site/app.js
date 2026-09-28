@@ -6,8 +6,8 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, holdStage, saveCanvas,
-    zoomLabel } = global.GhPixelDiffRender;
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, frameSize, holdStage, saveCanvas,
+    zoomLabel, createMenu, joinCanvases, twoWayLabel } = global.GhPixelDiffRender;
   const { t, plural, locale } = global.GhPixelDiffI18n;
 
   const FRAMES = {
@@ -29,15 +29,52 @@
     return node;
   };
 
-  for (const node of document.querySelectorAll('[data-i18n]')) {
-    node.textContent = t(node.dataset.i18n);
+  /**
+   * Настройки страницы — в localStorage, а не в хранилище расширения: его
+   * здесь нет. Отказ хранилища не должен уносить с собой страницу, поэтому
+   * каждое обращение обёрнуто: в приватном окне чтение и запись бросают.
+   */
+  const settings = {
+    read(key, fallback = null) {
+      try {
+        const stored = global.localStorage?.getItem(key);
+        return stored === null || stored === undefined ? fallback : JSON.parse(stored);
+      } catch {
+        return fallback;
+      }
+    },
+    write(key, value) {
+      try {
+        global.localStorage?.setItem(key, JSON.stringify(value));
+      } catch {
+        // Не сохранилось — выбор всё равно действует до конца этого визита.
+      }
+    },
+  };
+
+  const THRESHOLD_KEY = 'ghpd:threshold';
+  const OUTLINE_KEY = 'ghpd:outline';
+  const FRAME_KEY = 'ghpd:frame';
+  const COLORS_KEY = 'ghpd:colors';
+  const BETA_KEY = 'ghpd:beta';
+  const VIEWS_KEY = 'ghpd:showViews';
+
+  /** Надписи ставим отсюда: при смене языка их придётся переставить заново. */
+  function label() {
+    for (const node of document.querySelectorAll('[data-i18n]')) {
+      node.textContent = t(node.dataset.i18n);
+    }
+    document.documentElement.lang = global.__GHPD_LOCALE ?? 'en';
+    document.title = `${t('siteTitle')} — ${t('modeName')}`;
   }
-  document.documentElement.lang = global.__GHPD_LOCALE ?? 'en';
-  document.title = `${t('siteTitle')} — ${t('modeName')}`;
+
+  label();
 
   const panel = document.querySelector('#panel');
   const stage = document.querySelector('.panel-frame');
   const canvas = document.querySelector('#canvas');
+  const plate = document.querySelector('#plate');
+  const plateName = document.querySelector('#plate-name');
   const triple = document.querySelector('#triple');
   const meta = document.querySelector('#meta');
   const failure = document.querySelector('#failure');
@@ -46,6 +83,12 @@
 
   slider.setAttribute('aria-label', t('thresholdLabel'));
   slider.title = t('thresholdHint');
+  // Порог помнится между парами. Проверяем границы: в хранилище может лежать
+  // что угодно, а Number(null) — это ноль, то есть самый левый край.
+  const savedThreshold = Number(settings.read(THRESHOLD_KEY));
+  if (Number.isFinite(savedThreshold) && savedThreshold >= 0 && savedThreshold <= Number(slider.max)) {
+    slider.value = String(savedThreshold);
+  }
 
   // Холст с кадром целиком — один на страницу: заводить его заново на каждую
   // отрисовку значит тратить десятки мегабайт при каждом движении ползунка.
@@ -55,9 +98,15 @@
   const files = { before: null, after: null };
   let session = null;
   let result = null;
-  let shownFrame = 'diff';
+  // Порог, рамка и выбранный кадр помнятся между парами — как в расширении:
+  // на десяти картинках подряд незачем настраивать одно и то же заново.
+  let shownFrame = FRAMES[settings.read(FRAME_KEY)] ? settings.read(FRAME_KEY) : 'diff';
   let cropped = true;
-  let outline = true;
+  let outline = settings.read(OUTLINE_KEY, true) !== false;
+  // Цвета разницы и бета — те же, что в настройках расширения: по умолчанию
+  // один красный, направление и сшивание включаются руками.
+  const colors = { ...global.GhPixelDiff.COLORS, ...(settings.read(COLORS_KEY) ?? {}) };
+  let beta = settings.read(BETA_KEY, false) === true;
 
   const cropToggle = el('button', 'ghpd-crop-toggle');
   const outlineToggle = el('button', 'ghpd-outline-toggle');
@@ -65,6 +114,9 @@
   cropToggle.type = 'button';
   outlineToggle.type = 'button';
   zoomReset.type = 'button';
+  // Подписи у кнопки две, а ширина одна — по большей: иначе «весь кадр» и
+  // «фрагмент» двигали бы всё, что правее, от нажатия к нажатию.
+  let showCropLabel = twoWayLabel(cropToggle, t('showFullFrame'), t('showChangesOnly'));
   // Переходы между местами изменений: правки часто в разных концах кадра, и
   // обрезка по всем сразу — это опять весь кадр.
   const save = el('button', 'ghpd-save', t('saveFrame'));
@@ -76,6 +128,27 @@
     button.title = t(key);
     button.setAttribute('aria-label', t(key));
   }
+  // Переходы собраны в одну группу и живут в строке управления, а не в
+  // подписи: подпись пересобирается на каждый пересчёт, и кнопки в ней
+  // переезжали с места на место вслед за длиной числа.
+  const nav = el('div', 'ghpd-nav');
+  const navLabel = el('span', 'ghpd-nav-label');
+  nav.append(prevChange, navLabel, nextChange);
+
+  // Порог, рамка и сохранение — под «⋯»: нужны они не каждый раз, а место под
+  // кадром занимали всегда. Внизу остаётся то, ради чего страницу открывают:
+  // какой кадр показать и куда в нём смотреть.
+  const menu = createMenu(t('moreControls'));
+  const controls = document.querySelector('#controls');
+  controls.hidden = false;
+  // Сшивание сдвинутых строк — под рукой, а не только в настройке ниже: оно
+  // помогает не всегда, и понять это можно лишь на конкретной паре, включив
+  // и выключив его тут же.
+  const betaToggle = el('button', 'ghpd-beta-toggle');
+  betaToggle.type = 'button';
+
+  menu.panel.append(controls, outlineToggle, betaToggle, save);
+  document.querySelector('#bar').append(cropToggle, zoomReset, nav, menu.element);
 
   // Увеличение живёт ровно столько, сколько показанная пара: это не
   // настройка, а взгляд на конкретное место конкретного кадра.
@@ -112,8 +185,22 @@
     zoom.lookAt(result.clusters[focusIndex]);
     render();
   };
+  // Переключатель в меню и галочка в настройке — об одном и том же, и
+  // ходить они должны вместе.
+  const switchBeta = (on) => {
+    beta = on;
+    tune.beta.checked = on;
+    settings.write(BETA_KEY, on);
+    if (result) compare();
+  };
+
+  betaToggle.addEventListener('click', () => switchBeta(!beta));
+
   save.addEventListener('click', () => {
-    saveCanvas(canvas, frameFileName(files.after?.name, shownFrame), () => {
+    // В «3-up» показанного холста нет — есть три; в файл уходит их склейка.
+    const shown =
+      shownFrame === 'triple' ? joinCanvases(tripleCanvases.map(([, node]) => node)) : canvas;
+    saveCanvas(shown, frameFileName(files.after?.name, shownFrame), () => {
       meta.append(` · ${t('saveFailed')}`);
     });
   });
@@ -121,10 +208,18 @@
   prevChange.addEventListener('click', () => stepChange(-1));
   nextChange.addEventListener('click', () => stepChange(1));
 
+  const tripleLabels = new Map();
+  const triplePlates = new Map();
   const tripleCanvases = ['before', 'after', 'diff'].map((name) => {
+    // Имя сверху, размер снизу — как в 2-up у GitHub.
     const item = el('div', 'ghpd-triple-item');
     const target = el('canvas', 'ghpd-canvas');
-    item.append(target, el('div', 'ghpd-triple-label', t(FRAMES[name])));
+    const caption = el('div', 'ghpd-plate-label', t(FRAMES[name]));
+    const itemSize = el('div', 'ghpd-triple-size');
+    if (name === 'before' || name === 'after') target.dataset.side = name;
+    tripleLabels.set(name, caption);
+    triplePlates.set(name, { name: caption, size: itemSize });
+    item.append(caption, target, itemSize);
     triple.append(item);
     return [name, target];
   });
@@ -136,6 +231,7 @@
     button.setAttribute('aria-pressed', String(name === shownFrame));
     button.addEventListener('click', () => {
       shownFrame = name;
+      settings.write(FRAME_KEY, name);
       for (const [other, node] of viewButtons) {
         node.classList.toggle('selected', other === name);
         node.setAttribute('aria-pressed', String(other === name));
@@ -159,56 +255,34 @@
 
     let box;
     if (single) {
-      box = drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus, colors: global.GhPixelDiff.COLORS });
+      box = drawCrop(canvas, full, result, { frame: shownFrame, cropped, outline, zoom, focus, colors });
       canvas.classList.toggle('ghpd-zoomed', zoom.scale > 1);
     } else {
       for (const [name, target] of tripleCanvases) {
-        box = drawCrop(target, full, result, { frame: name, cropped, outline, focus, colors: global.GhPixelDiff.COLORS });
+        box = drawCrop(target, full, result, { frame: name, cropped, outline, focus, colors });
       }
     }
 
-    holdStage(stage, single ? canvas : triple);
+    holdStage(stage, single ? plate : triple, canvas);
 
     const percent = result.ratio * 100;
     // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
     const shown = result.changed === 0 ? '0' : percent >= 0.01 ? percent.toFixed(2) : '<0.01';
 
+    // Подпись — только факты: сколько изменилось и на чём это считано. Всё,
+    // чем панель управляют, живёт строкой ниже и стоит на месте.
     meta.replaceChildren(
       el('strong', null, plural('pixels', result.changed)),
       ` · ${t('shareOfFrame', shown)}`,
     );
-    // Цвет теперь значит направление правки, и сказать об этом надо там
-    // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
-    if (clusters.length > 1) {
-      meta.append(
-        ' · ',
-        prevChange,
-        focusIndex < 0
-          ? ` ${plural('places', clusters.length)} `
-          : ` ${t('clusterPosition', focusIndex + 1, clusters.length)} `,
-        nextChange,
-      );
-    }
-    // Увеличение видно по кадру, но не видно, насколько оно велико и как
-    // вернуться обратно, — поэтому говорим об этом в подписи.
-    if (single && zoom.scale > 1) {
-      zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
-      meta.append(' · ', zoomReset);
-    }
-    if (result.bounds) {
-      cropToggle.textContent = cropped
-        ? t('showFullFrame', box.width, box.height)
-        : t('showChangesOnly');
-      meta.append(' · ', cropToggle);
-      // Рамка есть только в полном кадре — там же и переключатель.
-      if (!cropped) {
-        outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-        meta.append(' · ', outlineToggle);
-      }
-    }
-    // Сохранять есть что только в одиночном кадре: три кадра рядом лежат на
-    // трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
-    if (single) meta.append(' · ', save);
+    // Сдвиг называем словами: «весь кадр красный» и «вставлено 24 строки» —
+    // разные ответы, даже когда картинка одна и та же.
+    const shift = [
+      result.inserted ? `+${result.inserted.toLocaleString(locale())}` : '',
+      result.removed ? `−${result.removed.toLocaleString(locale())}` : '',
+    ].filter(Boolean).join(' ');
+    if (clusters.length > 1) meta.append(` · ${plural('places', clusters.length)}`);
+    if (shift) meta.append(` · ${t('rowsShifted', shift)}`);
     if (result.scale > 1) meta.append(` · ${t('rasterized', result.width, result.height)}`);
     if (result.sizeChanged) {
       meta.append(
@@ -219,6 +293,95 @@
         )}`,
       );
     }
+
+    // Кадр одет по образцу GitHub: имя версии над кадром, «до» в красной
+    // рамке, «после» в зелёной.
+    const side = single && (shownFrame === 'before' || shownFrame === 'after')
+      ? shownFrame
+      : null;
+    if (side) canvas.dataset.side = side;
+    else delete canvas.dataset.side;
+    plateName.className = `ghpd-plate-label${side ? ` ghpd-side-${side}` : ''}`;
+    // В тройке пластина ни к чему: там у каждого кадра своё имя.
+    plate.hidden = !single;
+    // Имя стоит только над «до» и «после» — как у GitHub, где подписаны
+    // ровно две версии. Над разницей и наложением оно повторило бы кнопку
+    // под кадром, а строку эту кадр оплачивает своей высотой.
+    plate.classList.toggle('ghpd-plate-named', Boolean(side));
+    plateName.hidden = !side;
+    plateName.textContent = side ? t(FRAMES[shownFrame]) : '';
+
+    // Размер картинки — снизу, как у GitHub, но в строке фактов, которая и
+    // так есть: своя строка отняла бы у кадра ещё двадцать пикселей ради
+    // того, что бывает только у двух кадров из пяти.
+    //
+    // Размер натуральный, а не показанный: фрагмент и увеличение меняют то,
+    // что на экране, но не то, какого размера файл.
+    if (side) {
+      const own = side === 'after' ? result.after : result.before;
+      const other = side === 'after' ? result.before : result.after;
+      meta.append(' · ');
+      meta.append(
+        ...frameSize({
+          width: own.naturalWidth,
+          height: own.naturalHeight,
+          other: other && { width: other.naturalWidth, height: other.naturalHeight },
+          units: { width: t('frameWidth'), height: t('frameHeight') },
+        }),
+      );
+      for (const node of meta.querySelectorAll('.ghpd-size-changed')) {
+        node.classList.add(`ghpd-side-${side}`);
+      }
+    }
+
+    // Три кадра рядом: имя сверху, размер снизу — ровно как у GitHub.
+    for (const [name, parts] of triplePlates) {
+      parts.name.className = `ghpd-plate-label${
+        name === 'diff' ? '' : ` ghpd-side-${name}`
+      }`;
+      parts.name.textContent = t(FRAMES[name]);
+      parts.size.replaceChildren();
+      if (name === 'diff') continue;
+      const mine = name === 'after' ? result.after : result.before;
+      const opposite = name === 'after' ? result.before : result.after;
+      parts.size.append(
+        ...frameSize({
+          width: mine.naturalWidth,
+          height: mine.naturalHeight,
+          other: opposite && { width: opposite.naturalWidth, height: opposite.naturalHeight },
+          units: { width: t('frameWidth'), height: t('frameHeight') },
+        }),
+      );
+    }
+
+    // «все» или «2/5»: короткая подпись стоит на месте, а длинная фраза
+    // ездила бы вслед за своей длиной и таскала бы за собой «⋯».
+    nav.hidden = clusters.length < 2;
+    navLabel.textContent =
+      focusIndex < 0 ? t('clusterAll') : `${focusIndex + 1}/${clusters.length}`;
+    navLabel.title =
+      focusIndex < 0
+        ? plural('places', clusters.length)
+        : t('clusterPosition', focusIndex + 1, clusters.length);
+    cropToggle.hidden = !result.bounds;
+    if (result.bounds) {
+      showCropLabel(cropped);
+      cropToggle.title = t('cropSize', box.width, box.height);
+    }
+    // Увеличение видно по кадру, но не видно, насколько оно велико и как
+    // вернуться обратно, — поэтому кнопка сброса называет его вслух.
+    zoomReset.hidden = !single || zoom.scale <= 1;
+    if (!zoomReset.hidden) zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
+    // Состав меню постоянный: то, что сейчас не к месту, гаснет, а не
+    // пропадает. Иначе в кадре «3-up» под «⋯» оставался один ползунок, и
+    // меню выглядело сломанным.
+    // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
+    outlineToggle.disabled = cropped || !result.bounds;
+    outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
+    betaToggle.textContent = beta ? t('stitchOff') : t('stitchOn');
+    // Сохранять есть что только в одиночном кадре: три кадра рядом лежат на
+    // трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
+    // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.
   }
 
   cropToggle.addEventListener('click', () => {
@@ -228,8 +391,129 @@
 
   outlineToggle.addEventListener('click', () => {
     outline = !outline;
+    settings.write(OUTLINE_KEY, outline);
     render();
   });
+
+  // Настройка сравнения: язык, переключатель кадров, цвета и бета — всё то
+  // же, что на странице настроек расширения. Разница одна: хранилища
+  // расширения здесь нет, и выбор применяется сразу.
+  const tune = {
+    language: document.querySelector('#language'),
+    views: document.querySelector('#show-views'),
+    changed: document.querySelector('#color-changed'),
+    lighter: document.querySelector('#color-lighter'),
+    direction: document.querySelector('#direction'),
+    directionColors: document.querySelector('#direction-colors'),
+    reset: document.querySelector('#colors-reset'),
+    beta: document.querySelector('#beta'),
+  };
+
+  /** Список языков — из самих локалей: написанный руками разойдётся с ними. */
+  function fillLanguages() {
+    const { languages, chosen } = global.GhPixelDiffLocale;
+    const auto = el('option', null, t('optionsLanguageAuto'));
+    auto.value = '';
+    tune.language.replaceChildren(auto);
+    for (const { code, name } of languages) {
+      const option = el('option', null, name);
+      option.value = code;
+      tune.language.append(option);
+    }
+    tune.language.value = chosen();
+  }
+
+  /**
+   * Переставляет надписи после смены языка.
+   *
+   * Перезагрузка была бы дешевле, но унесла бы с собой обе картинки: они
+   * лежат в памяти, а не в адресе. Поэтому всё, что подписано один раз при
+   * запуске, подписывается здесь заново; остальное скажет render().
+   */
+  function relabel() {
+    label();
+    fillLanguages();
+    slider.setAttribute('aria-label', t('thresholdLabel'));
+    slider.title = t('thresholdHint');
+    canvas.title = t('zoomHint');
+    save.textContent = t('saveFrame');
+    showCropLabel = twoWayLabel(cropToggle, t('showFullFrame'), t('showChangesOnly'));
+    const more = document.querySelector('.ghpd-menu-button');
+    more.title = t('moreControls');
+    more.setAttribute('aria-label', t('moreControls'));
+    for (const [name, node] of viewButtons) node.textContent = t(FRAMES[name]);
+    for (const [name, node] of tripleLabels) node.textContent = t(FRAMES[name]);
+    for (const [button, key] of [[prevChange, 'clusterPrev'], [nextChange, 'clusterNext']]) {
+      button.title = t(key);
+      button.setAttribute('aria-label', t(key));
+    }
+    if (result) render();
+  }
+
+  fillLanguages();
+  tune.language.addEventListener('change', () => {
+    global.GhPixelDiffLocale.choose(tune.language.value);
+    relabel();
+  });
+
+  /**
+   * Показывать ли переключатель кадров.
+   * Спрятанный переключатель не должен запирать в том кадре, который был
+   * выбран до этого: из «3-up» иначе не выйти, и сохранение в нём погашено.
+   */
+  function applyViews(visible) {
+    views.hidden = !visible;
+    if (!visible && shownFrame !== 'diff') {
+      shownFrame = 'diff';
+      settings.write(FRAME_KEY, shownFrame);
+      for (const [name, node] of viewButtons) {
+        node.classList.toggle('selected', name === shownFrame);
+        node.setAttribute('aria-pressed', String(name === shownFrame));
+      }
+      if (result) render();
+    }
+  }
+
+  tune.views.checked = settings.read(VIEWS_KEY, true) !== false;
+  applyViews(tune.views.checked);
+  tune.views.addEventListener('change', () => {
+    settings.write(VIEWS_KEY, tune.views.checked);
+    applyViews(tune.views.checked);
+  });
+
+  function showColors() {
+    tune.changed.value = colors.changed;
+    tune.lighter.value = colors.lighter;
+    tune.direction.checked = Boolean(colors.direction);
+    tune.directionColors.hidden = !colors.direction;
+  }
+
+  /** Цвет запечён в маску, поэтому смена цвета — это пересчёт, а не отрисовка. */
+  function saveColors() {
+    colors.changed = tune.changed.value;
+    colors.lighter = tune.lighter.value;
+    colors.direction = tune.direction.checked;
+    tune.directionColors.hidden = !colors.direction;
+    settings.write(COLORS_KEY, colors);
+    if (result) compare();
+  }
+
+  showColors();
+  for (const input of [tune.changed, tune.lighter]) {
+    // input[type=color] шлёт `input` на каждое движение в палитре и `change`
+    // на закрытии: считаем по второму, иначе пересчёт идёт сотню раз.
+    input.addEventListener('change', saveColors);
+  }
+  tune.direction.addEventListener('change', saveColors);
+  tune.reset.addEventListener('click', () => {
+    Object.assign(colors, global.GhPixelDiff.COLORS);
+    showColors();
+    settings.write(COLORS_KEY, colors);
+    if (result) compare();
+  });
+
+  tune.beta.checked = beta;
+  tune.beta.addEventListener('change', () => switchBeta(tune.beta.checked));
 
   /** Поток здоровается сам: молчание — повод считать в общем потоке. */
   function greet(worker) {
@@ -303,6 +587,7 @@
         height: prepared.height,
         scale: prepared.scale,
         sizeChanged: prepared.sizeChanged,
+        common: prepared.common,
         before: prepared.dataBefore.data.buffer,
         after: prepared.dataAfter.data.buffer,
       },
@@ -331,10 +616,12 @@
         session = await start();
       }
       const computed = session.ask
-        ? await session.ask({ type: 'diff', threshold })
-        : diffPrepared(session.prepared, { threshold });
+        ? await session.ask({ type: 'diff', threshold, colors, beta })
+        : diffPrepared(session.prepared, { threshold, colors, beta });
 
       result = { ...computed, before: session.prepared.before, after: session.prepared.after };
+      // Из потока карта строк приходит буфером — собираем обратно.
+      if (computed.rows instanceof ArrayBuffer) result.rows = new Int32Array(computed.rows);
       // Из потока разница приходит буфером — обратно в ImageData её собираем здесь.
       if (computed.mask instanceof ArrayBuffer) {
         result.mask = new ImageData(
@@ -355,6 +642,7 @@
 
   let debounce = null;
   slider.addEventListener('input', () => {
+    settings.write(THRESHOLD_KEY, Number(slider.value));
     clearTimeout(debounce);
     debounce = setTimeout(compare, SLIDER_DELAY);
   });

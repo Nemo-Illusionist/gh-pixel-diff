@@ -13,8 +13,8 @@
   'use strict';
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
-  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, holdStage, saveCanvas,
-    zoomLabel } = global.GhPixelDiffRender;
+  const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, frameSize, holdStage, saveCanvas,
+    zoomLabel, createMenu, joinCanvases, twoWayLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
   const { t, plural, locale } = global.GhPixelDiffI18n;
   const api = global.browser ?? global.chrome;
@@ -95,13 +95,16 @@
 
   /** Цвета разницы: свои, если их поменяли в настройках. */
   const colors = { ...global.GhPixelDiff.COLORS };
+  /** Сшивать ли сдвинутые строки — бета, по умолчанию выключено. */
+  const beta = { on: false };
 
   async function readColors() {
     try {
-      const stored = await api?.storage?.sync?.get({ colors: null });
+      const stored = await api?.storage?.sync?.get({ colors: null, beta: false });
       if (stored?.colors) Object.assign(colors, stored.colors);
+      beta.on = stored?.beta === true;
     } catch {
-      // Хранилища нет — остаётся обычная пара.
+      // Хранилища нет — остаётся обычная пара и сравнение без сшивания.
     }
   }
 
@@ -129,10 +132,16 @@
     const full = document.createElement('canvas');
 
     triple.hidden = true;
+    const triplePlates = new Map();
     const tripleCanvases = ['before', 'after', 'diff'].map((name) => {
+      // Имя сверху, размер снизу — как в 2-up у GitHub.
       const item = el('div', 'ghpd-triple-item');
       const target = el('canvas', 'ghpd-canvas');
-      item.append(target, el('div', 'ghpd-triple-label', t(FRAMES[name])));
+      const itemName = el('div', 'ghpd-plate-label', t(FRAMES[name]));
+      const itemSize = el('div', 'ghpd-triple-size');
+      if (name === 'before' || name === 'after') target.dataset.side = name;
+      item.append(itemName, target, itemSize);
+      triplePlates.set(name, { name: itemName, size: itemSize });
       triple.append(item);
       return [name, target];
     });
@@ -143,6 +152,9 @@
     cropToggle.type = 'button';
     outlineToggle.type = 'button';
     zoomReset.type = 'button';
+    // Подписи у кнопки две, а ширина одна — по большей: иначе «весь кадр» и
+    // «фрагмент» двигали бы всё, что правее, от нажатия к нажатию.
+    const showCropLabel = twoWayLabel(cropToggle, t('showFullFrame'), t('showChangesOnly'));
     // Переходы между местами изменений: правки часто в разных концах кадра,
     // и обрезка по всем сразу — это опять весь кадр.
     const save = el('button', 'ghpd-save', t('saveFrame'));
@@ -154,6 +166,12 @@
       button.title = t(key);
       button.setAttribute('aria-label', t(key));
     }
+    // Переходы собраны в одну группу и живут в строке управления, а не в
+    // подписи: подпись пересобирается на каждый пересчёт, и кнопки в ней
+    // переезжали с места на место вслед за длиной числа.
+    const nav = el('div', 'ghpd-nav');
+    const navLabel = el('span', 'ghpd-nav-label');
+    nav.append(prevChange, navLabel, nextChange);
 
     const controls = el('div', 'ghpd-controls');
     const slider = el('input', 'ghpd-slider');
@@ -173,18 +191,44 @@
     const views = el('div', 'ghpd-views');
     views.hidden = !showViews;
 
+    // Порог, рамка и сохранение — под «⋯»: нужны они не каждый раз, а место
+    // под кадром занимали всегда. Внизу остаётся то, ради чего панель
+    // открывают: какой кадр показать и куда в нём смотреть.
+    // Сшивание сдвинутых строк — тут же: оно помогает не всегда, и понять
+    // это можно лишь на конкретной паре, включив и выключив его на месте.
+    const betaToggle = el('button', 'ghpd-beta-toggle');
+    betaToggle.type = 'button';
+
+    const menu = createMenu(t('moreControls'));
+    menu.panel.append(controls, outlineToggle, betaToggle, save);
+
+    // Строка управления: состав постоянный, меняется только видимость —
+    // кнопки не переезжают с места на место.
+    const bar = el('div', 'ghpd-bar');
+    bar.append(views, cropToggle, zoomReset, nav, menu.element);
+
     // Кадр живёт в сцене: её размер не зависит от того, что в ней показано,
-    // и подпись с ползунком не ездят вслед за высотой кадра.
+    // и подпись со строкой управления не ездят вслед за высотой кадра.
+    // Имя версии — над кадром, как в 2-up у самого GitHub. Строка занята
+    // всегда: у «до» и «после» именем в цвете версии, у разницы, наложения
+    // и тройки — просто именем кадра. Пустой она не бывает, значит и
+    // высоту ни у кого не отнимает зря.
+    const plate = el('div', 'ghpd-plate');
+    const plateName = el('span', 'ghpd-plate-label');
+    plate.append(plateName, canvas);
+
     const stage = el('div', 'ghpd-stage');
-    stage.append(canvas, triple);
-    shell.append(stage, meta, probe, controls, views);
+    stage.append(plate, triple);
+    shell.append(stage, meta, probe, bar);
     panel.append(shell);
 
     let result = null;
     let session = null;
     let starting = null;
     let cropped = true;
-    let shownFrame = FRAMES[readSetting(FRAME_KEY)] ? readSetting(FRAME_KEY) : 'diff';
+    // Спрятанный переключатель не должен запирать в том кадре, который был
+    // выбран до него: из «3-up» иначе не выйти, а сохранение в нём погашено.
+    let shownFrame = FRAMES[readSetting(FRAME_KEY)] && showViews ? readSetting(FRAME_KEY) : 'diff';
     let outline = readSetting(OUTLINE_KEY) !== 'off';
     // Увеличение, в отличие от порога и рамки, не запоминается: это не
     // настройка, а взгляд на конкретное место конкретного кадра.
@@ -219,9 +263,18 @@
       zoom.lookAt(result.clusters[focusIndex]);
       render();
     };
+    betaToggle.addEventListener('click', () => {
+      beta.on = !beta.on;
+      api?.storage?.sync?.set?.({ beta: beta.on });
+      compare(Number(slider.value));
+    });
+
     save.addEventListener('click', () => {
+      // В «3-up» показанного холста нет — есть три; в файл уходит их склейка.
+      const shown =
+        shownFrame === 'triple' ? joinCanvases(tripleCanvases.map(([, node]) => node)) : canvas;
       // Имя берём из адреса картинки: у GitLab это путь файла в репозитории.
-      saveCanvas(canvas, frameFileName(pair.after, shownFrame), () => {
+      saveCanvas(shown, frameFileName(pair.after, shownFrame), () => {
         meta.append(` · ${t('saveFailed')}`);
       });
     });
@@ -268,48 +321,26 @@
         }
       }
 
-      holdStage(stage, single ? canvas : triple);
+      holdStage(stage, single ? plate : triple, canvas);
 
       const percent = result.ratio * 100;
       // «Отличий нет» и «отличия есть, но крошечные» — разные ответы.
       const shown = result.changed === 0 ? '0' : percent >= 0.01 ? percent.toFixed(2) : '<0.01';
 
+      // Подпись — только факты: сколько изменилось и на чём это считано.
+      // Всё, чем панель управляют, живёт строкой ниже и стоит на месте.
       meta.replaceChildren(
         el('strong', null, plural('pixels', result.changed)),
         ` · ${t('shareOfFrame', shown)}`,
       );
-      // Цвет теперь значит направление правки, и сказать об этом надо там
-      // же, где его видно. Молчаливая легенда — это загадка, а не подсказка.
-      if (clusters.length > 1) {
-        meta.append(
-          ' · ',
-          prevChange,
-          focusIndex < 0
-            ? ` ${plural('places', clusters.length)} `
-            : ` ${t('clusterPosition', focusIndex + 1, clusters.length)} `,
-          nextChange,
-        );
-      }
-      // Увеличение видно по кадру, но не видно, насколько оно велико и как
-      // вернуться обратно, — поэтому говорим об этом в подписи.
-      if (single && zoom.scale > 1) {
-        zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
-        meta.append(' · ', zoomReset);
-      }
-      if (result.bounds) {
-        cropToggle.textContent = cropped
-          ? t('showFullFrame', box.width, box.height)
-          : t('showChangesOnly');
-        meta.append(' · ', cropToggle);
-        // Рамка есть только в полном кадре — там же и переключатель.
-        if (!cropped) {
-          outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-          meta.append(' · ', outlineToggle);
-        }
-      }
-      // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
-      // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
-      if (single) meta.append(' · ', save);
+      // Сдвиг называем словами: «весь кадр красный» и «вставлено 24 строки» —
+      // разные ответы, даже когда картинка одна и та же.
+      const shift = [
+        result.inserted ? `+${result.inserted.toLocaleString(locale())}` : '',
+        result.removed ? `−${result.removed.toLocaleString(locale())}` : '',
+      ].filter(Boolean).join(' ');
+      if (clusters.length > 1) meta.append(` · ${plural('places', clusters.length)}`);
+      if (shift) meta.append(` · ${t('rowsShifted', shift)}`);
       if (result.scale > 1) meta.append(` · ${t('rasterized', result.width, result.height)}`);
       if (result.sizeChanged) {
         meta.append(
@@ -320,6 +351,95 @@
           )}`,
         );
       }
+
+      // Кадр одет по образцу GitHub: имя версии над кадром, «до» в красной
+      // рамке, «после» в зелёной.
+      const side = single && (shownFrame === 'before' || shownFrame === 'after')
+        ? shownFrame
+        : null;
+      if (side) canvas.dataset.side = side;
+      else delete canvas.dataset.side;
+      plateName.className = `ghpd-plate-label${side ? ` ghpd-side-${side}` : ''}`;
+      // В тройке пластина ни к чему: там у каждого кадра своё имя.
+      plate.hidden = !single;
+      // Имя стоит только над «до» и «после» — как у GitHub, где подписаны
+      // ровно две версии. Над разницей и наложением оно повторило бы кнопку
+      // под кадром, а строку эту кадр оплачивает своей высотой.
+      plate.classList.toggle('ghpd-plate-named', Boolean(side));
+      plateName.hidden = !side;
+      plateName.textContent = side ? t(FRAMES[shownFrame]) : '';
+
+      // Размер картинки — снизу, как у GitHub, но в строке фактов, которая и
+      // так есть: своя строка отняла бы у кадра ещё двадцать пикселей ради
+      // того, что бывает только у двух кадров из пяти.
+      //
+      // Размер натуральный, а не показанный: фрагмент и увеличение меняют то,
+      // что на экране, но не то, какого размера файл.
+      if (side) {
+        const own = side === 'after' ? result.after : result.before;
+        const other = side === 'after' ? result.before : result.after;
+        meta.append(' · ');
+        meta.append(
+          ...frameSize({
+            width: own.naturalWidth,
+            height: own.naturalHeight,
+            other: other && { width: other.naturalWidth, height: other.naturalHeight },
+            units: { width: t('frameWidth'), height: t('frameHeight') },
+          }),
+        );
+        for (const node of meta.querySelectorAll('.ghpd-size-changed')) {
+          node.classList.add(`ghpd-side-${side}`);
+        }
+      }
+
+      // Три кадра рядом: имя сверху, размер снизу — ровно как у GitHub.
+      for (const [name, parts] of triplePlates) {
+        parts.name.className = `ghpd-plate-label${
+          name === 'diff' ? '' : ` ghpd-side-${name}`
+        }`;
+        parts.name.textContent = t(FRAMES[name]);
+        parts.size.replaceChildren();
+        if (name === 'diff') continue;
+        const mine = name === 'after' ? result.after : result.before;
+        const opposite = name === 'after' ? result.before : result.after;
+        parts.size.append(
+          ...frameSize({
+            width: mine.naturalWidth,
+            height: mine.naturalHeight,
+            other: opposite && { width: opposite.naturalWidth, height: opposite.naturalHeight },
+            units: { width: t('frameWidth'), height: t('frameHeight') },
+          }),
+        );
+      }
+
+      // «все» или «2/5»: короткая подпись стоит на месте, а длинная фраза
+      // ездила бы вслед за своей длиной и таскала бы за собой «⋯».
+      nav.hidden = clusters.length < 2;
+      navLabel.textContent =
+        focusIndex < 0 ? t('clusterAll') : `${focusIndex + 1}/${clusters.length}`;
+      navLabel.title =
+        focusIndex < 0
+          ? plural('places', clusters.length)
+          : t('clusterPosition', focusIndex + 1, clusters.length);
+      cropToggle.hidden = !result.bounds;
+      if (result.bounds) {
+        showCropLabel(cropped);
+        cropToggle.title = t('cropSize', box.width, box.height);
+      }
+      // Увеличение видно по кадру, но не видно, насколько оно велико и как
+      // вернуться обратно, — поэтому кнопка сброса называет его вслух.
+      zoomReset.hidden = !single || zoom.scale <= 1;
+      if (!zoomReset.hidden) zoomReset.textContent = t('zoomReset', zoomLabel(zoom.scale, locale()));
+      // Состав меню постоянный: то, что сейчас не к месту, гаснет, а не
+      // пропадает. Иначе в кадре «3-up» под «⋯» оставался один ползунок, и
+      // меню выглядело сломанным.
+      // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
+      outlineToggle.disabled = cropped || !result.bounds;
+      outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
+      betaToggle.textContent = beta.on ? t('stitchOff') : t('stitchOn');
+      // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
+      // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
+      // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.
     }
 
     cropToggle.addEventListener('click', () => {
@@ -351,6 +471,7 @@
               height: prepared.height,
               scale: prepared.scale,
               sizeChanged: prepared.sizeChanged,
+              common: prepared.common,
               before: prepared.dataBefore.data.buffer,
               after: prepared.dataAfter.data.buffer,
             },
@@ -376,11 +497,13 @@
           session = await start();
         }
         const computed = session.ask
-          ? await session.ask({ type: 'diff', threshold, colors })
-          : diffPrepared(session.prepared, { threshold, colors });
+          ? await session.ask({ type: 'diff', threshold, colors, beta: beta.on })
+          : diffPrepared(session.prepared, { threshold, colors, beta: beta.on });
 
         result = { ...computed, before: session.prepared.before, after: session.prepared.after };
         // Из потока разница приходит буфером — в ImageData её собираем здесь.
+        // Из потока карта строк приходит буфером — собираем обратно.
+        if (computed.rows instanceof ArrayBuffer) result.rows = new Int32Array(computed.rows);
         if (computed.mask instanceof ArrayBuffer) {
           result.mask = new ImageData(
             new Uint8ClampedArray(computed.mask),

@@ -21,8 +21,11 @@ GitLab's, in merge requests on `gitlab.com`.
 
 **No pull request at hand?** The same comparison works on two files of your own:
 <https://nemo-illusionist.github.io/gh-pixel-diff/> — drop two images and get the
-same diff. Nothing is uploaded: the page is a static file, and the comparison
-runs in your browser.
+same diff. Everything the panel does inside a pull request the page does too:
+zoom, the changed places, the eyedropper, saving a PNG — and under *Tune the
+comparison*, the language, the colours of the difference and the beta. Nothing
+is uploaded: the page is a static file, the comparison runs in your browser, and
+the settings stay there as well.
 
 ## What it does
 
@@ -55,8 +58,10 @@ runs in your browser.
 - A before / after / diff / **overlay** / **3-up** switcher under the frame:
   any one version, all three side by side, or the difference painted straight
   onto the new version in full colour — always in the same scale and the same
-  crop, which the native 2-up and Swipe cannot do. The choice is remembered,
-  and the switcher can be turned off on the settings page.
+  crop, which the native 2-up and Swipe cannot do. On a narrow screen the three
+  stand one above the other — at the same widths where GitHub stacks its own
+  before and after. The choice is remembered, and the switcher can be turned
+  off on the settings page.
 - **A pixel inspector**: point at the frame and the line under it says which
   pixel that is and what colour it was before and after — swatches and hex
   codes. "Is that really the same grey?" no longer needs an eyedropper in
@@ -64,6 +69,25 @@ runs in your browser.
 - **Save what you see as a PNG**: the chosen frame, the crop, the zoom, the
   outlines — whatever is on screen goes into `shot.diff.png`, ready to drop into
   a comment or a ticket.
+- **Beta: stitching shifted rows, and the edge one version doesn't have.** An
+  element added at the top pushes everything below it down, and the comparison
+  then reports the whole frame as changed; a frame that got two dozen rows
+  shorter grows a solid red band at the bottom that the real edit drowns in.
+  Turn *stitch shifted rows, and do not count the edge* on in the settings and
+  rows are matched to their counterparts first — by the same trick text diffs
+  use to tell an edited line from an inserted one — while the band is marked at
+  half strength and counts neither towards the number nor towards the crop. It
+  is off by default: both change the number in the caption, and the stitching is
+  a guess besides — on flat content, an empty list or plain margins, rows are
+  indistinguishable and can be stitched any which way, and then the frame gets
+  marks where nothing changed.
+- **Before and after are dressed like GitHub's own 2-up**: the name above the
+  frame — red on one, green on the other — a border of the same colour, and the
+  image size below, with whichever of the two sizes changed picked out in
+  colour. The border colour says which version you are looking at even when the
+  frame switcher is hidden in the settings. Only those two frames pay any height
+  for the name: above the diff and the overlay there is none, where it would
+  only repeat the button.
 - Different "before" and "after" sizes don't break the comparison: frames are
   aligned by their top-left corner and the resize is reported in the caption.
 - Works in private repositories: the image addresses are read from the frame
@@ -87,6 +111,14 @@ runs in your browser.
 The overlay puts the difference straight onto the new version, in full colour:
 
 ![The difference over the new version](docs/screenshots/frame-overlay.png)
+
+Under the frame there are only two answers and the hands that go with them: a
+line of facts (how much changed, and what it was measured on) and a line of
+controls (which frame to show, and where in it to look). The threshold, the
+outline and saving live under «⋯» — they aren't needed every time, yet they
+took up room always.
+
+![Threshold, outline and saving under «⋯»](docs/screenshots/frame-menu.png)
 
 ## Installation
 
@@ -243,13 +275,15 @@ markup.
 | Target | State |
 |---|---|
 | Chrome / Chromium | Verified on a live pull request page, covered by a test |
-| Firefox | The build passes `web-ext lint` with no warnings; never run in the browser |
+| Firefox | The whole test suite runs in Gecko as well, and the build passes `web-ext lint` with no warnings; never installed from the store by hand |
+| Firefox for Android | The manifest offers the add-on to it; the panel, the popup and the settings page are laid out for a narrow screen, but nobody has held a phone with it yet |
 | Safari, macOS | The scheme compiles; enabling the extension is manual |
 | Safari, iOS | The scheme compiles, the container installs and launches in the simulator (`npm run run:ios`); enabling is manual |
 
-The panel itself is the same content script in all three browsers, so testing in
-Chromium covers both the comparison logic and the layout. What stays unknown is
-exactly the installation — it differs per browser.
+The panel itself is the same content script in all three browsers, and the tests
+load it the way a browser would rather than as a packaged extension — so they
+run in Gecko as readily as in Chromium, and both engines are checked on every
+push. What stays unknown is exactly the installation — it differs per browser.
 
 ## How it works
 
@@ -287,7 +321,8 @@ npm run screenshots  # README and store screenshots, from the live pull request
 ```
 
 On every push and pull request GitHub runs the offline tests in that same
-Playwright image and checks the Firefox build with `web-ext lint`. The live test
+Playwright image — in Chromium and in Gecko, the same tests twice — and checks
+the Firefox build with `web-ext lint`. The live test
 is a separate run — weekly and on demand: it breaks because of someone else's
 changes, not ours, and shouldn't block a pull request.
 

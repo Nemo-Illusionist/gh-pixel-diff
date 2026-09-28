@@ -1,4 +1,8 @@
 {
+  "languageName": {
+    "message": "English",
+    "description": "Имя этого языка на нём самом — для выбора языка."
+  },
   "extName": {
     "message": "GitHub Pixel Diff",
     "description": "Название расширения в браузере и в магазине."
@@ -56,7 +60,15 @@
     }
   },
   "showFullFrame": {
-    "message": "fragment $width$×$height$ — show the whole frame",
+    "message": "whole frame",
+    "description": "Panel button: show the whole frame."
+  },
+  "showChangesOnly": {
+    "message": "fragment",
+    "description": "Panel button: back to the fragment with the changes."
+  },
+  "cropSize": {
+    "message": "fragment $width$×$height$",
     "placeholders": {
       "width": {
         "content": "$1"
@@ -64,10 +76,12 @@
       "height": {
         "content": "$2"
       }
-    }
+    },
+    "description": "Tooltip on the frame button."
   },
-  "showChangesOnly": {
-    "message": "show changes only"
+  "moreControls": {
+    "message": "more",
+    "description": "The «⋯» button: threshold, outline and saving."
   },
   "hideOutline": {
     "message": "hide the outline"
@@ -91,6 +105,14 @@
   "viewTriple": {
     "message": "3-up",
     "description": "Кнопка переключателя: все три кадра сразу."
+  },
+  "frameWidth": {
+    "message": "W: ",
+    "description": "Image width under the frame: «W: 500px | H: 528px»."
+  },
+  "frameHeight": {
+    "message": "H: ",
+    "description": "Image height under the frame."
   },
   "popupShowViews": {
     "message": "Show the before / after / diff switcher"
@@ -208,6 +230,18 @@
   "siteResult": {
     "message": "Difference"
   },
+  "siteTune": {
+    "message": "Tune the comparison",
+    "description": "Heading of the settings block on the standalone page."
+  },
+  "siteColorsHint": {
+    "message": "Red gets lost on a red interface. Here the colour applies at once.",
+    "description": "Colours hint on the standalone page: «next page load» makes no sense there."
+  },
+  "siteLanguageHint": {
+    "message": "This page and the panel. Applies at once — your images stay put.",
+    "description": "Language hint on the standalone page."
+  },
   "popupSettings": {
     "message": "Settings"
   },
@@ -264,7 +298,7 @@
     "description": "Подсказка на холсте: как пользоваться увеличением."
   },
   "zoomReset": {
-    "message": "zoom $level$ — reset",
+    "message": "$level$ zoom",
     "placeholders": {
       "level": {
         "content": "$1"
@@ -283,6 +317,10 @@
       }
     },
     "description": "Подпись переходов между местами изменений."
+  },
+  "clusterAll": {
+    "message": "all",
+    "description": "Change navigation: all the places at once."
   },
   "clusterPrev": {
     "message": "previous change",
@@ -354,5 +392,32 @@
   },
   "optionsDirectionHint": {
     "message": "The first colour marks what got darker, the second what got lighter."
+  },
+  "rowsShifted": {
+    "message": "$rows$ rows",
+    "placeholders": {
+      "rows": {
+        "content": "$1"
+      }
+    },
+    "description": "Row shift: «+60 −60 rows»."
+  },
+  "rowNew": {
+    "message": "a new row"
+  },
+  "optionsBeta": {
+    "message": "Beta"
+  },
+  "optionsBetaOn": {
+    "message": "stitch shifted rows, and do not count the edge"
+  },
+  "optionsBetaHint": {
+    "message": "An element added at the top stops turning the whole frame red, and the strip one version does not have stops counting. Both change the number in the caption; on flat content the stitching can also miss."
+  },
+  "stitchOn": {
+    "message": "stitch shifted rows"
+  },
+  "stitchOff": {
+    "message": "compare as is"
   }
 }
