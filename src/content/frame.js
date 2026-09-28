@@ -11,7 +11,7 @@
   const api = global.browser ?? global.chrome;
   const { locale, plural, t } = global.GhPixelDiffI18n;
   const { attachProbe, attachZoom, createMenu, createZoom, drawCrop, frameFileName, frameSize, holdStage,
-    saveCanvas, twoWayLabel, zoomLabel } = global.GhPixelDiffRender;
+    joinCanvases, saveCanvas, twoWayLabel, zoomLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
 
   const MODE = 'pixel-diff';
@@ -261,6 +261,11 @@
     const save = el('button', 'ghpd-save');
     save.type = 'button';
     save.textContent = t('saveFrame');
+    // Сшивание сдвинутых строк — под рукой, а не только в настройках: оно
+    // помогает не всегда, и понять это можно лишь на конкретной паре,
+    // включив и выключив его тут же.
+    const betaToggle = el('button', 'ghpd-beta-toggle');
+    betaToggle.type = 'button';
     const prevChange = el('button', 'ghpd-cluster-step', '‹');
     const nextChange = el('button', 'ghpd-cluster-step', '›');
     for (const [button, key] of [[prevChange, 'clusterPrev'], [nextChange, 'clusterNext']]) {
@@ -487,9 +492,8 @@
       // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
       outlineToggle.disabled = cropped || !result.bounds;
       outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-      // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
-      // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
-      save.disabled = !single;
+      betaToggle.textContent = beta.on ? t('stitchOff') : t('stitchOn');
+      // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.
 
       // Запас под нижние строки — последним делом: их высоту мы только что и
       // задали. Сцену держим уже по новому запасу, иначе она осталась бы той
@@ -546,8 +550,21 @@
       zoom.lookAt(result.clusters[focusIndex]);
       render();
     };
+    betaToggle.addEventListener('click', () => {
+      beta.on = !beta.on;
+      // Кладём туда же, откуда читали при запуске: выбор общий со страницей
+      // настроек, и панель в соседней вкладке узнает о нём тем же событием.
+      api?.storage?.sync?.set?.({ beta: beta.on });
+      compare(slider.value);
+    });
+
     save.addEventListener('click', () => {
-      saveCanvas(canvas, frameFileName(pair.path, shownFrame), () => {
+      // В «3-up» показанного холста нет — есть три. Склеиваем их в один в том
+      // же порядке и с тем же зазором, что на экране: сохранённой картинкой
+      // делятся, и она должна говорить то же самое, что панель.
+      const shown =
+        shownFrame === 'triple' ? joinCanvases([...tripleCanvases.values()]) : canvas;
+      saveCanvas(shown, frameFileName(pair.path, shownFrame), () => {
         meta.append(` · ${t('saveFailed')}`);
       });
     });
@@ -663,7 +680,7 @@
     // под кадром занимали всегда. Внизу остаётся то, ради чего панель
     // открывают: какой кадр показать и куда в нём смотреть.
     const menu = createMenu(t('moreControls'));
-    menu.panel.append(slider.element, outlineToggle, save);
+    menu.panel.append(slider.element, outlineToggle, betaToggle, save);
 
     const bar = el('div', 'ghpd-bar');
     bar.append(views, cropToggle, zoomReset, nav, menu.element);
@@ -692,6 +709,11 @@
         }
         if (result) render();
       },
+      setBeta(on) {
+        if (beta.on === on) return;
+        beta.on = on;
+        if (result) compare(slider.value);
+      },
       show() {
         view.hidden = false;
         if (!result) compare(slider.value);
@@ -715,7 +737,11 @@
     panel.showViews(false, false);
     readShowViews().then((visible) => panel.showViews(visible));
     api?.storage?.onChanged?.addListener((changes, area) => {
-      if (area === 'sync' && changes.showViews) panel.showViews(changes.showViews.newValue !== false);
+      if (area !== 'sync') return;
+      if (changes.showViews) panel.showViews(changes.showViews.newValue !== false);
+      // Сшивание переключают и здесь, и на странице настроек: панель должна
+      // показывать то, что выбрано, а не то, что было при её открытии.
+      if (changes.beta) panel.setBeta(changes.beta.newValue === true);
     });
 
     // Панель режимов остаётся видимой: под неё оставляем место.

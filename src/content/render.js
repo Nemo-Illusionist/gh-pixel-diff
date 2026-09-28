@@ -480,6 +480,33 @@
    * `shot.png` в режиме разницы станет `shot.diff.png` — по имени видно и
    * откуда это, и что именно на нём.
    */
+  /**
+   * Склеивает несколько холстов в один — слева направо, по верхнему краю.
+   *
+   * Нужно для сохранения «3-up»: на экране это три холста рядом, а в файл
+   * уходит одна картинка. Зазор и белая подложка — чтобы кадры не слипались
+   * и чтобы прозрачный край меньшей версии не стал чёрным у того, кто
+   * откроет файл на тёмном фоне.
+   */
+  function joinCanvases(canvases, gap = 16) {
+    const shown = canvases.filter((node) => node.width && node.height);
+    if (shown.length < 2) return shown[0] ?? canvases[0];
+    const width = shown.reduce((sum, node) => sum + node.width, 0) + gap * (shown.length - 1);
+    const height = Math.max(...shown.map((node) => node.height));
+    const joined = document.createElement('canvas');
+    joined.width = width;
+    joined.height = height;
+    const ctx = joined.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    let x = 0;
+    for (const node of shown) {
+      ctx.drawImage(node, x, 0);
+      x += node.width + gap;
+    }
+    return joined;
+  }
+
   function frameFileName(source, frame) {
     const base =
       String(source ?? '')
@@ -736,6 +763,7 @@
     drawCrop,
     saveCanvas,
     frameFileName,
+    joinCanvases,
     holdStage,
     frameSize,
     createMenu,
