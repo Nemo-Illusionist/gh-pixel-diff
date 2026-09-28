@@ -1477,6 +1477,18 @@ test('сшивание переключается из «⋯» и меняет �
   await openMenu(page);
   await expect(page.locator('.ghpd-beta-toggle')).toHaveText('stitch shifted rows');
   await expect(page.locator('.ghpd-beta-toggle')).toHaveAttribute('aria-pressed', 'true');
+
+  // И выбор остаётся при этой картинке: настройка расширения, изменённая в
+  // другом окне, его не отменяет — человек спрашивал про эту пару, а не про
+  // все остальные на странице.
+  const сВключённой = await page.textContent('.ghpd-meta');
+  await page.evaluate(() => {
+    // @ts-ignore
+    globalThis.__ghpdSettingsChanged({ beta: { newValue: false } }, 'sync');
+  });
+  await openMenu(page);
+  await expect(page.locator('.ghpd-beta-toggle')).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.textContent('.ghpd-meta')).toBe(сВключённой);
 });
 
 test('под курсором видно, какой был пиксель и каким стал', async ({ page }) => {
