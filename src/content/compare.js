@@ -1082,23 +1082,18 @@
       alignPrefix(dataBefore, dataAfter, width, height),
       alignBands(dataBefore, dataAfter, width, height, alignPrefix),
     ];
-    let bestAligned = null;
     for (const aligned of guesses) {
       if (!aligned || !(aligned.inserted || aligned.removed)) continue;
       const stitched = compareOnce(prepared, options, aligned);
-      if (stitched.changed >= best.changed) continue;
-      best = stitched;
-      bestAligned = aligned;
-    }
-
-    // Победителю — доводка на пиксель. Только победителю: она стоит целого
-    // прохода по кадру, а проигравшей догадке пиксель уже не поможет.
-    if (bestAligned) {
-      const snapped = snapAligned(prepared, bestAligned);
-      if (snapped) {
-        const refined = compareOnce(prepared, options, snapped);
-        if (refined.changed < best.changed) best = refined;
-      }
+      if (stitched.changed < best.changed) best = stitched;
+      // Доводка идёт каждой догадке, а не одной победившей: выигрывает не
+      // обязательно та, что была впереди до неё. Догадка, проигравшая пару
+      // тысяч пикселей, после доводки обходила победительницу — и мы этого
+      // не видели, потому что не считали.
+      const snapped = snapAligned(prepared, aligned);
+      if (!snapped) continue;
+      const refined = compareOnce(prepared, options, snapped);
+      if (refined.changed < best.changed) best = refined;
     }
     return best;
   }
