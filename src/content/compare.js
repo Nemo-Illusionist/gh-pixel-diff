@@ -567,6 +567,135 @@
    * Полоса, не нашедшая ничего, остаётся на месте — как было до всякого
    * выравнивания.
    */
+  /**
+   * Во что обходится пути смена положения, в пикселях.
+   *
+   * Плата нужна, чтобы строки не дёргались поодиночке от случайного
+   * совпадения: сдвинуться должен целый кусок кадра сразу. Восемь пикселей —
+   * меньше любой настоящей правки и больше любой ряби на краю рисунка,
+   * поэтому граница между сдвигами уезжает туда, где переход ничего не
+   * стоит, — в однотонный промежуток между карточками.
+   */
+  const SNAP_SWITCH = 8;
+
+  /**
+   * Сколько пикселей в строке не совпало.
+   *
+   * Сравнение точное, без порога: доводка ищет строку, вставшую ровно на своё
+   * место, а не похожую.
+   */
+  function rowDiff(before, after, source, y, width, from, to) {
+    let apart = 0;
+    const b = source * width;
+    const a = y * width;
+    for (let x = from; x < to; x++) if (before[b + x] !== after[a + x]) apart++;
+    return apart;
+  }
+
+  /**
+   * Доводка выравнивания на один пиксель.
+   *
+   * Зачем. Вёрстка двигает строки не поровну: вставленная плашка опускает
+   * одну карточку на сорок три пикселя, соседнюю — на сорок два, потому что
+   * округления отступов легли по-разному. Сшивка целыми строками такой
+   * разнобой передать умеет, а вот угадать, где именно сдвиг меняется,
+   * — нет: между якорями лежит однотонный фон, и граница ставится наугад.
+   * Промах в пиксель ничего не значит на глаз, но каждая линейка, каждая
+   * рамка карточки под ним светится краснотой во всю ширину.
+   *
+   * Как. Каждой строке предлагается три положения — своё и на пиксель в обе
+   * стороны, — и выбирается не лучшее для каждой по отдельности, а самый
+   * дешёвый путь по кадру сверху вниз, со своей платой за каждую смену
+   * положения. Дальше пиксела доводка не ходит: всё, что больше, — работа
+   * самого выравнивания, и способов у него два.
+   */
+  function snapRows(dataBefore, dataAfter, width, height, map, from = 0, to = width) {
+    const before = new Uint32Array(dataBefore.buffer, dataBefore.byteOffset);
+    const after = new Uint32Array(dataAfter.buffer, dataAfter.byteOffset);
+    const steps = [-1, 0, 1];
+    const count = steps.length;
+
+    // Каждой строке предлагается три положения — своё и на пиксель в обе
+    // стороны, — но выбираются они не поодиночке, а все разом: ищется самый
+    // дешёвый путь сверху вниз. Поодиночке нельзя: соседние строки прижались
+    // бы к одному источнику, и он нарисовался бы дважды, а его сосед пропал.
+    // Шов от этого виден там же, где был промах, — чертой по краю кружка.
+    //
+    // Путь платит за каждую смену положения. Поэтому граница между сдвигами
+    // сама уезжает в однотонный промежуток между карточками: там переход
+    // ничего не стоит, а на краю рисунка обошёлся бы дорого.
+    const cost = new Float64Array(height * count);
+    const came = new Uint8Array(height * count);
+    const alive = new Uint8Array(height);
+
+    for (let y = 0; y < height; y++) {
+      const source = map[y];
+      // Строка без пары остаётся на месте и пути не ведёт: ниже неё выбор
+      // начинается заново.
+      if (source < 0 || source >= height) continue;
+      alive[y] = 1;
+      const head = !y || !alive[y - 1];
+      for (let k = 0; k < count; k++) {
+        const near = source + steps[k];
+        const own =
+          near >= 0 && near < height ? rowDiff(before, after, near, y, width, from, to) : Infinity;
+        let best = 0;
+        let step = k;
+        if (!head) {
+          best = Infinity;
+          for (let j = 0; j < count; j++) {
+            const path = cost[(y - 1) * count + j] + (j === k ? 0 : SNAP_SWITCH);
+            if (path < best) {
+              best = path;
+              step = j;
+            }
+          }
+        }
+        cost[y * count + k] = own + best;
+        came[y * count + k] = step;
+      }
+    }
+
+    // Обратный проход: каждый участок разматывается от своей последней строки.
+    const snapped = Int32Array.from(map);
+    let moved = 0;
+    for (let tail = height - 1; tail >= 0; tail--) {
+      if (!alive[tail] || (tail + 1 < height && alive[tail + 1])) continue;
+      let at = 0;
+      for (let k = 1; k < count; k++) if (cost[tail * count + k] < cost[tail * count + at]) at = k;
+      for (let y = tail; y >= 0 && alive[y]; y--) {
+        const near = map[y] + steps[at];
+        if (near !== map[y] && near >= 0 && near < height) {
+          snapped[y] = near;
+          moved++;
+        }
+        at = came[y * count + at];
+      }
+    }
+    return moved ? snapped : null;
+  }
+
+  /**
+   * Та же доводка, но для целой догадки — хоть по всему кадру, хоть по полосам.
+   */
+  function snapAligned(prepared, aligned) {
+    const { width, height } = prepared;
+    const dataBefore = prepared.dataBefore.data;
+    const dataAfter = prepared.dataAfter.data;
+    if (!aligned.bands) {
+      const map = snapRows(dataBefore, dataAfter, width, height, aligned.map);
+      return map ? { ...aligned, map } : null;
+    }
+    let moved = false;
+    const bands = aligned.bands.map((band) => {
+      const map = snapRows(dataBefore, dataAfter, width, height, band.map, band.from, band.to);
+      if (!map) return band;
+      moved = true;
+      return { ...band, map };
+    });
+    return moved ? { ...aligned, bands } : null;
+  }
+
   function shiftBands(data, bands, width, height) {
     const bytes = width * 4;
     const shifted = new Uint8ClampedArray(height * bytes);
@@ -957,6 +1086,14 @@
       if (!aligned || !(aligned.inserted || aligned.removed)) continue;
       const stitched = compareOnce(prepared, options, aligned);
       if (stitched.changed < best.changed) best = stitched;
+      // Доводка идёт каждой догадке, а не одной победившей: выигрывает не
+      // обязательно та, что была впереди до неё. Догадка, проигравшая пару
+      // тысяч пикселей, после доводки обходила победительницу — и мы этого
+      // не видели, потому что не считали.
+      const snapped = snapAligned(prepared, aligned);
+      if (!snapped) continue;
+      const refined = compareOnce(prepared, options, snapped);
+      if (refined.changed < best.changed) best = refined;
     }
     return best;
   }
@@ -973,6 +1110,7 @@
     findChanges,
     alignRows,
     alignPrefix,
+    snapRows,
     rasterScale,
   };
 })(self);
