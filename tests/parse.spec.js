@@ -270,6 +270,61 @@ test('без различий прямоугольника нет', async ({ pag
   expect(bounds).toBeNull();
 });
 
+test('сшивка, которая не помогла, отбрасывается вместе со своей подписью', async ({ page }) => {
+  // Сшивка — догадка, и садится она мимо. На снимке из настоящего
+  // пул-реквеста она поднимала находку с 12.48% до 13.87%: двигала строку
+  // целиком, вместе с колонкой, которая никуда не ехала. Поэтому считаем
+  // оба раза и оставляем тот ответ, где изменений меньше.
+  //
+  // Здесь это два столбца. Левый переставлен так, что сшивке есть за что
+  // ухватиться; правый не менялся вовсе, и всякий сдвиг строки его портит.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/content/compare.js', import.meta.url)),
+  });
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const answer = await page.evaluate(() => {
+    const width = 24;
+    const height = 40;
+    /** @param order порядок полос слева: по нему и различаются версии */
+    const fill = (order) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      for (let y = 0; y < height; y++) {
+        const band = order[Math.min(order.length - 1, Math.floor(y / 8))];
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          // Левая половина — переставляемые полосы, правая — ровный узор,
+          // одинаковый в обеих версиях.
+          const left = x < width / 2;
+          data[i] = left ? (band * 60) % 256 : (x * 9) % 256;
+          data[i + 1] = left ? (band * 37 + 20) % 256 : (y * 3) % 256;
+          data[i + 2] = left ? 180 : 90;
+          data[i + 3] = 255;
+        }
+      }
+      return new ImageData(data, width, height);
+    };
+
+    const pair = {
+      width,
+      height,
+      dataBefore: fill([0, 1, 2, 3, 4]),
+      dataAfter: fill([0, 2, 1, 3, 4]),
+      common: { width, height },
+    };
+    const { diffPrepared } = self.GhPixelDiff;
+    return {
+      сшито: diffPrepared(pair, { beta: true }).changed,
+      какЕсть: diffPrepared(pair, { beta: false }).changed,
+    };
+  });
+
+  // Хуже не стало — это и есть всё обещание сшивки.
+  expect(answer.сшито).toBeLessThanOrEqual(answer.какЕсть);
+});
+
 test('в бете край, которого нет у одной из версий, не считается изменением', async ({ page }) => {
   // Кадр стал короче — и недостающие строки, сравненные с пустотой, дают
   // сплошную полосу и десятки тысяч «изменившихся» пикселей. На настоящем

@@ -650,26 +650,15 @@
   }
 
   /**
-   * Сравнивает уже загруженную пару с заданным порогом.
-   * @returns {{width, height, changed, ratio, bounds, diff: ImageData,
-   *            before: HTMLImageElement, after: HTMLImageElement,
-   *            sizeChanged: boolean}}
+   * Одно сравнение: с заданной сшивкой строк или без неё вовсе.
+   *
+   * Вынесено отдельно ровно затем, чтобы обе попытки — сшитую и честную —
+   * можно было провести одинаково и сравнить их между собой.
    */
-  function diffPrepared(prepared, options = {}) {
+  function compareOnce(prepared, options, aligned) {
     const { width, height } = prepared;
     const mask = new ImageData(width, height);
 
-    // Сшивание строк — по просьбе, а не по умолчанию.
-    //
-    // Там, где элемент добавили наверху, оно спасает кадр от сплошной
-    // красноты. Но это догадка, и на однообразном содержимом — пустой список,
-    // ровные поля — она садится мимо: строки там неразличимы, и сшить их
-    // можно как угодно. Кадр от этого не краснеет целиком, зато отметки
-    // появляются там, где ничего не менялось, а это хуже честного «изменилось
-    // всё». Поэтому пока включается руками, в настройках, и названо бетой.
-    const aligned = options.beta
-      ? alignRows(prepared.dataBefore.data, prepared.dataAfter.data, width, height)
-      : null;
     const shifted =
       aligned && (aligned.inserted || aligned.removed)
         ? shiftRows(prepared.dataBefore.data, aligned.map, width)
@@ -757,6 +746,44 @@
       after: prepared.after,
       sizeChanged: prepared.sizeChanged,
     };
+  }
+
+  /**
+   * Сравнивает уже загруженную пару с заданным порогом.
+   *
+   * Сшивание строк — по просьбе, а не по умолчанию.
+   *
+   * Там, где элемент добавили наверху, оно спасает кадр от сплошной красноты.
+   * Но это догадка, и садится она мимо чаще, чем хотелось бы: на однообразном
+   * содержимом строки неразличимы и сшиваются как попало, а перестановку двух
+   * блоков местами сшивка отработать не может вовсе — порядок строк ей
+   * менять нельзя, и из двух переехавших блоков она берёт один.
+   *
+   * Поэтому догадку проверяем: считаем оба раза и оставляем тот ответ, где
+   * изменений меньше. Сшивка, которая ничего не улучшила, отбрасывается
+   * вместе со своей подписью — значит и «строк +137 −137» под кадром не
+   * появится там, где эти строки никому не помогли.
+   *
+   * Второй проход стоит ровно одного сравнения и делается только тогда,
+   * когда сшивка вообще что-то нашла.
+   *
+   * @returns {{width, height, changed, ratio, bounds, mask: ImageData,
+   *            before: HTMLImageElement, after: HTMLImageElement,
+   *            sizeChanged: boolean}}
+   */
+  function diffPrepared(prepared, options = {}) {
+    const { width, height } = prepared;
+    const aligned = options.beta
+      ? alignRows(prepared.dataBefore.data, prepared.dataAfter.data, width, height)
+      : null;
+
+    if (!aligned || !(aligned.inserted || aligned.removed)) {
+      return compareOnce(prepared, options, null);
+    }
+
+    const stitched = compareOnce(prepared, options, aligned);
+    const asIs = compareOnce(prepared, options, null);
+    return stitched.changed <= asIs.changed ? stitched : asIs;
   }
 
   // Наружу — только то, чем пользуются панель, поток и тесты.
