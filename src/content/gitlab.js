@@ -14,7 +14,7 @@
 
   const { preparePair, diffPrepared } = global.GhPixelDiff;
   const { attachProbe, attachZoom, createZoom, drawCrop, frameFileName, frameSize, holdStage, saveCanvas,
-    zoomLabel, createMenu, twoWayLabel } = global.GhPixelDiffRender;
+    zoomLabel, createMenu, joinCanvases, twoWayLabel } = global.GhPixelDiffRender;
   const { create: createWorker } = global.GhPixelDiffWorker;
   const { t, plural, locale } = global.GhPixelDiffI18n;
   const api = global.browser ?? global.chrome;
@@ -194,8 +194,13 @@
     // Порог, рамка и сохранение — под «⋯»: нужны они не каждый раз, а место
     // под кадром занимали всегда. Внизу остаётся то, ради чего панель
     // открывают: какой кадр показать и куда в нём смотреть.
+    // Сшивание сдвинутых строк — тут же: оно помогает не всегда, и понять
+    // это можно лишь на конкретной паре, включив и выключив его на месте.
+    const betaToggle = el('button', 'ghpd-beta-toggle');
+    betaToggle.type = 'button';
+
     const menu = createMenu(t('moreControls'));
-    menu.panel.append(controls, outlineToggle, save);
+    menu.panel.append(controls, outlineToggle, betaToggle, save);
 
     // Строка управления: состав постоянный, меняется только видимость —
     // кнопки не переезжают с места на место.
@@ -258,9 +263,18 @@
       zoom.lookAt(result.clusters[focusIndex]);
       render();
     };
+    betaToggle.addEventListener('click', () => {
+      beta.on = !beta.on;
+      api?.storage?.sync?.set?.({ beta: beta.on });
+      compare(Number(slider.value));
+    });
+
     save.addEventListener('click', () => {
+      // В «3-up» показанного холста нет — есть три; в файл уходит их склейка.
+      const shown =
+        shownFrame === 'triple' ? joinCanvases(tripleCanvases.map(([, node]) => node)) : canvas;
       // Имя берём из адреса картинки: у GitLab это путь файла в репозитории.
-      saveCanvas(canvas, frameFileName(pair.after, shownFrame), () => {
+      saveCanvas(shown, frameFileName(pair.after, shownFrame), () => {
         meta.append(` · ${t('saveFailed')}`);
       });
     });
@@ -422,9 +436,10 @@
       // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
       outlineToggle.disabled = cropped || !result.bounds;
       outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
+      betaToggle.textContent = beta.on ? t('stitchOff') : t('stitchOn');
       // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
       // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
-      save.disabled = !single;
+      // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.
     }
 
     cropToggle.addEventListener('click', () => {

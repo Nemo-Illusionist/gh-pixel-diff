@@ -1365,9 +1365,10 @@ test('имя файла говорит, какой кадр сохранён', a
   expect(download.suggestedFilename()).toBe('shot.after.png');
 });
 
-test('три кадра рядом не сохраняются одной картинкой', async ({ page }) => {
-  // Их три холста, и «эта картинка» перестаёт быть одной картинкой: кнопка
-  // обещала бы то, чего сделать не может.
+test('три кадра рядом сохраняются одной картинкой', async ({ page }) => {
+  // Их три холста, но в файл уходит один: склейка в том же порядке и с тем
+  // же зазором, что на экране. Раньше кнопка здесь просто гасла, и это
+  // выглядело поломкой — нажимали-то её именно на «3-up».
   await page.setViewportSize({ width: 900, height: 700 });
   await openFrame(page);
   await injectExtension(page);
@@ -1375,9 +1376,31 @@ test('три кадра рядом не сохраняются одной кар
   await waitForResult(page);
   await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
 
-  // Пункт не пропадает, а гаснет: меню из одного ползунка выглядит сломанным.
   await openMenu(page);
-  await expect(page.locator('.ghpd-save')).toBeDisabled();
+  await expect(page.locator('.ghpd-save')).toBeEnabled();
+
+  const [загрузка] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('.ghpd-save'),
+  ]);
+
+  expect(загрузка.suggestedFilename()).toBe('shot.triple.png');
+
+  // Склейка шире любого из трёх и не выше самого высокого.
+  const размеры = await page.evaluate(() => {
+    const { joinCanvases } = globalThis.GhPixelDiffRender;
+    const трое = [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')];
+    const одна = joinCanvases(трое);
+    return {
+      ширины: трое.map((node) => node.width),
+      высоты: трое.map((node) => node.height),
+      склейка: { width: одна.width, height: одна.height },
+    };
+  });
+
+  const сумма = размеры.ширины.reduce((a, b) => a + b, 0);
+  expect(размеры.склейка.width).toBeGreaterThan(сумма);
+  expect(размеры.склейка.height).toBe(Math.max(...размеры.высоты));
 });
 
 test('спрятанный переключатель не запирает в «3-up»', async ({ page }) => {
@@ -1402,8 +1425,8 @@ test('спрятанный переключатель не запирает в �
 });
 
 test('состав «⋯» не меняется: неуместное гаснет, а не пропадает', async ({ page }) => {
-  // В «3-up» нечего сохранять, в обрезке нечего обводить — и если прятать оба
-  // пункта, под «⋯» остаётся один ползунок, а меню выглядит сломанным.
+  // В обрезке нечего обводить — и если прятать пункт, под «⋯» остаётся
+  // меньше, чем было, а меню выглядит сломанным.
   await page.setViewportSize({ width: 900, height: 700 });
   await openFrame(page);
   await injectExtension(page);
@@ -1416,7 +1439,34 @@ test('состав «⋯» не меняется: неуместное гасн�
   await expect(page.locator('.ghpd-outline-toggle')).toBeVisible();
   await expect(page.locator('.ghpd-outline-toggle')).toBeDisabled();
   await expect(page.locator('.ghpd-save')).toBeVisible();
-  await expect(page.locator('.ghpd-save')).toBeDisabled();
+  // Сшивание переключается откуда угодно и в любом кадре.
+  await expect(page.locator('.ghpd-beta-toggle')).toBeVisible();
+  await expect(page.locator('.ghpd-beta-toggle')).toBeEnabled();
+});
+
+test('сшивание переключается из «⋯» и меняет ответ на месте', async ({ page }) => {
+  // Сшивание помогает не всегда: на одной паре оно убирает ложную красноту,
+  // на другой — прячет половину перестановки. Понять это можно только на
+  // самой паре, поэтому переключатель стоит рядом с кадром, а не только на
+  // странице настроек.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, svgShifted());
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  const было = await page.textContent('.ghpd-meta');
+
+  await openMenu(page);
+  await expect(page.locator('.ghpd-beta-toggle')).toHaveText('stitch shifted rows');
+  await page.click('.ghpd-beta-toggle');
+
+  await expect.poll(() => page.textContent('.ghpd-meta')).not.toBe(было);
+  // Сшитых строк стало видно: кадр переехал целиком, и это уже не правка.
+  expect(await page.textContent('.ghpd-meta')).toContain('rows');
+  // Нажатие поменяло и саму подпись кнопки — обратный ход назван вслух.
+  await openMenu(page);
+  await expect(page.locator('.ghpd-beta-toggle')).toHaveText('compare as is');
 });
 
 test('под курсором видно, какой был пиксель и каким стал', async ({ page }) => {
