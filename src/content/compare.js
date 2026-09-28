@@ -567,6 +567,87 @@
    * Полоса, не нашедшая ничего, остаётся на месте — как было до всякого
    * выравнивания.
    */
+  /**
+   * Во сколько раз строка должна сойтись лучше, чтобы подвинуть её на пиксель.
+   *
+   * Требование строгое нарочно: доводка не должна подменять правку соседней
+   * строкой, которая случайно похожа. Настоящий промах выравнивания
+   * распознаётся сразу — строка, ставшая на место, сходится не «получше», а
+   * почти в ноль.
+   */
+  const SNAP_GAIN = 4;
+
+  /**
+   * Сколько пикселей в строке не совпало.
+   *
+   * Сравнение точное, без порога: доводка ищет строку, вставшую ровно на своё
+   * место, а не похожую.
+   */
+  function rowDiff(before, after, source, y, width, from, to) {
+    let same = 0;
+    const b = source * width;
+    const a = y * width;
+    for (let x = from; x < to; x++) if (before[b + x] !== after[a + x]) same++;
+    return same;
+  }
+
+  /**
+   * Доводка выравнивания на один пиксель.
+   *
+   * Зачем. Вёрстка двигает строки не поровну: вставленная плашка опускает
+   * одну карточку на сорок три пикселя, соседнюю — на сорок два, потому что
+   * округления отступов легли по-разному. Сшивка целыми строками такой
+   * разнобой передать умеет, а вот угадать, где именно сдвиг меняется,
+   * — нет: между якорями лежит однотонный фон, и граница ставится наугад.
+   * Промах в пиксель ничего не значит на глаз, но каждая линейка, каждая
+   * рамка карточки под ним светится краснотой во всю ширину.
+   *
+   * Как. Каждой строке предлагается подвинуться на пиксель вверх или вниз, и
+   * она соглашается, только если от этого сходится кратно лучше. Дальше
+   * пиксела доводка не ходит: всё, что больше, — работа самого выравнивания.
+   */
+  function snapRows(dataBefore, dataAfter, width, height, map, from = 0, to = width) {
+    const before = new Uint32Array(dataBefore.buffer, dataBefore.byteOffset);
+    const after = new Uint32Array(dataAfter.buffer, dataAfter.byteOffset);
+    let moved = 0;
+    const snapped = Int32Array.from(map);
+    for (let y = 0; y < height; y++) {
+      const source = map[y];
+      if (source < 0 || source >= height) continue;
+      const own = rowDiff(before, after, source, y, width, from, to);
+      if (!own) continue;
+      for (const near of [source - 1, source + 1]) {
+        if (near < 0 || near >= height) continue;
+        if (rowDiff(before, after, near, y, width, from, to) * SNAP_GAIN >= own) continue;
+        snapped[y] = near;
+        moved++;
+        break;
+      }
+    }
+    return moved ? snapped : null;
+  }
+
+  /**
+   * Та же доводка, но для целой догадки — хоть по всему кадру, хоть по полосам.
+   */
+  function snapAligned(prepared, aligned) {
+    const { width, height } = prepared;
+    const dataBefore = prepared.dataBefore.data;
+    const dataAfter = prepared.dataAfter.data;
+    if (!aligned.bands) {
+      const map = snapRows(dataBefore, dataAfter, width, height, aligned.map);
+      return map ? { ...aligned, map } : null;
+    }
+    let moved = false;
+    const bands = aligned.bands.map((band) => {
+      const map = snapRows(dataBefore, dataAfter, width, height, band.map, band.from, band.to);
+      if (!map) return band;
+      moved = true;
+      return { ...band, map };
+    });
+    return moved ? { ...aligned, bands } : null;
+  }
+
   function shiftBands(data, bands, width, height) {
     const bytes = width * 4;
     const shifted = new Uint8ClampedArray(height * bytes);
@@ -953,10 +1034,23 @@
       alignPrefix(dataBefore, dataAfter, width, height),
       alignBands(dataBefore, dataAfter, width, height, alignPrefix),
     ];
+    let bestAligned = null;
     for (const aligned of guesses) {
       if (!aligned || !(aligned.inserted || aligned.removed)) continue;
       const stitched = compareOnce(prepared, options, aligned);
-      if (stitched.changed < best.changed) best = stitched;
+      if (stitched.changed >= best.changed) continue;
+      best = stitched;
+      bestAligned = aligned;
+    }
+
+    // Победителю — доводка на пиксель. Только победителю: она стоит целого
+    // прохода по кадру, а проигравшей догадке пиксель уже не поможет.
+    if (bestAligned) {
+      const snapped = snapAligned(prepared, bestAligned);
+      if (snapped) {
+        const refined = compareOnce(prepared, options, snapped);
+        if (refined.changed < best.changed) best = refined;
+      }
     }
     return best;
   }
@@ -973,6 +1067,7 @@
     findChanges,
     alignRows,
     alignPrefix,
+    snapRows,
     rasterScale,
   };
 })(self);
