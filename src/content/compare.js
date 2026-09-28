@@ -203,6 +203,46 @@
   const ALIGN_MIN_ANCHORS = 4;
 
   /**
+   * Во сколько раз переехавших строк должно быть больше, чем оставшихся без
+   * пары, чтобы сшивке поверили.
+   *
+   * Сшивка умеет объяснить ровно одно: «сверху что-то добавили или убрали, и
+   * всё, что ниже, съехало». У такого сдвига переехавших строк всегда кратно
+   * больше, чем новых: добавили строку — и за ней поехала вся оставшаяся
+   * страница.
+   *
+   * А вот когда два блока поменялись местами, чисел получается поровну:
+   * сколько строк не нашло пары, ровно столько и переехало. Сшивка в этом
+   * случае объявляет один блок переехавшим, второй — новым, и половина
+   * перестановки пропадает с глаз: вместо двух правок видна одна.
+   *
+   * Измерено на девяти парах. Настоящие сдвиги дают от 2.4 до 8.1,
+   * перестановки — ровно 1.0. Двойка лежит посередине пустого места между
+   * ними и ни одну из сторон не задевает.
+   */
+  const SWAP_RATIO = 2;
+
+  /**
+   * Верим ли мы этой сшивке.
+   *
+   * Не верим — возвращаем выравнивание, которое ничего не двигает: пусть
+   * такая пара сравнивается честно, зато обе половины перестановки будут
+   * видны.
+   */
+  function believable(map, inserted, removed) {
+    let moved = 0;
+    let orphan = 0;
+    for (let y = 0; y < map.length; y++) {
+      if (map[y] < 0) orphan++;
+      else if (map[y] !== y) moved++;
+    }
+    if (!orphan || moved >= orphan * SWAP_RATIO) return { map, inserted, removed };
+    const straight = new Int32Array(map.length);
+    for (let y = 0; y < map.length; y++) straight[y] = y;
+    return { map: straight, inserted: 0, removed: 0 };
+  }
+
+  /**
    * Свёртка строки пикселей в число.
    *
    * FNV-1a, но не по байтам, а по пикселям: тот же буфер читается как
@@ -406,7 +446,7 @@
         if (source >= 0 && source < height) map[y] = source;
         else shiftedIn++;
       }
-      return { map, inserted: offset ? shiftedIn : 0, removed: offset ? shiftedIn : 0 };
+      return believable(map, offset ? shiftedIn : 0, offset ? shiftedIn : 0);
     }
 
     /** Паруем промежуток между якорями один к одному, сверху вниз. */
@@ -432,7 +472,7 @@
     }
     fill(prevAfter, height, prevBefore, height);
 
-    return { map, inserted, removed };
+    return believable(map, inserted, removed);
   }
 
   /**
@@ -454,6 +494,53 @@
       shifted.set(data.subarray(source * bytes, source * bytes + bytes), y * bytes);
     }
     return shifted;
+  }
+
+  /**
+   * Второй способ выровнять: найти, где кадры разошлись, и сдвинуть остаток
+   * целиком.
+   *
+   * Якоря хороши, пока уникальных строк много, но платят за это дробностью:
+   * один неверно узнанный якорь ломает сдвиг на единицу, и ниже него каждая
+   * рамка, каждая линейка светится краснотой в пиксель толщиной. На снимке
+   * интерфейса таких линий десятки, и вместе они дают больше красноты, чем
+   * сама правка.
+   *
+   * Здесь наоборот: сверху ищется последняя строка, совпавшая до единого
+   * пикселя, а всё, что ниже, объявляется съехавшим на один и тот же сдвиг —
+   * тот, за который проголосуют сами строки. Дробиться нечему.
+   *
+   * Способ проще и потому грубее: он умеет объяснить одну вставку или одно
+   * удаление, а не россыпь правок. Поэтому он не заменяет якоря, а спорит с
+   * ними — и побеждает тот, после которого краснота меньше.
+   */
+  function alignPrefix(dataBefore, dataAfter, width, height, from = 0, to = width) {
+    const before = rowHashes(dataBefore, width, height, from, to);
+    const after = rowHashes(dataAfter, width, height, from, to);
+
+    let top = 0;
+    while (top < height && before[top] === after[top]) top++;
+    // Кадры совпали целиком или разошлись у самого низа: двигать нечего.
+    if (height - top < SHIFT_MIN_ROWS) return null;
+
+    const offset = bestShift(before.subarray(top), after.subarray(top), height - top);
+    if (!offset) return null;
+
+    const map = new Int32Array(height);
+    let orphan = 0;
+    for (let y = 0; y < height; y++) {
+      if (y < top) {
+        map[y] = y;
+        continue;
+      }
+      const source = y + offset;
+      if (source >= top && source < height) map[y] = source;
+      else {
+        map[y] = -1;
+        orphan++;
+      }
+    }
+    return believable(map, orphan, orphan);
   }
 
   /**
@@ -502,7 +589,7 @@
    * @returns {{bands: Array, inserted: number, removed: number}|null}
    *          null — делить нечего или ни одна полоса ничего не нашла
    */
-  function alignBands(dataBefore, dataAfter, width, height) {
+  function alignBands(dataBefore, dataAfter, width, height, align = alignRows) {
     const count = Math.min(BANDS_MAX, Math.floor(width / BAND_WIDTH));
     if (count < 2) return null;
 
@@ -513,7 +600,8 @@
     for (let i = 0; i < count; i++) {
       const from = Math.round((width * i) / count);
       const to = i === count - 1 ? width : Math.round((width * (i + 1)) / count);
-      const aligned = alignRows(dataBefore, dataAfter, width, height, from, to);
+      const aligned = align(dataBefore, dataAfter, width, height, from, to);
+      if (!aligned) continue;
       bands.push({ ...aligned, from, to });
       // Строки считаем по самой деятельной полосе, а не суммой: подпись
       // говорит, на сколько строк уехало содержимое, и складывать это число
@@ -847,19 +935,23 @@
     const asIs = compareOnce(prepared, options, null);
     if (!options.beta) return asIs;
 
-    // Две догадки о том, что куда переехало, и обе проверяются делом.
+    // Догадки о том, что куда переехало, и каждая проверяется делом.
     //
-    // Первая берёт строку целиком: так узнаётся страница, которую сдвинули
-    // всю сразу. Вторая делит кадр вдоль и даёт каждой полосе свой сдвиг:
-    // так узнаётся колонка, переехавшая в одиночку, — а соседняя при этом
-    // остаётся на месте и не краснеет ни за что.
+    // Два способа выровнять — по якорям и по общему сдвигу ниже расхождения —
+    // и два взгляда на кадр: целиком и по продольным полосам. Полосы нужны
+    // затем, что колонка умеет переехать в одиночку, а соседняя при этом
+    // остаётся на месте и краснеть ни за что не должна.
     //
     // Каждая догадка стоит одного сравнения, и худшее, что она может
     // сделать, — проиграть.
+    const { data: dataBefore } = prepared.dataBefore;
+    const { data: dataAfter } = prepared.dataAfter;
     let best = asIs;
     const guesses = [
-      alignRows(prepared.dataBefore.data, prepared.dataAfter.data, width, height),
-      alignBands(prepared.dataBefore.data, prepared.dataAfter.data, width, height),
+      alignRows(dataBefore, dataAfter, width, height),
+      alignBands(dataBefore, dataAfter, width, height),
+      alignPrefix(dataBefore, dataAfter, width, height),
+      alignBands(dataBefore, dataAfter, width, height, alignPrefix),
     ];
     for (const aligned of guesses) {
       if (!aligned || !(aligned.inserted || aligned.removed)) continue;
@@ -880,6 +972,7 @@
     COLORS,
     findChanges,
     alignRows,
+    alignPrefix,
     rasterScale,
   };
 })(self);

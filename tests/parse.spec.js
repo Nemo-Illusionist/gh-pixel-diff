@@ -182,6 +182,50 @@ test('сдвинутые строки сшиваются, а не объявля
   expect(result.changed).toBe(2 * 8);
 });
 
+test('перестановка двух блоков не выдаётся за сдвиг', async ({ page }) => {
+  // Сшивка умеет объяснить одно: сверху добавили или убрали, и всё, что
+  // ниже, съехало. Когда же два блока поменялись местами, она объявляет один
+  // переехавшим, второй — новым, и половина перестановки пропадает с глаз:
+  // вместо двух правок видна одна. Отличить одно от другого можно по счёту —
+  // у настоящего сдвига переехавших строк кратно больше, чем новых.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const result = await page.evaluate(() => {
+    const width = 8;
+    const height = 12;
+    const rows = (values) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      values.forEach((value, y) => {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          data[i] = (value * 97) % 256;
+          data[i + 1] = (value * 53 + 40) % 256;
+          data[i + 2] = (value * 29 + 120) % 256;
+          data[i + 3] = 255;
+        }
+      });
+      return new ImageData(data, width, height);
+    };
+
+    const before = rows([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]);
+    // Те же строки, но пара «30 40» и пара «50 60» поменялись местами.
+    const after = rows([10, 20, 50, 60, 30, 40, 70, 80, 90, 100, 110, 120]);
+
+    const pair = { width, height, dataBefore: before, dataAfter: after };
+    return {
+      beta: self.GhPixelDiff.diffPrepared(pair, { beta: true }).changed,
+      plain: self.GhPixelDiff.diffPrepared(pair).changed,
+    };
+  });
+
+  // Со сшивкой и без неё ответ один и тот же: обе половины перестановки
+  // остаются видны, и ни одна не объявлена переездом.
+  expect(result.beta).toBe(result.plain);
+  expect(result.plain).toBe(4 * 8);
+});
+
 test('на непохожих картинках строки не сшиваются', async ({ page }) => {
   // Если совпавших строк почти нет, это не сдвиг, а другая картинка: сшивать
   // в ней нечего, и выдумывать соответствия хуже, чем не выдумывать.
