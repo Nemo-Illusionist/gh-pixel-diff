@@ -860,6 +860,50 @@ test('разные размеры «до» и «после» не ломают �
   expect(meta).toMatch(/^[\d,]+ pixels/);
 });
 
+test('версия меньшего размера показана своим размером, а не чужим', async ({ page }) => {
+  // Холст сравнения берётся по большей из версий, и меньшая лежит на нём с
+  // пустым краем. Показать этот край — значит нарисовать кадр 200×120
+  // размером 400×300 и поспорить с подписью под ним: у GitHub в 2-up каждая
+  // версия своего размера, и правильно так.
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openFrame(page, { before: svgSized(400, 300), after: svgSized(200, 120) });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+  // Весь кадр, а не фрагмент: в обрезке смотрят на место правки, и оно общее.
+  await page.click('.ghpd-crop-toggle');
+
+  // Вектор растрируется с запасом, поэтому сравниваем не с числами из
+  // разметки, а стороны между собой: важно отношение, а не масштаб.
+  const размер = async (кадр) => {
+    await page.click(`.ghpd-views .ghpd-view-button:nth-child(${кадр})`);
+    return page.evaluate(() => {
+      const canvas = document.querySelector('.ghpd-view .ghpd-stage > .ghpd-plate > .ghpd-canvas');
+      return { width: canvas.width, height: canvas.height };
+    });
+  };
+
+  const до = await размер(1);
+  const после = await размер(2);
+  const разница = await размер(3);
+
+  expect(после.width / до.width).toBeCloseTo(200 / 400, 2);
+  expect(после.height / до.height).toBeCloseTo(120 / 300, 2);
+  // Разница по-прежнему на общем холсте: она про обе версии сразу.
+  expect(разница).toEqual(до);
+
+  // И в «3-up» то же самое: три холста, у каждого свой размер.
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(5)');
+  const трое = await page.evaluate(() =>
+    [...document.querySelectorAll('.ghpd-triple .ghpd-canvas')].map((node) => ({
+      width: node.width,
+      height: node.height,
+    })),
+  );
+  expect(трое[1].width / трое[0].width).toBeCloseTo(200 / 400, 2);
+  expect(трое[2]).toEqual(трое[0]);
+});
+
 test('«до» и «после» одеты, как в 2-up самого GitHub', async ({ page }) => {
   // Красная рамка у «до», зелёная у «после», подпись сверху, размер снизу —
   // и тот из двух размеров, что изменился, выделен цветом своей версии.
