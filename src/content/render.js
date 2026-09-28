@@ -65,11 +65,21 @@
    * В обрезке это выбранное место изменений, а не общий прямоугольник:
    * когда правки в разных концах кадра, общий — это весь кадр, и обрезать
    * по нему нечего. Пока место одно, разницы никакой.
+   *
+   * `own` — собственный размер показанной версии. Он нужен, когда версии
+   * разного размера: холст сравнения берётся по большей из них, и меньшая
+   * лежит на нём с пустым краем. Показывать этот край — значит рисовать
+   * кадр 544×140 размером 1280×906 и спорить с подписью под ним.
    */
-  function baseRect(result, cropped, focus) {
+  function baseRect(result, cropped, focus, own = null) {
     const box = focus ?? result.bounds;
     if (!cropped || !box) {
-      return { x: 0, y: 0, width: result.width, height: result.height };
+      return {
+        x: 0,
+        y: 0,
+        width: Math.round(own?.width ?? result.width),
+        height: Math.round(own?.height ?? result.height),
+      };
     }
     const x = Math.max(0, box.x - CROP_PADDING);
     const y = Math.max(0, box.y - CROP_PADDING);
@@ -154,8 +164,10 @@
       source.restore();
       source.drawImage(maskCanvas(result.mask, result.width, result.height), 0, 0);
     } else {
-      // «До» и «после» рисуем в том же размере, что и разницу: у вектора это
-      // увеличенный кадр, и переключение не должно менять масштаб.
+      // Масштаб у «до» и «после» тот же, что у разницы: у вектора это
+      // увеличенный кадр, и переключение не должно его менять. А вот
+      // показанный кусок — по самой версии: ниже из этого холста вырежут
+      // ровно её.
       const image = result[shownFrame];
       source.clearRect(0, 0, result.width, result.height);
       source.drawImage(
@@ -167,7 +179,16 @@
       );
     }
 
-    const base = baseRect(result, cropped, focus);
+    // Своим размером показываем только «до» и «после» и только целиком: в
+    // обрезке смотрят на место правки, и оно у обеих версий одно.
+    const own =
+      shownFrame === 'before' || shownFrame === 'after'
+        ? {
+            width: result[shownFrame].naturalWidth * result.scale,
+            height: result[shownFrame].naturalHeight * result.scale,
+          }
+        : null;
+    const base = baseRect(result, cropped, focus, own);
     const shown = shownRect(base, zoom);
     // Тот, кто ловит колесо и перетаскивание, должен знать, что сейчас под
     // курсором. Знает это только здесь — значит отсюда и говорим.
