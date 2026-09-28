@@ -34,8 +34,13 @@
   const SHOW_VIEWS_DEFAULT = true;
   /** Цвета разницы: свои, если их поменяли в настройках. */
   const colors = { ...global.GhPixelDiff.COLORS };
-  /** Сшивать ли сдвинутые строки — бета, по умолчанию выключено. */
-  const beta = { on: false };
+  /**
+   * Сшивать ли сдвинутые строки — бета, по умолчанию выключено.
+   *
+   * `own` значит, что здесь её переключили рукой. С этого мига кадр живёт
+   * своим выбором: настройка задаёт, с чего начать, а не чем закончить.
+   */
+  const beta = { on: false, own: false };
   /**
    * Пока GitHub не задал фрейму высоту, окно внутри — узкая полоска, и кадр
    * ужимается в точку. Высоту задаёт родительская страница, и делает это,
@@ -266,6 +271,10 @@
     // включив и выключив его тут же.
     const betaToggle = el('button', 'ghpd-beta-toggle');
     betaToggle.type = 'button';
+    // Пункт-переключатель: подпись называет не действие, а состояние — у
+    // сшивки, в отличие от рамки, по кадру не видно, включена она или нет,
+    // и «сравнивать как есть» читалось и как текущий режим, и как кнопка.
+    betaToggle.textContent = t('stitchRows');
     const prevChange = el('button', 'ghpd-cluster-step', '‹');
     const nextChange = el('button', 'ghpd-cluster-step', '›');
     for (const [button, key] of [[prevChange, 'clusterPrev'], [nextChange, 'clusterNext']]) {
@@ -492,7 +501,7 @@
       // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
       outlineToggle.disabled = cropped || !result.bounds;
       outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-      betaToggle.textContent = beta.on ? t('stitchOff') : t('stitchOn');
+      betaToggle.setAttribute('aria-pressed', beta.on ? 'true' : 'false');
       // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.
 
       // Запас под нижние строки — последним делом: их высоту мы только что и
@@ -551,10 +560,13 @@
       render();
     };
     betaToggle.addEventListener('click', () => {
+      // Выбор остаётся здесь и никуда не расходится. Сшивка помогает не
+      // всегда, и понять это можно лишь на конкретной паре: нажимая её у
+      // одной картинки, человек спрашивает про неё, а не про все остальные
+      // на странице. Общее значение живёт в настройках расширения — там его
+      // и меняют, если хочется поменять всюду.
       beta.on = !beta.on;
-      // Кладём туда же, откуда читали при запуске: выбор общий со страницей
-      // настроек, и панель в соседней вкладке узнает о нём тем же событием.
-      api?.storage?.sync?.set?.({ beta: beta.on });
+      beta.own = true;
       compare(slider.value);
     });
 
@@ -710,7 +722,9 @@
         if (result) render();
       },
       setBeta(on) {
-        if (beta.on === on) return;
+        // Кадр, в котором сшивку уже трогали рукой, настройке не подчиняется:
+        // иначе ответ из-под курсора менялся бы от правки в другом окне.
+        if (beta.own || beta.on === on) return;
         beta.on = on;
         if (result) compare(slider.value);
       },

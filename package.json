@@ -1,7 +1,7 @@
 {
   "name": "gh-pixel-diff",
   "private": true,
-  "version": "0.17.2",
+  "version": "0.18.0",
   "description": "Pixel-level image diff for GitHub pull requests",
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "chrome:token": "node scripts/chrome-token.mjs",
     "icons": "scripts/icons.sh",
     "install:macos": "scripts/install-macos.sh",
+    "install:ios": "scripts/install-ios.sh",
     "package": "scripts/package.sh",
     "run:ios": "scripts/run-ios-sim.sh",
     "screenshots": "scripts/screenshots.sh",

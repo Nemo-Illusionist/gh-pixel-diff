@@ -182,6 +182,85 @@ test('сдвинутые строки сшиваются, а не объявля
   expect(result.changed).toBe(2 * 8);
 });
 
+test('перестановка двух блоков не выдаётся за сдвиг', async ({ page }) => {
+  // Сшивка умеет объяснить одно: сверху добавили или убрали, и всё, что
+  // ниже, съехало. Когда же два блока поменялись местами, она объявляет один
+  // переехавшим, второй — новым, и половина перестановки пропадает с глаз:
+  // вместо двух правок видна одна. Отличить одно от другого можно по счёту —
+  // у настоящего сдвига переехавших строк кратно больше, чем новых.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const result = await page.evaluate(() => {
+    const width = 8;
+    const height = 12;
+    const rows = (values) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      values.forEach((value, y) => {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          data[i] = (value * 97) % 256;
+          data[i + 1] = (value * 53 + 40) % 256;
+          data[i + 2] = (value * 29 + 120) % 256;
+          data[i + 3] = 255;
+        }
+      });
+      return new ImageData(data, width, height);
+    };
+
+    const before = rows([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]);
+    // Те же строки, но пара «30 40» и пара «50 60» поменялись местами.
+    const after = rows([10, 20, 50, 60, 30, 40, 70, 80, 90, 100, 110, 120]);
+
+    const pair = { width, height, dataBefore: before, dataAfter: after };
+    return {
+      beta: self.GhPixelDiff.diffPrepared(pair, { beta: true }).changed,
+      plain: self.GhPixelDiff.diffPrepared(pair).changed,
+    };
+  });
+
+  // Со сшивкой и без неё ответ один и тот же: обе половины перестановки
+  // остаются видны, и ни одна не объявлена переездом.
+  expect(result.beta).toBe(result.plain);
+  expect(result.plain).toBe(4 * 8);
+});
+
+test('выравнивание, промахнувшееся на пиксель, доводится на месте', async ({ page }) => {
+  // Вёрстка двигает строки не поровну: одна карточка опускается на сорок три
+  // пикселя, соседняя — на сорок два. Где именно сдвиг меняется, между
+  // якорями не видно: там однотонный фон. Промах в пиксель на глаз не значит
+  // ничего, но каждая линейка под ним светится во всю ширину кадра.
+  const result = await page.evaluate(() => {
+    const width = 40;
+    const height = 10;
+    const rows = (values) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      values.forEach((value, y) => {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          data[i] = (value * 97) % 256;
+          data[i + 1] = (value * 53 + 40) % 256;
+          data[i + 2] = (value * 29 + 120) % 256;
+          data[i + 3] = 255;
+        }
+      });
+      return data;
+    };
+
+    const same = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    // Карта, в середине кадра промахнувшаяся на строку.
+    const map = Int32Array.from([0, 1, 2, 4, 5, 6, 6, 7, 8, 9]);
+    const snapped = self.GhPixelDiff.snapRows(
+      rows(same), rows(same), width, height, map,
+    );
+    return Array.from(snapped);
+  });
+
+  // Каждая строка нашла свою, и ни одна не уехала дальше соседней.
+  expect(result).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+});
+
 test('на непохожих картинках строки не сшиваются', async ({ page }) => {
   // Если совпавших строк почти нет, это не сдвиг, а другая картинка: сшивать
   // в ней нечего, и выдумывать соответствия хуже, чем не выдумывать.
@@ -270,7 +349,62 @@ test('без различий прямоугольника нет', async ({ pag
   expect(bounds).toBeNull();
 });
 
-test('в бете край, которого нет у одной из версий, не считается изменением', async ({ page }) => {
+test('сшивка, которая не помогла, отбрасывается вместе со своей подписью', async ({ page }) => {
+  // Сшивка — догадка, и садится она мимо. На снимке из настоящего
+  // пул-реквеста она поднимала находку с 12.48% до 13.87%: двигала строку
+  // целиком, вместе с колонкой, которая никуда не ехала. Поэтому считаем
+  // оба раза и оставляем тот ответ, где изменений меньше.
+  //
+  // Здесь это два столбца. Левый переставлен так, что сшивке есть за что
+  // ухватиться; правый не менялся вовсе, и всякий сдвиг строки его портит.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/content/compare.js', import.meta.url)),
+  });
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const answer = await page.evaluate(() => {
+    const width = 24;
+    const height = 40;
+    /** @param order порядок полос слева: по нему и различаются версии */
+    const fill = (order) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      for (let y = 0; y < height; y++) {
+        const band = order[Math.min(order.length - 1, Math.floor(y / 8))];
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          // Левая половина — переставляемые полосы, правая — ровный узор,
+          // одинаковый в обеих версиях.
+          const left = x < width / 2;
+          data[i] = left ? (band * 60) % 256 : (x * 9) % 256;
+          data[i + 1] = left ? (band * 37 + 20) % 256 : (y * 3) % 256;
+          data[i + 2] = left ? 180 : 90;
+          data[i + 3] = 255;
+        }
+      }
+      return new ImageData(data, width, height);
+    };
+
+    const pair = {
+      width,
+      height,
+      dataBefore: fill([0, 1, 2, 3, 4]),
+      dataAfter: fill([0, 2, 1, 3, 4]),
+      common: { width, height },
+    };
+    const { diffPrepared } = self.GhPixelDiff;
+    return {
+      сшито: diffPrepared(pair, { beta: true }).changed,
+      какЕсть: diffPrepared(pair, { beta: false }).changed,
+    };
+  });
+
+  // Хуже не стало — это и есть всё обещание сшивки.
+  expect(answer.сшито).toBeLessThanOrEqual(answer.какЕсть);
+});
+
+test('в бете край, которого нет у одной из версий, не красится вовсе', async ({ page }) => {
   // Кадр стал короче — и недостающие строки, сравненные с пустотой, дают
   // сплошную полосу и десятки тысяч «изменившихся» пикселей. На настоящем
   // снимке это девять десятых всей находки: правка тонет в полосе, о которой
@@ -309,17 +443,19 @@ test('в бете край, которого нет у одной из верс�
       { beta: true },
     );
 
-    let half = 0;
-    for (let i = 3; i < diff.mask.data.length; i += 4) if (diff.mask.data[i] === 128) half++;
-    return { changed: diff.changed, ratio: diff.ratio, bounds: diff.bounds, half };
+    let painted = 0;
+    for (let i = 3; i < diff.mask.data.length; i += 4) if (diff.mask.data[i]) painted++;
+    return { changed: diff.changed, ratio: diff.ratio, bounds: diff.bounds, painted };
   });
 
   // Общая часть совпала целиком — значит изменений нет.
   expect(result.changed).toBe(0);
   expect(result.ratio).toBe(0);
   expect(result.bounds).toBeNull();
-  // Но полоса на кадре отмечена — вполсилы, как сглаживание.
-  expect(result.half).toBe(2 * 10);
+  // И полоса не крашена ничем: ни в счёт, ни в границы она не идёт, а
+  // залитая даже вполсилы, она перекрикивала бы саму находку — на снимке,
+  // похудевшем на треть, розовым заливало бы эту самую треть.
+  expect(result.painted).toBe(0);
 });
 
 test('считает изменившиеся пиксели', async ({ page }) => {

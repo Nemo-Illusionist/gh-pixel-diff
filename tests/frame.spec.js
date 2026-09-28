@@ -1442,6 +1442,12 @@ test('состав «⋯» не меняется: неуместное гасн�
   // Сшивание переключается откуда угодно и в любом кадре.
   await expect(page.locator('.ghpd-beta-toggle')).toBeVisible();
   await expect(page.locator('.ghpd-beta-toggle')).toBeEnabled();
+  // Ни на одной кнопке меню не должно остаться оформления браузера: Safari
+  // рисует забытой кнопке свою светлую подложку, и в тёмной теме получается
+  // белое пятно с белыми же буквами.
+  const подложки = await page.$$eval('.ghpd-menu-panel button', (buttons) =>
+    buttons.map((button) => getComputedStyle(button).backgroundColor));
+  expect(подложки.every((color) => color === 'rgba(0, 0, 0, 0)')).toBe(true);
 });
 
 test('сшивание переключается из «⋯» и меняет ответ на месте', async ({ page }) => {
@@ -1458,15 +1464,31 @@ test('сшивание переключается из «⋯» и меняет �
   const было = await page.textContent('.ghpd-meta');
 
   await openMenu(page);
+  // Подпись у пункта постоянная, состояние показывает галочка: по кадру не
+  // видно, сшивается он или нет, и «сравнивать как есть» читалось двояко.
   await expect(page.locator('.ghpd-beta-toggle')).toHaveText('stitch shifted rows');
+  await expect(page.locator('.ghpd-beta-toggle')).toHaveAttribute('aria-pressed', 'false');
   await page.click('.ghpd-beta-toggle');
 
   await expect.poll(() => page.textContent('.ghpd-meta')).not.toBe(было);
   // Сшитых строк стало видно: кадр переехал целиком, и это уже не правка.
   expect(await page.textContent('.ghpd-meta')).toContain('rows');
-  // Нажатие поменяло и саму подпись кнопки — обратный ход назван вслух.
+  // Галочка встала — видно, что сшивка теперь включена.
   await openMenu(page);
-  await expect(page.locator('.ghpd-beta-toggle')).toHaveText('compare as is');
+  await expect(page.locator('.ghpd-beta-toggle')).toHaveText('stitch shifted rows');
+  await expect(page.locator('.ghpd-beta-toggle')).toHaveAttribute('aria-pressed', 'true');
+
+  // И выбор остаётся при этой картинке: настройка расширения, изменённая в
+  // другом окне, его не отменяет — человек спрашивал про эту пару, а не про
+  // все остальные на странице.
+  const сВключённой = await page.textContent('.ghpd-meta');
+  await page.evaluate(() => {
+    // @ts-ignore
+    globalThis.__ghpdSettingsChanged({ beta: { newValue: false } }, 'sync');
+  });
+  await openMenu(page);
+  await expect(page.locator('.ghpd-beta-toggle')).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.textContent('.ghpd-meta')).toBe(сВключённой);
 });
 
 test('под курсором видно, какой был пиксель и каким стал', async ({ page }) => {

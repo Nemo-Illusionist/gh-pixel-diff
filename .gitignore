@@ -3,3 +3,7 @@ dist/
 build/
 test-results/
 .DS_Store
+
+# Черновики: пробные снимки и скрипты, которыми щупают живые страницы.
+*.tmp.png
+*.tmp.mjs

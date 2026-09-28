@@ -95,8 +95,13 @@
 
   /** Цвета разницы: свои, если их поменяли в настройках. */
   const colors = { ...global.GhPixelDiff.COLORS };
-  /** Сшивать ли сдвинутые строки — бета, по умолчанию выключено. */
-  const beta = { on: false };
+  /**
+   * Сшивать ли сдвинутые строки — бета, по умолчанию выключено.
+   *
+   * `own` значит, что здесь её переключили рукой. С этого мига панель живёт
+   * своим выбором: настройка задаёт, с чего начать, а не чем закончить.
+   */
+  const beta = { on: false, own: false };
 
   async function readColors() {
     try {
@@ -198,6 +203,10 @@
     // это можно лишь на конкретной паре, включив и выключив его на месте.
     const betaToggle = el('button', 'ghpd-beta-toggle');
     betaToggle.type = 'button';
+    // Пункт-переключатель: подпись называет не действие, а состояние — у
+    // сшивки, в отличие от рамки, по кадру не видно, включена она или нет,
+    // и «сравнивать как есть» читалось и как текущий режим, и как кнопка.
+    betaToggle.textContent = t('stitchRows');
 
     const menu = createMenu(t('moreControls'));
     menu.panel.append(controls, outlineToggle, betaToggle, save);
@@ -264,8 +273,11 @@
       render();
     };
     betaToggle.addEventListener('click', () => {
+      // Выбор остаётся здесь и никуда не расходится: нажимая сшивку у одной
+      // картинки, человек спрашивает про неё, а не про все остальные на
+      // странице. Общее значение живёт в настройках расширения.
       beta.on = !beta.on;
-      api?.storage?.sync?.set?.({ beta: beta.on });
+      beta.own = true;
       compare(Number(slider.value));
     });
 
@@ -436,7 +448,7 @@
       // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
       outlineToggle.disabled = cropped || !result.bounds;
       outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-      betaToggle.textContent = beta.on ? t('stitchOff') : t('stitchOn');
+      betaToggle.setAttribute('aria-pressed', beta.on ? 'true' : 'false');
       // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
       // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
       // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.

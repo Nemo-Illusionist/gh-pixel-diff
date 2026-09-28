@@ -4,6 +4,20 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.18.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.17.2...v0.18.0) (2026-09-28)
+
+
+### Features
+
+* stitching splits the frame into bands, so one column can move alone ([#83](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/83)) ([d48c2a4](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/d48c2a40c91da8e0174c6b8ad54c24913c71bb27))
+* stitching switches from the menu, and 3-up saves as one picture ([#79](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/79)) ([4dbd4cf](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/4dbd4cf1ae4331e1d5bd9932b609fa46b916e298))
+
+
+### Bug Fixes
+
+* alignment that missed by a pixel is nudged back into place ([#84](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/84)) ([5cb3ced](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/5cb3cedc9ea95d2b2043837ee91b76f761171614))
+* stitching that does not help is thrown away ([#81](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/81)) ([487aa88](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/487aa8852853b47a1ea39126de5060f7a55789b9))
+
 ## [0.17.2](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.17.1...v0.17.2) (2026-09-28)
 
 

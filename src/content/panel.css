@@ -129,6 +129,7 @@
 
 .ghpd-crop-toggle,
 .ghpd-outline-toggle,
+.ghpd-beta-toggle,
 .ghpd-zoom-reset,
 .ghpd-save {
   font: inherit;
@@ -285,6 +286,13 @@
 /* Пункты меню — строки списка, а не ссылки посреди текста: подчёркивание
    здесь только рябит, а попасть надо во всю строку, а не в слова. */
 .ghpd-menu-panel button {
+  /* Оформление браузера снимается со всех кнопок меню разом: список выше
+     легко забыть пополнить, а Safari рисует забытой кнопке свою светлую
+     подложку — в тёмной теме это белое пятно с белыми же буквами. */
+  appearance: none;
+  background: none;
+  border: 0;
+  font: inherit;
   width: 100%;
   text-align: left;
   font-size: 12px;
@@ -314,6 +322,20 @@
 }
 
 .ghpd-menu-panel > [hidden] { display: none; }
+
+/* Пункт-переключатель. Место под галочку держится всегда, иначе подпись
+   прыгала бы вбок при каждом нажатии; когда сшивка выключена, галочка не
+   исчезает, а прячется — строка стоит на месте. */
+.ghpd-menu-panel .ghpd-beta-toggle::before {
+  content: '\2713';
+  display: inline-block;
+  width: 1.2em;
+  visibility: hidden;
+}
+
+.ghpd-menu-panel .ghpd-beta-toggle[aria-pressed='true']::before {
+  visibility: visible;
+}
 
 .ghpd-cluster-step {
   font: inherit;
