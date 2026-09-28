@@ -11,6 +11,7 @@
     "chrome:token": "node scripts/chrome-token.mjs",
     "icons": "scripts/icons.sh",
     "install:macos": "scripts/install-macos.sh",
+    "install:ios": "scripts/install-ios.sh",
     "package": "scripts/package.sh",
     "run:ios": "scripts/run-ios-sim.sh",
     "screenshots": "scripts/screenshots.sh",
