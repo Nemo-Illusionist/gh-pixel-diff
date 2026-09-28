@@ -229,10 +229,15 @@
    * такая пара сравнивается честно, зато обе половины перестановки будут
    * видны.
    */
-  function believable(map, inserted, removed) {
+  function believable(map, inserted, removed, common = map.length) {
     let moved = 0;
     let orphan = 0;
     for (let y = 0; y < map.length; y++) {
+      // Ниже общей высоты кадра у одной из версий нет ничего, и пары этим
+      // строкам взяться неоткуда. Считать их брошенными — значит объявлять
+      // перестановкой всякий снимок, который просто стал короче: пустого
+      // низа у него набирается больше, чем переехавшего содержимого.
+      if (y >= common) continue;
       if (map[y] < 0) orphan++;
       else if (map[y] !== y) moved++;
     }
@@ -398,7 +403,7 @@
    *          каждой строки «после» номер её строки в «до» или -1, если такой
    *          строки там не было
    */
-  function alignRows(dataBefore, dataAfter, width, height, from = 0, to = width) {
+  function alignRows(dataBefore, dataAfter, width, height, from = 0, to = width, common = height) {
     const before = rowHashes(dataBefore, width, height, from, to);
     const after = rowHashes(dataAfter, width, height, from, to);
 
@@ -446,7 +451,7 @@
         if (source >= 0 && source < height) map[y] = source;
         else shiftedIn++;
       }
-      return believable(map, offset ? shiftedIn : 0, offset ? shiftedIn : 0);
+      return believable(map, offset ? shiftedIn : 0, offset ? shiftedIn : 0, common);
     }
 
     /** Паруем промежуток между якорями один к одному, сверху вниз. */
@@ -472,7 +477,7 @@
     }
     fill(prevAfter, height, prevBefore, height);
 
-    return believable(map, inserted, removed);
+    return believable(map, inserted, removed, common);
   }
 
   /**
@@ -514,7 +519,7 @@
    * удаление, а не россыпь правок. Поэтому он не заменяет якоря, а спорит с
    * ними — и побеждает тот, после которого краснота меньше.
    */
-  function alignPrefix(dataBefore, dataAfter, width, height, from = 0, to = width) {
+  function alignPrefix(dataBefore, dataAfter, width, height, from = 0, to = width, common = height) {
     const before = rowHashes(dataBefore, width, height, from, to);
     const after = rowHashes(dataAfter, width, height, from, to);
 
@@ -540,7 +545,7 @@
         orphan++;
       }
     }
-    return believable(map, orphan, orphan);
+    return believable(map, orphan, orphan, common);
   }
 
   /**
@@ -718,7 +723,7 @@
    * @returns {{bands: Array, inserted: number, removed: number}|null}
    *          null — делить нечего или ни одна полоса ничего не нашла
    */
-  function alignBands(dataBefore, dataAfter, width, height, align = alignRows) {
+  function alignBands(dataBefore, dataAfter, width, height, align = alignRows, common = height) {
     const count = Math.min(BANDS_MAX, Math.floor(width / BAND_WIDTH));
     if (count < 2) return null;
 
@@ -729,7 +734,7 @@
     for (let i = 0; i < count; i++) {
       const from = Math.round((width * i) / count);
       const to = i === count - 1 ? width : Math.round((width * (i + 1)) / count);
-      const aligned = align(dataBefore, dataAfter, width, height, from, to);
+      const aligned = align(dataBefore, dataAfter, width, height, from, to, common);
       if (!aligned) continue;
       bands.push({ ...aligned, from, to });
       // Строки считаем по самой деятельной полосе, а не суммой: подпись
@@ -989,8 +994,11 @@
     // пустотой, дают сплошную красную полосу и десятки тысяч «изменившихся»
     // пикселей. На снимке страницы это девять десятых всей находки: настоящая
     // правка тонет в полосе, которая и так названа словами в подписи.
-    // Поэтому край отмечается вполсилы, как сглаживание: виден, но ни в счёт,
-    // ни в границы, ни в места изменений не идёт.
+    // Поэтому край не красится вовсе: ни в счёт, ни в границы, ни в места
+    // изменений он не идёт — и рисовать его не за чем. Полсилы не спасали:
+    // на снимке, похудевшем на треть, розовым заливало эту самую треть, и
+    // ответ «изменилось три процента» тонул в ней окончательно. А то, что
+    // кадр стал короче, и так сказано в подписи словами и числами.
     //
     // Тоже под бетой, и вместе со сшиванием: обе поправки меняют само число в
     // подписи, а число — то, на что смотрят в первую очередь. Пусть сначала
@@ -1002,9 +1010,8 @@
         const edge = y >= common.height;
         for (let x = edge ? 0 : common.width; x < width; x++) {
           const i = (y * width + x) * 4;
-          if (mask.data[i + 3] !== 255) continue;
-          mask.data[i + 3] = 128;
-          outside++;
+          if (mask.data[i + 3] === 255) outside++;
+          mask.data[i + 3] = 0;
         }
       }
     }
@@ -1076,11 +1083,14 @@
     const { data: dataBefore } = prepared.dataBefore;
     const { data: dataAfter } = prepared.dataAfter;
     let best = asIs;
+    // Общая высота: ниже неё у одной из версий кадра нет, и выравниванию там
+    // нечего искать — а вот счёт брошенных строк эта пустота портила.
+    const common = Math.min(prepared.common?.height ?? height, height);
     const guesses = [
-      alignRows(dataBefore, dataAfter, width, height),
-      alignBands(dataBefore, dataAfter, width, height),
-      alignPrefix(dataBefore, dataAfter, width, height),
-      alignBands(dataBefore, dataAfter, width, height, alignPrefix),
+      alignRows(dataBefore, dataAfter, width, height, 0, width, common),
+      alignBands(dataBefore, dataAfter, width, height, alignRows, common),
+      alignPrefix(dataBefore, dataAfter, width, height, 0, width, common),
+      alignBands(dataBefore, dataAfter, width, height, alignPrefix, common),
     ];
     for (const aligned of guesses) {
       if (!aligned || !(aligned.inserted || aligned.removed)) continue;
