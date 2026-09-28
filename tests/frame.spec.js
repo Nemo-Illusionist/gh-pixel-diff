@@ -902,6 +902,14 @@ test('версия меньшего размера показана своим �
   );
   expect(трое[1].width / трое[0].width).toBeCloseTo(200 / 400, 2);
   expect(трое[2]).toEqual(трое[0]);
+
+  // Обрезка считается по общему холсту и у меньшей версии вылезает за её
+  // край — там кадр подрезается по ней же.
+  await page.click('.ghpd-views .ghpd-view-button:nth-child(1)');
+  await page.click('.ghpd-crop-toggle');
+  const фрагмент = await размер(2);
+  expect(фрагмент.width).toBeLessThanOrEqual(после.width);
+  expect(фрагмент.height).toBeLessThanOrEqual(после.height);
 });
 
 test('«до» и «после» одеты, как в 2-up самого GitHub', async ({ page }) => {

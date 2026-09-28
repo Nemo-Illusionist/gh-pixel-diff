@@ -52,7 +52,12 @@ button:hover { background: color-mix(in srgb, canvastext 14%, transparent); }
 .report a:hover { opacity: 1; }
 
 @media (max-width: 480px) {
-  body { width: auto; padding: 20px 16px; }
+  /* Ширину отпускаем, но не до нуля. Во всплывающем окне ширина страницы и
+     ширина её содержимого зависят друг от друга, и Safari разрешает этот
+     спор в пользу самого узкого: окно съёживалось до одного слова в строке.
+     Нижняя граница разрывает круг, а на телефоне она ни на что не влияет —
+     там экран заведомо шире. */
+  body { width: auto; min-width: 260px; padding: 20px 16px; }
 
   /* Пальцем целятся хуже, чем курсором. */
   button { min-height: 44px; }

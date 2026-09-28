@@ -72,23 +72,30 @@
    * кадр 544×140 размером 1280×906 и спорить с подписью под ним.
    */
   function baseRect(result, cropped, focus, own = null) {
+    const limitWidth = Math.round(own?.width ?? result.width);
+    const limitHeight = Math.round(own?.height ?? result.height);
     const box = focus ?? result.bounds;
     if (!cropped || !box) {
-      return {
-        x: 0,
-        y: 0,
-        width: Math.round(own?.width ?? result.width),
-        height: Math.round(own?.height ?? result.height),
-      };
+      return { x: 0, y: 0, width: limitWidth, height: limitHeight };
     }
     const x = Math.max(0, box.x - CROP_PADDING);
     const y = Math.max(0, box.y - CROP_PADDING);
-    return {
+    const width = Math.min(result.width - x, box.width + CROP_PADDING * 2);
+    const height = Math.min(result.height - y, box.height + CROP_PADDING * 2);
+    // Обрезка считается по общему холсту, и у меньшей версии она вылезает за
+    // её край. Подрезаем — начало остаётся тем же, значит и содержимое обеих
+    // версий по-прежнему совпадает по месту, просто кадр короче.
+    //
+    // Если же от версии в этом месте не осталось ничего, показываем участок
+    // как есть: пустой кадр здесь и есть ответ — этого куска в ней нет, а
+    // полоска в один пиксель об этом не скажет.
+    const fitted = {
       x,
       y,
-      width: Math.min(result.width - x, box.width + CROP_PADDING * 2),
-      height: Math.min(result.height - y, box.height + CROP_PADDING * 2),
+      width: Math.min(width, limitWidth - x),
+      height: Math.min(height, limitHeight - y),
     };
+    return fitted.width > 0 && fitted.height > 0 ? fitted : { x, y, width, height };
   }
 
   /**
@@ -179,8 +186,10 @@
       );
     }
 
-    // Своим размером показываем только «до» и «после» и только целиком: в
-    // обрезке смотрят на место правки, и оно у обеих версий одно.
+    // Своим размером показываем «до» и «после»: холст сравнения берётся по
+    // большей из версий, и рисовать пустой край меньшей — значит спорить с
+    // подписью под кадром. Разница и наложение живут на общем холсте: они
+    // про обе версии сразу.
     const own =
       shownFrame === 'before' || shownFrame === 'after'
         ? {
