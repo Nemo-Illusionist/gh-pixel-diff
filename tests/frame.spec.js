@@ -1442,6 +1442,12 @@ test('состав «⋯» не меняется: неуместное гасн�
   // Сшивание переключается откуда угодно и в любом кадре.
   await expect(page.locator('.ghpd-beta-toggle')).toBeVisible();
   await expect(page.locator('.ghpd-beta-toggle')).toBeEnabled();
+  // Ни на одной кнопке меню не должно остаться оформления браузера: Safari
+  // рисует забытой кнопке свою светлую подложку, и в тёмной теме получается
+  // белое пятно с белыми же буквами.
+  const подложки = await page.$$eval('.ghpd-menu-panel button', (buttons) =>
+    buttons.map((button) => getComputedStyle(button).backgroundColor));
+  expect(подложки.every((color) => color === 'rgba(0, 0, 0, 0)')).toBe(true);
 });
 
 test('сшивание переключается из «⋯» и меняет ответ на месте', async ({ page }) => {

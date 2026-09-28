@@ -129,6 +129,7 @@
 
 .ghpd-crop-toggle,
 .ghpd-outline-toggle,
+.ghpd-beta-toggle,
 .ghpd-zoom-reset,
 .ghpd-save {
   font: inherit;
@@ -285,6 +286,13 @@
 /* Пункты меню — строки списка, а не ссылки посреди текста: подчёркивание
    здесь только рябит, а попасть надо во всю строку, а не в слова. */
 .ghpd-menu-panel button {
+  /* Оформление браузера снимается со всех кнопок меню разом: список выше
+     легко забыть пополнить, а Safari рисует забытой кнопке свою светлую
+     подложку — в тёмной теме это белое пятно с белыми же буквами. */
+  appearance: none;
+  background: none;
+  border: 0;
+  font: inherit;
   width: 100%;
   text-align: left;
   font-size: 12px;
