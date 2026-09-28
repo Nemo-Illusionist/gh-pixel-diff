@@ -4,6 +4,13 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.17.2](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.17.1...v0.17.2) (2026-09-28)
+
+
+### Bug Fixes
+
+* cropping stays inside the smaller version, and the popup keeps its width ([#77](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/77)) ([7ed5801](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/7ed580102296dd4460edf65f588fde1acb854a6a))
+
 ## [0.17.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.17.0...v0.17.1) (2026-09-28)
 
 
