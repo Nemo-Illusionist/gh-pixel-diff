@@ -198,6 +198,10 @@
     // это можно лишь на конкретной паре, включив и выключив его на месте.
     const betaToggle = el('button', 'ghpd-beta-toggle');
     betaToggle.type = 'button';
+    // Пункт-переключатель: подпись называет не действие, а состояние — у
+    // сшивки, в отличие от рамки, по кадру не видно, включена она или нет,
+    // и «сравнивать как есть» читалось и как текущий режим, и как кнопка.
+    betaToggle.textContent = t('stitchRows');
 
     const menu = createMenu(t('moreControls'));
     menu.panel.append(controls, outlineToggle, betaToggle, save);
@@ -436,7 +440,7 @@
       // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
       outlineToggle.disabled = cropped || !result.bounds;
       outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-      betaToggle.textContent = beta.on ? t('stitchOff') : t('stitchOn');
+      betaToggle.setAttribute('aria-pressed', beta.on ? 'true' : 'false');
       // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
       // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
       // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.
