@@ -232,7 +232,7 @@ test('выравнивание, промахнувшееся на пиксель
   // якорями не видно: там однотонный фон. Промах в пиксель на глаз не значит
   // ничего, но каждая линейка под ним светится во всю ширину кадра.
   const result = await page.evaluate(() => {
-    const width = 4;
+    const width = 40;
     const height = 10;
     const rows = (values) => {
       const data = new Uint8ClampedArray(width * height * 4);
@@ -248,11 +248,12 @@ test('выравнивание, промахнувшееся на пиксель
       return data;
     };
 
-    const before = rows([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
-    const after = rows([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
-    // Карта, промахнувшаяся на строку в середине кадра.
-    const map = Int32Array.from([0, 1, 2, 4, 5, 5, 6, 7, 8, 9]);
-    const snapped = self.GhPixelDiff.snapRows(before, after, width, height, map);
+    const same = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    // Карта, в середине кадра промахнувшаяся на строку.
+    const map = Int32Array.from([0, 1, 2, 4, 5, 6, 6, 7, 8, 9]);
+    const snapped = self.GhPixelDiff.snapRows(
+      rows(same), rows(same), width, height, map,
+    );
     return Array.from(snapped);
   });
 

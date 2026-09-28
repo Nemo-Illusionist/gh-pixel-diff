@@ -568,14 +568,15 @@
    * выравнивания.
    */
   /**
-   * Во сколько раз строка должна сойтись лучше, чтобы подвинуть её на пиксель.
+   * Во что обходится пути смена положения, в пикселях.
    *
-   * Требование строгое нарочно: доводка не должна подменять правку соседней
-   * строкой, которая случайно похожа. Настоящий промах выравнивания
-   * распознаётся сразу — строка, ставшая на место, сходится не «получше», а
-   * почти в ноль.
+   * Плата нужна, чтобы строки не дёргались поодиночке от случайного
+   * совпадения: сдвинуться должен целый кусок кадра сразу. Восемь пикселей —
+   * меньше любой настоящей правки и больше любой ряби на краю рисунка,
+   * поэтому граница между сдвигами уезжает туда, где переход ничего не
+   * стоит, — в однотонный промежуток между карточками.
    */
-  const SNAP_GAIN = 4;
+  const SNAP_SWITCH = 8;
 
   /**
    * Сколько пикселей в строке не совпало.
@@ -584,11 +585,11 @@
    * место, а не похожую.
    */
   function rowDiff(before, after, source, y, width, from, to) {
-    let same = 0;
+    let apart = 0;
     const b = source * width;
     const a = y * width;
-    for (let x = from; x < to; x++) if (before[b + x] !== after[a + x]) same++;
-    return same;
+    for (let x = from; x < to; x++) if (before[b + x] !== after[a + x]) apart++;
+    return apart;
   }
 
   /**
@@ -602,26 +603,73 @@
    * Промах в пиксель ничего не значит на глаз, но каждая линейка, каждая
    * рамка карточки под ним светится краснотой во всю ширину.
    *
-   * Как. Каждой строке предлагается подвинуться на пиксель вверх или вниз, и
-   * она соглашается, только если от этого сходится кратно лучше. Дальше
-   * пиксела доводка не ходит: всё, что больше, — работа самого выравнивания.
+   * Как. Каждой строке предлагается три положения — своё и на пиксель в обе
+   * стороны, — и выбирается не лучшее для каждой по отдельности, а самый
+   * дешёвый путь по кадру сверху вниз, со своей платой за каждую смену
+   * положения. Дальше пиксела доводка не ходит: всё, что больше, — работа
+   * самого выравнивания, и способов у него два.
    */
   function snapRows(dataBefore, dataAfter, width, height, map, from = 0, to = width) {
     const before = new Uint32Array(dataBefore.buffer, dataBefore.byteOffset);
     const after = new Uint32Array(dataAfter.buffer, dataAfter.byteOffset);
-    let moved = 0;
-    const snapped = Int32Array.from(map);
+    const steps = [-1, 0, 1];
+    const count = steps.length;
+
+    // Каждой строке предлагается три положения — своё и на пиксель в обе
+    // стороны, — но выбираются они не поодиночке, а все разом: ищется самый
+    // дешёвый путь сверху вниз. Поодиночке нельзя: соседние строки прижались
+    // бы к одному источнику, и он нарисовался бы дважды, а его сосед пропал.
+    // Шов от этого виден там же, где был промах, — чертой по краю кружка.
+    //
+    // Путь платит за каждую смену положения. Поэтому граница между сдвигами
+    // сама уезжает в однотонный промежуток между карточками: там переход
+    // ничего не стоит, а на краю рисунка обошёлся бы дорого.
+    const cost = new Float64Array(height * count);
+    const came = new Uint8Array(height * count);
+    const alive = new Uint8Array(height);
+
     for (let y = 0; y < height; y++) {
       const source = map[y];
+      // Строка без пары остаётся на месте и пути не ведёт: ниже неё выбор
+      // начинается заново.
       if (source < 0 || source >= height) continue;
-      const own = rowDiff(before, after, source, y, width, from, to);
-      if (!own) continue;
-      for (const near of [source - 1, source + 1]) {
-        if (near < 0 || near >= height) continue;
-        if (rowDiff(before, after, near, y, width, from, to) * SNAP_GAIN >= own) continue;
-        snapped[y] = near;
-        moved++;
-        break;
+      alive[y] = 1;
+      const head = !y || !alive[y - 1];
+      for (let k = 0; k < count; k++) {
+        const near = source + steps[k];
+        const own =
+          near >= 0 && near < height ? rowDiff(before, after, near, y, width, from, to) : Infinity;
+        let best = 0;
+        let step = k;
+        if (!head) {
+          best = Infinity;
+          for (let j = 0; j < count; j++) {
+            const path = cost[(y - 1) * count + j] + (j === k ? 0 : SNAP_SWITCH);
+            if (path < best) {
+              best = path;
+              step = j;
+            }
+          }
+        }
+        cost[y * count + k] = own + best;
+        came[y * count + k] = step;
+      }
+    }
+
+    // Обратный проход: каждый участок разматывается от своей последней строки.
+    const snapped = Int32Array.from(map);
+    let moved = 0;
+    for (let tail = height - 1; tail >= 0; tail--) {
+      if (!alive[tail] || (tail + 1 < height && alive[tail + 1])) continue;
+      let at = 0;
+      for (let k = 1; k < count; k++) if (cost[tail * count + k] < cost[tail * count + at]) at = k;
+      for (let y = tail; y >= 0 && alive[y]; y--) {
+        const near = map[y] + steps[at];
+        if (near !== map[y] && near >= 0 && near < height) {
+          snapped[y] = near;
+          moved++;
+        }
+        at = came[y * count + at];
       }
     }
     return moved ? snapped : null;
