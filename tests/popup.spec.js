@@ -55,3 +55,20 @@ test('чужой тег остаётся текстом, а не разметк�
   expect(result.html).toBe('Nothing &lt;img src=x onerror=alert(1)&gt; here.');
   expect(await page.evaluate(() => document.querySelectorAll('#out img').length)).toBe(0);
 });
+
+test('окно не съёживается там, где его ширину решает содержимое', async ({ page }) => {
+  // Во всплывающем окне ширина страницы и ширина её содержимого зависят друг
+  // от друга. Safari разрешает этот спор в пользу самого узкого: правило,
+  // написанное ради телефона, отпускало ширину — и окно вставало в одно
+  // слово на строку. Узкое окно здесь и изображает тот случай.
+  const markup = readFileSync(fileURLToPath(new URL('../src/popup/popup.html', import.meta.url)), 'utf8');
+  const style = readFileSync(fileURLToPath(new URL('../src/popup/popup.css', import.meta.url)), 'utf8');
+
+  await page.setViewportSize({ width: 200, height: 400 });
+  await page.setContent(markup.slice(markup.indexOf('<body')));
+  await page.addStyleTag({ content: style });
+
+  const ширина = await page.evaluate(() => document.body.getBoundingClientRect().width);
+
+  expect(ширина).toBeGreaterThanOrEqual(260);
+});
