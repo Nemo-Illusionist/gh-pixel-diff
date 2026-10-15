@@ -12,6 +12,7 @@
     "icons": "scripts/icons.sh",
     "install:macos": "scripts/install-macos.sh",
     "install:ios": "scripts/install-ios.sh",
+    "ios:daily": "scripts/ios-daily.sh",
     "package": "scripts/package.sh",
     "run:ios": "scripts/run-ios-sim.sh",
     "screenshots": "scripts/screenshots.sh",
