@@ -129,7 +129,7 @@
 
 .ghpd-crop-toggle,
 .ghpd-outline-toggle,
-.ghpd-beta-toggle,
+.ghpd-stitch-toggle,
 .ghpd-zoom-reset,
 .ghpd-save {
   font: inherit;
@@ -326,14 +326,14 @@
 /* Пункт-переключатель. Место под галочку держится всегда, иначе подпись
    прыгала бы вбок при каждом нажатии; когда сшивка выключена, галочка не
    исчезает, а прячется — строка стоит на месте. */
-.ghpd-menu-panel .ghpd-beta-toggle::before {
+.ghpd-menu-panel .ghpd-stitch-toggle::before {
   content: '\2713';
   display: inline-block;
   width: 1.2em;
   visibility: hidden;
 }
 
-.ghpd-menu-panel .ghpd-beta-toggle[aria-pressed='true']::before {
+.ghpd-menu-panel .ghpd-stitch-toggle[aria-pressed='true']::before {
   visibility: visible;
 }
 

@@ -181,9 +181,9 @@ test('цвет разницы задаётся на странице и прим
   expect(await markColor(page)).toBe('0,160,0');
 });
 
-test('бета включается на странице и меняет ответ', async ({ page }) => {
-  // Пара со сдвигом: наверху добавлен блок, и всё ниже съехало. Без сшивания
-  // изменившимся оказывается почти весь кадр.
+test('сшивку можно выключить на странице, и ответ меняется', async ({ page }) => {
+  // Пара со сдвигом: наверху добавлен блок, и всё ниже съехало. Сшивка идёт
+  // по умолчанию, поэтому переехавшее содержимое изменившимся не считается.
   await load(page, 'shifted-before.png', 'shifted-after.png');
   await expect(meta(page)).toContainText(/pixels?/);
   const count = () =>
@@ -191,16 +191,17 @@ test('бета включается на странице и меняет отв
       Number(document.querySelector('#meta strong').textContent.replace(/\D/g, '')),
     );
 
-  const было = await count();
-
-  await page.locator('#tune').click();
-  await page.locator('#beta').check();
-
-  // Ответ пересчитан, и найденного заметно меньше: переехавшие строки
-  // сошлись со своими и перестали считаться изменившимися.
-  await expect.poll(count).toBeLessThan(было / 2);
   // Сдвиг назван словами, а не только числом.
   await expect(meta(page)).toContainText(/rows|строк/);
+  const сшито = await count();
+
+  await page.locator('#tune').click();
+  await page.locator('#stitch').uncheck();
+
+  // Ответ пересчитан, и найденного стало вдвое с лишним больше: переехавшее
+  // содержимое снова считается изменившимся.
+  await expect.poll(count).toBeGreaterThan(сшито * 2);
+  await expect(meta(page)).not.toContainText(/rows|строк/);
 });
 
 test('переключатель кадров можно спрятать, и он не запирает в «3-up»', async ({ page }) => {

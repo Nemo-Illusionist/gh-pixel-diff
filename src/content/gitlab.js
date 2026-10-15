@@ -96,20 +96,34 @@
   /** Цвета разницы: свои, если их поменяли в настройках. */
   const colors = { ...global.GhPixelDiff.COLORS };
   /**
-   * Сшивать ли сдвинутые строки — бета, по умолчанию выключено.
+   * Сшивать ли сдвинутые строки — по умолчанию да.
    *
    * `own` значит, что здесь её переключили рукой. С этого мига панель живёт
    * своим выбором: настройка задаёт, с чего начать, а не чем закончить.
    */
-  const beta = { on: false, own: false };
+  const stitch = { on: true, own: false };
+
+  /**
+   * Что сказано в настройках про сшивку.
+   *
+   * Ключей два, потому что раньше она была бетой и лежала под именем `beta`.
+   * Тот, кто её тогда нарочно выключил, выключил осознанно, и новое умолчание
+   * не должна включать её у него за спиной. Поэтому сначала спрашиваем новый
+   * ключ, потом старый, и только если молчат оба — отвечаем «да».
+   */
+  function readStitch(stored) {
+    if (typeof stored?.stitch === 'boolean') return stored.stitch;
+    if (typeof stored?.beta === 'boolean') return stored.beta;
+    return true;
+  }
 
   async function readColors() {
     try {
-      const stored = await api?.storage?.sync?.get({ colors: null, beta: false });
+      const stored = await api?.storage?.sync?.get({ colors: null, stitch: null, beta: null });
       if (stored?.colors) Object.assign(colors, stored.colors);
-      beta.on = stored?.beta === true;
+      stitch.on = readStitch(stored);
     } catch {
-      // Хранилища нет — остаётся обычная пара и сравнение без сшивания.
+      // Хранилища нет — остаётся обычная пара и сшивка, как по умолчанию.
     }
   }
 
@@ -201,15 +215,15 @@
     // открывают: какой кадр показать и куда в нём смотреть.
     // Сшивание сдвинутых строк — тут же: оно помогает не всегда, и понять
     // это можно лишь на конкретной паре, включив и выключив его на месте.
-    const betaToggle = el('button', 'ghpd-beta-toggle');
-    betaToggle.type = 'button';
+    const stitchToggle = el('button', 'ghpd-stitch-toggle');
+    stitchToggle.type = 'button';
     // Пункт-переключатель: подпись называет не действие, а состояние — у
     // сшивки, в отличие от рамки, по кадру не видно, включена она или нет,
     // и «сравнивать как есть» читалось и как текущий режим, и как кнопка.
-    betaToggle.textContent = t('stitchRows');
+    stitchToggle.textContent = t('stitchRows');
 
     const menu = createMenu(t('moreControls'));
-    menu.panel.append(controls, outlineToggle, betaToggle, save);
+    menu.panel.append(controls, outlineToggle, stitchToggle, save);
 
     // Строка управления: состав постоянный, меняется только видимость —
     // кнопки не переезжают с места на место.
@@ -272,12 +286,12 @@
       zoom.lookAt(result.clusters[focusIndex]);
       render();
     };
-    betaToggle.addEventListener('click', () => {
+    stitchToggle.addEventListener('click', () => {
       // Выбор остаётся здесь и никуда не расходится: нажимая сшивку у одной
       // картинки, человек спрашивает про неё, а не про все остальные на
       // странице. Общее значение живёт в настройках расширения.
-      beta.on = !beta.on;
-      beta.own = true;
+      stitch.on = !stitch.on;
+      stitch.own = true;
       compare(Number(slider.value));
     });
 
@@ -448,7 +462,7 @@
       // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
       outlineToggle.disabled = cropped || !result.bounds;
       outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-      betaToggle.setAttribute('aria-pressed', beta.on ? 'true' : 'false');
+      stitchToggle.setAttribute('aria-pressed', stitch.on ? 'true' : 'false');
       // Сохранять есть что только в одиночном кадре: три кадра рядом лежат
       // на трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
       // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.
@@ -509,8 +523,8 @@
           session = await start();
         }
         const computed = session.ask
-          ? await session.ask({ type: 'diff', threshold, colors, beta: beta.on })
-          : diffPrepared(session.prepared, { threshold, colors, beta: beta.on });
+          ? await session.ask({ type: 'diff', threshold, colors, stitch: stitch.on })
+          : diffPrepared(session.prepared, { threshold, colors, stitch: stitch.on });
 
         result = { ...computed, before: session.prepared.before, after: session.prepared.after };
         // Из потока разница приходит буфером — в ImageData её собираем здесь.

@@ -35,12 +35,26 @@
   /** Цвета разницы: свои, если их поменяли в настройках. */
   const colors = { ...global.GhPixelDiff.COLORS };
   /**
-   * Сшивать ли сдвинутые строки — бета, по умолчанию выключено.
+   * Сшивать ли сдвинутые строки — по умолчанию да.
    *
    * `own` значит, что здесь её переключили рукой. С этого мига кадр живёт
    * своим выбором: настройка задаёт, с чего начать, а не чем закончить.
    */
-  const beta = { on: false, own: false };
+  const stitch = { on: true, own: false };
+
+  /**
+   * Что сказано в настройках про сшивку.
+   *
+   * Ключей два, потому что раньше она была бетой и лежала под именем `beta`.
+   * Тот, кто её тогда нарочно выключил, выключил осознанно, и новое умолчание
+   * не должна включать её у него за спиной. Поэтому сначала спрашиваем новый
+   * ключ, потом старый, и только если молчат оба — отвечаем «да».
+   */
+  function readStitch(stored) {
+    if (typeof stored?.stitch === 'boolean') return stored.stitch;
+    if (typeof stored?.beta === 'boolean') return stored.beta;
+    return true;
+  }
   /**
    * Пока GitHub не задал фрейму высоту, окно внутри — узкая полоска, и кадр
    * ужимается в точку. Высоту задаёт родительская страница, и делает это,
@@ -199,11 +213,11 @@
    */
   async function readColors() {
     try {
-      const stored = await api?.storage?.sync?.get({ colors: null, beta: false });
+      const stored = await api?.storage?.sync?.get({ colors: null, stitch: null, beta: null });
       if (stored?.colors) Object.assign(colors, stored.colors);
-      beta.on = stored?.beta === true;
+      stitch.on = readStitch(stored);
     } catch {
-      // Хранилища нет — остаётся обычная пара и сравнение без сшивания.
+      // Хранилища нет — остаётся обычная пара и сшивка, как по умолчанию.
     }
   }
 
@@ -269,12 +283,12 @@
     // Сшивание сдвинутых строк — под рукой, а не только в настройках: оно
     // помогает не всегда, и понять это можно лишь на конкретной паре,
     // включив и выключив его тут же.
-    const betaToggle = el('button', 'ghpd-beta-toggle');
-    betaToggle.type = 'button';
+    const stitchToggle = el('button', 'ghpd-stitch-toggle');
+    stitchToggle.type = 'button';
     // Пункт-переключатель: подпись называет не действие, а состояние — у
     // сшивки, в отличие от рамки, по кадру не видно, включена она или нет,
     // и «сравнивать как есть» читалось и как текущий режим, и как кнопка.
-    betaToggle.textContent = t('stitchRows');
+    stitchToggle.textContent = t('stitchRows');
     const prevChange = el('button', 'ghpd-cluster-step', '‹');
     const nextChange = el('button', 'ghpd-cluster-step', '›');
     for (const [button, key] of [[prevChange, 'clusterPrev'], [nextChange, 'clusterNext']]) {
@@ -501,7 +515,7 @@
       // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
       outlineToggle.disabled = cropped || !result.bounds;
       outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-      betaToggle.setAttribute('aria-pressed', beta.on ? 'true' : 'false');
+      stitchToggle.setAttribute('aria-pressed', stitch.on ? 'true' : 'false');
       // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.
 
       // Запас под нижние строки — последним делом: их высоту мы только что и
@@ -559,14 +573,14 @@
       zoom.lookAt(result.clusters[focusIndex]);
       render();
     };
-    betaToggle.addEventListener('click', () => {
+    stitchToggle.addEventListener('click', () => {
       // Выбор остаётся здесь и никуда не расходится. Сшивка помогает не
       // всегда, и понять это можно лишь на конкретной паре: нажимая её у
       // одной картинки, человек спрашивает про неё, а не про все остальные
       // на странице. Общее значение живёт в настройках расширения — там его
       // и меняют, если хочется поменять всюду.
-      beta.on = !beta.on;
-      beta.own = true;
+      stitch.on = !stitch.on;
+      stitch.own = true;
       compare(slider.value);
     });
 
@@ -634,8 +648,8 @@
           session = await start();
         }
         const computed = session.ask
-          ? await session.ask({ type: 'diff', threshold, colors, beta: beta.on })
-          : diffPrepared(session.prepared, { threshold, colors, beta: beta.on });
+          ? await session.ask({ type: 'diff', threshold, colors, stitch: stitch.on })
+          : diffPrepared(session.prepared, { threshold, colors, stitch: stitch.on });
         result = { ...computed, before: session.prepared.before, after: session.prepared.after };
         // Из потока разница приходит буфером — обратно в картинку её
         // собирает тот, кто рисует.
@@ -692,7 +706,7 @@
     // под кадром занимали всегда. Внизу остаётся то, ради чего панель
     // открывают: какой кадр показать и куда в нём смотреть.
     const menu = createMenu(t('moreControls'));
-    menu.panel.append(slider.element, outlineToggle, betaToggle, save);
+    menu.panel.append(slider.element, outlineToggle, stitchToggle, save);
 
     const bar = el('div', 'ghpd-bar');
     bar.append(views, cropToggle, zoomReset, nav, menu.element);
@@ -721,11 +735,11 @@
         }
         if (result) render();
       },
-      setBeta(on) {
+      setStitch(on) {
         // Кадр, в котором сшивку уже трогали рукой, настройке не подчиняется:
         // иначе ответ из-под курсора менялся бы от правки в другом окне.
-        if (beta.own || beta.on === on) return;
-        beta.on = on;
+        if (stitch.own || stitch.on === on) return;
+        stitch.on = on;
         if (result) compare(slider.value);
       },
       show() {
@@ -755,7 +769,7 @@
       if (changes.showViews) panel.showViews(changes.showViews.newValue !== false);
       // Сшивание переключают и здесь, и на странице настроек: панель должна
       // показывать то, что выбрано, а не то, что было при её открытии.
-      if (changes.beta) panel.setBeta(changes.beta.newValue === true);
+      if (changes.stitch) panel.setStitch(changes.stitch.newValue !== false);
     });
 
     // Панель режимов остаётся видимой: под неё оставляем место.
