@@ -52,12 +52,27 @@ xcodebuild -project "$PROJECT" \
 
 APP="$DERIVED/Build/Products/Release-iphoneos/GitHub Pixel Diff.app"
 
+# Одно устройство не должно утаскивать за собой остальные: заперт телефон —
+# это повод не ставить на телефон, а не повод бросить планшет.
+FAILED=0
 while IFS=$'\t' read -r id name; do
   echo
   echo "→ $name"
-  xcrun devicectl device install app --device "$id" "$APP" >/dev/null
-  echo "  поставлено"
+  if ERROR=$(xcrun devicectl device install app --device "$id" "$APP" 2>&1 >/dev/null); then
+    echo "  поставлено"
+  else
+    FAILED=1
+    # Из простыни Apple вытаскиваем ту строку, по которой понятно, что делать.
+    WHY=$(printf '%s\n' "$ERROR" | grep -oE "The device is currently locked|was still locked|not paired|unavailable" | head -1)
+    case "$WHY" in
+      *locked*) echo "  не вышло: устройство заперто — разблокируйте и повторите" ;;
+      *paired*) echo "  не вышло: устройство не спарено с этим маком" ;;
+      *) echo "  не вышло:"; printf '%s\n' "$ERROR" | sed -n '1,3p' | sed 's/^/    /' ;;
+    esac
+  fi
 done <<< "$DEVICES"
 
 echo
 echo "Осталось вручную на каждом: Настройки → Приложения → Safari → Расширения → включить."
+[ "$FAILED" = 0 ] || echo "Часть устройств осталась без обновления — см. выше."
+exit "$FAILED"
