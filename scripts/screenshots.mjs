@@ -23,6 +23,29 @@ const store = join(root, 'docs/store');
 const PULL_REQUEST = 'https://github.com/Nemo-Illusionist/gh-pixel-diff/pull/1/files';
 const isViewscreen = (url) => url.includes('viewscreen.githubusercontent.com/diff/img');
 
+/**
+ * С какой пары снимаем.
+ *
+ * Картинок на полигоне восемь, и фрейм надо называть по имени, а не брать
+ * первый попавшийся: порядок там алфавитный, и новая пара однажды встаёт
+ * впереди — молча, а снимки начинают показывать не то, о чём подпись.
+ */
+const SHOWN = 'dashboard.png';
+
+/**
+ * Какой файл показывает этот фрейм.
+ *
+ * Имя лежит в самом адресе: GitHub кладёт туда ссылки на обе версии,
+ * записанные шестнадцатеричными цифрами.
+ */
+const framedFile = (url) => {
+  for (const [, hex] of url.matchAll(/([0-9a-f]{40,})/g)) {
+    const name = Buffer.from(hex, 'hex').toString('utf8').match(/[^/]+\.png/)?.[0];
+    if (name) return name;
+  }
+  return null;
+};
+
 // Подпись к витринному кадру: заголовок и строка помельче. В магазине их
 // читают раньше описания, поэтому каждая говорит про свой кадр.
 // Магазин принимает пять кадров. Кадр целиком в эту пятёрку не попал: он
@@ -208,7 +231,8 @@ try {
   await page.goto(PULL_REQUEST, { waitUntil: 'domcontentloaded' });
 
   // Фрейм GitHub пересоздаёт при перерисовке — берём его заново каждый раз.
-  const frame = () => page.frames().find((f) => isViewscreen(f.url()));
+  const frame = () =>
+    page.frames().find((f) => isViewscreen(f.url()) && framedFile(f.url()) === SHOWN);
   const ready = async (check) => {
     for (let attempt = 0; attempt < 120; attempt += 1) {
       const current = frame();
@@ -216,7 +240,12 @@ try {
       if (value) return;
       await sleep(1000);
     }
-    throw new Error('панель не дождалась готовности');
+    const видно = page
+      .frames()
+      .filter((f) => isViewscreen(f.url()))
+      .map((f) => framedFile(f.url()) ?? '?')
+      .join(', ');
+    throw new Error(`панель не дождалась готовности на «${SHOWN}». Есть: ${видно || 'ничего'}`);
   };
 
   await ready(() => !!document.querySelector('.ghpd-mode-item input'));
@@ -230,6 +259,10 @@ try {
   // Снимок, сделанный в этот промежуток, выходит с кадром, ужатым в точку, —
   // ждём, пока высота перестанет меняться.
   const grown = async () => {
+    // Картинок на полигоне восемь, и наша не первая. То, что ниже экрана,
+    // GitHub держит свёрнутым, пока до него не доскроллишь: фрейм при этом
+    // есть, панель в нём работает, а высоты у него нет и не будет.
+    await (await frame().frameElement()).scrollIntoViewIfNeeded();
     let previous = 0;
     for (let attempt = 0; attempt < 40; attempt += 1) {
       const box = await (await frame().frameElement()).boundingBox();
@@ -238,7 +271,7 @@ try {
       previous = height;
       await sleep(250);
     }
-    throw new Error('фрейм так и не вырос');
+    throw new Error(`фрейм «${SHOWN}» так и не вырос`);
   };
 
   const shoot = async () => {

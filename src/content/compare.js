@@ -1000,10 +1000,10 @@
     // ответ «изменилось три процента» тонул в ней окончательно. А то, что
     // кадр стал короче, и так сказано в подписи словами и числами.
     //
-    // Тоже под бетой, и вместе со сшиванием: обе поправки меняют само число в
-    // подписи, а число — то, на что смотрят в первую очередь. Пусть сначала
-    // поживут у тех, кто их включил нарочно.
-    const common = options.beta ? (prepared.common ?? { width, height }) : { width, height };
+    // Идёт вместе со сшиванием и выключается тем же переключателем: обе
+    // поправки отвечают на один вопрос — что здесь переехало, а что
+    // изменилось, — и порознь дают половину ответа.
+    const common = options.stitch ? (prepared.common ?? { width, height }) : { width, height };
     let outside = 0;
     if (common.width < width || common.height < height) {
       for (let y = 0; y < height; y++) {
@@ -1069,7 +1069,9 @@
   function diffPrepared(prepared, options = {}) {
     const { width, height } = prepared;
     const asIs = compareOnce(prepared, options, null);
-    if (!options.beta) return asIs;
+    // Сшивка делается, если её не выключили: умолчание здесь не задаётся,
+    // его задаёт тот, кто зовёт, — панель читает его из настроек.
+    if (!options.stitch) return asIs;
 
     // Догадки о том, что куда переехало, и каждая проверяется делом.
     //

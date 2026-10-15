@@ -56,6 +56,10 @@
   const OUTLINE_KEY = 'ghpd:outline';
   const FRAME_KEY = 'ghpd:frame';
   const COLORS_KEY = 'ghpd:colors';
+  const STITCH_KEY = 'ghpd:stitch';
+  // Прежнее имя: до того, как сшивка стала обычным режимом, она звалась
+  // бетой. Тот, кто её тогда выключил, выключил нарочно — читаем и старый
+  // ключ, чтобы новое умолчание не включило её у него за спиной.
   const BETA_KEY = 'ghpd:beta';
   const VIEWS_KEY = 'ghpd:showViews';
 
@@ -106,7 +110,17 @@
   // Цвета разницы и бета — те же, что в настройках расширения: по умолчанию
   // один красный, направление и сшивание включаются руками.
   const colors = { ...global.GhPixelDiff.COLORS, ...(settings.read(COLORS_KEY) ?? {}) };
-  let beta = settings.read(BETA_KEY, false) === true;
+  const storedStitch = settings.read(STITCH_KEY, null);
+  const storedBeta = settings.read(BETA_KEY, null);
+  let stitch =
+    typeof storedStitch === 'boolean'
+      ? storedStitch
+      : typeof storedBeta === 'boolean'
+        ? storedBeta
+        : true;
+  // Тронули ли переключатель в меню: с этого мига показанная пара живёт
+  // своим выбором, как и во фрейме расширения.
+  let ownStitch = false;
 
   const cropToggle = el('button', 'ghpd-crop-toggle');
   const outlineToggle = el('button', 'ghpd-outline-toggle');
@@ -144,14 +158,14 @@
   // Сшивание сдвинутых строк — под рукой, а не только в настройке ниже: оно
   // помогает не всегда, и понять это можно лишь на конкретной паре, включив
   // и выключив его тут же.
-  const betaToggle = el('button', 'ghpd-beta-toggle');
-  betaToggle.type = 'button';
+  const stitchToggle = el('button', 'ghpd-stitch-toggle');
+  stitchToggle.type = 'button';
   // Пункт-переключатель: подпись называет не действие, а состояние — у
   // сшивки, в отличие от рамки, по кадру не видно, включена она или нет,
   // и «сравнивать как есть» читалось и как текущий режим, и как кнопка.
-  betaToggle.textContent = t('stitchRows');
+  stitchToggle.textContent = t('stitchRows');
 
-  menu.panel.append(controls, outlineToggle, betaToggle, save);
+  menu.panel.append(controls, outlineToggle, stitchToggle, save);
   document.querySelector('#bar').append(cropToggle, zoomReset, nav, menu.element);
 
   // Увеличение живёт ровно столько, сколько показанная пара: это не
@@ -189,16 +203,22 @@
     zoom.lookAt(result.clusters[focusIndex]);
     render();
   };
-  // Переключатель в меню и галочка в настройке — об одном и том же, и
-  // ходить они должны вместе.
-  const switchBeta = (on) => {
-    beta = on;
-    tune.beta.checked = on;
-    settings.write(BETA_KEY, on);
+  // Галочка в настройках задаёт умолчание и запоминается; переключатель в
+  // меню — быстрый, только для показанной пары, и ничего не пишет. Так же
+  // устроено в расширении: сшивка помогает не всегда, и спрашивают про неё
+  // у конкретной картинки.
+  const setStitchDefault = (on) => {
+    stitch = on;
+    ownStitch = false;
+    settings.write(STITCH_KEY, on);
     if (result) compare();
   };
 
-  betaToggle.addEventListener('click', () => switchBeta(!beta));
+  stitchToggle.addEventListener('click', () => {
+    stitch = !stitch;
+    ownStitch = true;
+    if (result) compare();
+  });
 
   save.addEventListener('click', () => {
     // В «3-up» показанного холста нет — есть три; в файл уходит их склейка.
@@ -382,7 +402,7 @@
     // Рамка рисуется только в полном кадре — в обрезке ей нечего делать.
     outlineToggle.disabled = cropped || !result.bounds;
     outlineToggle.textContent = outline ? t('hideOutline') : t('showOutline');
-    betaToggle.setAttribute('aria-pressed', beta ? 'true' : 'false');
+    stitchToggle.setAttribute('aria-pressed', stitch ? 'true' : 'false');
     // Сохранять есть что только в одиночном кадре: три кадра рядом лежат на
     // трёх холстах, и «эта картинка» перестаёт быть одной картинкой.
     // В «3-up» сохраняется склейка трёх кадров — см. обработчик нажатия.
@@ -410,7 +430,7 @@
     direction: document.querySelector('#direction'),
     directionColors: document.querySelector('#direction-colors'),
     reset: document.querySelector('#colors-reset'),
-    beta: document.querySelector('#beta'),
+    stitch: document.querySelector('#stitch'),
   };
 
   /** Список языков — из самих локалей: написанный руками разойдётся с ними. */
@@ -516,8 +536,8 @@
     if (result) compare();
   });
 
-  tune.beta.checked = beta;
-  tune.beta.addEventListener('change', () => switchBeta(tune.beta.checked));
+  tune.stitch.checked = stitch;
+  tune.stitch.addEventListener('change', () => setStitchDefault(tune.stitch.checked));
 
   /** Поток здоровается сам: молчание — повод считать в общем потоке. */
   function greet(worker) {
@@ -620,8 +640,8 @@
         session = await start();
       }
       const computed = session.ask
-        ? await session.ask({ type: 'diff', threshold, colors, beta })
-        : diffPrepared(session.prepared, { threshold, colors, beta });
+        ? await session.ask({ type: 'diff', threshold, colors, stitch })
+        : diffPrepared(session.prepared, { threshold, colors, stitch });
 
       result = { ...computed, before: session.prepared.before, after: session.prepared.after };
       // Из потока карта строк приходит буфером — собираем обратно.
