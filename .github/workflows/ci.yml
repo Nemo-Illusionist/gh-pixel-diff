@@ -86,6 +86,16 @@ jobs:
       - if: needs.scope.outputs.code == 'true'
         run: npx playwright test $(ls tests/*.spec.js | grep -v '/live\.spec\.js$')
 
+  versions:
+    name: Версии Playwright
+    runs-on: ubuntu-latest
+    # Без needs: проверка идёт две секунды и нужна даже тогда, когда правка
+    # выглядит документацией, — номер образа встречается и в README.
+    steps:
+      - uses: actions/checkout@v7
+      # Без npm ci: проверка читает файлы и ничего не запускает.
+      - run: node scripts/check-playwright.mjs
+
   lint:
     name: Проверка манифеста Firefox
     needs: scope
