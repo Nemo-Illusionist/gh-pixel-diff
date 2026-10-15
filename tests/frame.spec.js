@@ -866,7 +866,14 @@ test('версия меньшего размера показана своим �
   // размером 400×300 и поспорить с подписью под ним: у GitHub в 2-up каждая
   // версия своего размера, и правильно так.
   await page.setViewportSize({ width: 900, height: 700 });
-  await openFrame(page, { before: svgSized(400, 300), after: svgSized(200, 120) });
+  // Со сшивкой у этой пары изменений нет вовсе: общая часть совпала, а край,
+  // которого у меньшей версии нет, в счёт не идёт — и обрезать нечего.
+  // Здесь же речь про размеры кадров, поэтому сравниваем как есть.
+  await openFrame(
+    page,
+    { before: svgSized(400, 300), after: svgSized(200, 120) },
+    { stitch: false },
+  );
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
@@ -1440,8 +1447,8 @@ test('состав «⋯» не меняется: неуместное гасн�
   await expect(page.locator('.ghpd-outline-toggle')).toBeDisabled();
   await expect(page.locator('.ghpd-save')).toBeVisible();
   // Сшивание переключается откуда угодно и в любом кадре.
-  await expect(page.locator('.ghpd-beta-toggle')).toBeVisible();
-  await expect(page.locator('.ghpd-beta-toggle')).toBeEnabled();
+  await expect(page.locator('.ghpd-stitch-toggle')).toBeVisible();
+  await expect(page.locator('.ghpd-stitch-toggle')).toBeEnabled();
   // Ни на одной кнопке меню не должно остаться оформления браузера: Safari
   // рисует забытой кнопке свою светлую подложку, и в тёмной теме получается
   // белое пятно с белыми же буквами.
@@ -1461,34 +1468,36 @@ test('сшивание переключается из «⋯» и меняет �
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
 
-  const было = await page.textContent('.ghpd-meta');
+  const сошшивкой = await page.textContent('.ghpd-meta');
+  // Сшивка идёт по умолчанию: сдвиг назван строками, а не красным кадром.
+  expect(сошшивкой).toContain('rows');
 
   await openMenu(page);
   // Подпись у пункта постоянная, состояние показывает галочка: по кадру не
   // видно, сшивается он или нет, и «сравнивать как есть» читалось двояко.
-  await expect(page.locator('.ghpd-beta-toggle')).toHaveText('stitch shifted rows');
-  await expect(page.locator('.ghpd-beta-toggle')).toHaveAttribute('aria-pressed', 'false');
-  await page.click('.ghpd-beta-toggle');
+  await expect(page.locator('.ghpd-stitch-toggle')).toHaveText('stitch shifted rows');
+  await expect(page.locator('.ghpd-stitch-toggle')).toHaveAttribute('aria-pressed', 'true');
+  await page.click('.ghpd-stitch-toggle');
 
-  await expect.poll(() => page.textContent('.ghpd-meta')).not.toBe(было);
-  // Сшитых строк стало видно: кадр переехал целиком, и это уже не правка.
-  expect(await page.textContent('.ghpd-meta')).toContain('rows');
-  // Галочка встала — видно, что сшивка теперь включена.
+  await expect.poll(() => page.textContent('.ghpd-meta')).not.toBe(сошшивкой);
+  // Без сшивки переехавшее содержимое снова считается изменившимся.
+  expect(await page.textContent('.ghpd-meta')).not.toContain('rows');
+  // Галочка снята — видно, что сшивка выключена.
   await openMenu(page);
-  await expect(page.locator('.ghpd-beta-toggle')).toHaveText('stitch shifted rows');
-  await expect(page.locator('.ghpd-beta-toggle')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.ghpd-stitch-toggle')).toHaveText('stitch shifted rows');
+  await expect(page.locator('.ghpd-stitch-toggle')).toHaveAttribute('aria-pressed', 'false');
 
   // И выбор остаётся при этой картинке: настройка расширения, изменённая в
   // другом окне, его не отменяет — человек спрашивал про эту пару, а не про
   // все остальные на странице.
-  const сВключённой = await page.textContent('.ghpd-meta');
+  const безСшивки = await page.textContent('.ghpd-meta');
   await page.evaluate(() => {
     // @ts-ignore
-    globalThis.__ghpdSettingsChanged({ beta: { newValue: false } }, 'sync');
+    globalThis.__ghpdSettingsChanged({ stitch: { newValue: true } }, 'sync');
   });
   await openMenu(page);
-  await expect(page.locator('.ghpd-beta-toggle')).toHaveAttribute('aria-pressed', 'true');
-  expect(await page.textContent('.ghpd-meta')).toBe(сВключённой);
+  await expect(page.locator('.ghpd-stitch-toggle')).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.textContent('.ghpd-meta')).toBe(безСшивки);
 });
 
 test('под курсором видно, какой был пиксель и каким стал', async ({ page }) => {
@@ -1658,8 +1667,7 @@ test('переехавшее вниз содержимое не краснеет
   // Добавленный наверху элемент сдвигает всё, что ниже. Без сшивания строк
   // панель честно сообщает, что изменился весь кадр, — и этим не помогает.
   await page.setViewportSize({ width: 900, height: 700 });
-  // Сшивание — бета: панель берёт его из настроек, а не включает сама.
-  await openFrame(page, svgShifted(), { beta: true });
+  await openFrame(page, svgShifted());
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
@@ -1674,12 +1682,11 @@ test('переехавшее вниз содержимое не краснеет
   expect(Number(пикселей.replace(/,/g, ''))).toBeLessThan(20000);
 });
 
-test('без беты кадр сравнивается как есть', async ({ page }) => {
-  // Сшивание — догадка, и на однообразном содержимом она садится мимо. Пока
-  // это бета, панель по умолчанию сравнивает кадры как есть, ничего не
-  // предполагая о сдвиге.
+test('выключенная сшивка возвращает сравнение как есть', async ({ page }) => {
+  // Сшивание — догадка, и отказаться от неё можно: тогда панель сравнивает
+  // кадры как есть, ничего не предполагая о сдвиге.
   await page.setViewportSize({ width: 900, height: 700 });
-  await openFrame(page, svgShifted());
+  await openFrame(page, svgShifted(), { stitch: false });
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);
@@ -1687,8 +1694,8 @@ test('без беты кадр сравнивается как есть', async 
   const подпись = await page.textContent('.ghpd-meta');
 
   expect(подпись).not.toMatch(/rows/);
-  // Переехавшее содержимое считается изменившимся: без сшивания панель
-  // находит вдесятеро больше пикселей, чем с ним.
+  // Переехавшее содержимое считается изменившимся: без сшивки панель находит
+  // вдесятеро больше пикселей, чем с ней.
   const [, пикселей] = /^([\d,]+) pixels/.exec(подпись);
   expect(Number(пикселей.replace(/,/g, ''))).toBeGreaterThan(50000);
 });
@@ -1775,7 +1782,7 @@ test('на узком экране нижние строки не наезжаю
   // кадру доставалось место, которого уже нет, — и он выдавливал их друг на
   // друга: панель складывалась в кашу.
   await page.setViewportSize({ width: 390, height: 780 });
-  await openFrame(page, svgTallResized(), { beta: true });
+  await openFrame(page, svgTallResized(), { stitch: true });
   await injectExtension(page);
   await page.click('.ghpd-mode-item');
   await waitForResult(page);

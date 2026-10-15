@@ -23,7 +23,7 @@ GitLab's, in merge requests on `gitlab.com`.
 <https://nemo-illusionist.github.io/gh-pixel-diff/> — drop two images and get the
 same diff. Everything the panel does inside a pull request the page does too:
 zoom, the changed places, the eyedropper, saving a PNG — and under *Tune the
-comparison*, the language, the colours of the difference and the beta. Nothing
+comparison*, the language, the colours of the difference and the stitching. Nothing
 is uploaded: the page is a static file, the comparison runs in your browser, and
 the settings stay there as well.
 
@@ -69,18 +69,23 @@ the settings stay there as well.
 - **Save what you see as a PNG**: the chosen frame, the crop, the zoom, the
   outlines — whatever is on screen goes into `shot.diff.png`, ready to drop into
   a comment or a ticket.
-- **Beta: stitching shifted rows, and the edge one version doesn't have.** An
-  element added at the top pushes everything below it down, and the comparison
-  then reports the whole frame as changed; a frame that got two dozen rows
-  shorter grows a solid red band at the bottom that the real edit drowns in.
-  Turn *stitch shifted rows, and do not count the edge* on in the settings and
-  rows are matched to their counterparts first — by the same trick text diffs
-  use to tell an edited line from an inserted one — while the band is marked at
-  half strength and counts neither towards the number nor towards the crop. It
-  is off by default: both change the number in the caption, and the stitching is
-  a guess besides — on flat content, an empty list or plain margins, rows are
-  indistinguishable and can be stitched any which way, and then the frame gets
-  marks where nothing changed.
+- **Rows that moved are matched to their counterparts, not reported as
+  changed.** An element added at the top pushes everything below it down, and a
+  plain comparison calls the whole frame changed; a frame that lost a third of
+  its height grows a band at the bottom that the real edit drowns in. Rows are
+  matched up first — by the same trick text diffs use to tell an edited line
+  from an inserted one — and the strip one version does not have is left out of
+  the count, the bounds and the places of change. Four guesses are tried, each
+  verified by counting pixels, and a guess that does not help is thrown away, so
+  the answer is never worse than a plain comparison. A guess that would pass a
+  swap off as a shift is refused outright: when two blocks trade places, half of
+  the swap would otherwise vanish from the picture.
+
+  It is on by default, and the `⋯` menu has a switch to take it off for the
+  picture in front of you — on one pair the stitching explains everything, and
+  on the next it is the plain comparison you want. The switch applies to that
+  picture alone; the setting in the extension's options is the default for all
+  of them.
 - **Before and after are dressed like GitHub's own 2-up**: the name above the
   frame — red on one, green on the other — a border of the same colour, and the
   image size below, with whichever of the two sizes changed picked out in
