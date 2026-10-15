@@ -154,9 +154,10 @@ test('сдвинутые строки сшиваются, а не объявля
 
     const aligned = self.GhPixelDiff.diffPrepared(
       { width, height, dataBefore: before, dataAfter: after },
-      { beta: true },
+      { stitch: true },
     );
-    // По умолчанию сшивания нет: это бета, и включают её в настройках.
+    // Само ядро ничего не предполагает: сшивать или нет, решает тот, кто
+    // зовёт, — панель берёт ответ из настроек.
     const plain = self.GhPixelDiff.diffPrepared({
       width,
       height,
@@ -215,14 +216,14 @@ test('перестановка двух блоков не выдаётся за 
 
     const pair = { width, height, dataBefore: before, dataAfter: after };
     return {
-      beta: self.GhPixelDiff.diffPrepared(pair, { beta: true }).changed,
+      сшито: self.GhPixelDiff.diffPrepared(pair, { stitch: true }).changed,
       plain: self.GhPixelDiff.diffPrepared(pair).changed,
     };
   });
 
   // Со сшивкой и без неё ответ один и тот же: обе половины перестановки
   // остаются видны, и ни одна не объявлена переездом.
-  expect(result.beta).toBe(result.plain);
+  expect(result.сшито).toBe(result.plain);
   expect(result.plain).toBe(4 * 8);
 });
 
@@ -395,8 +396,8 @@ test('сшивка, которая не помогла, отбрасываетс
     };
     const { diffPrepared } = self.GhPixelDiff;
     return {
-      сшито: diffPrepared(pair, { beta: true }).changed,
-      какЕсть: diffPrepared(pair, { beta: false }).changed,
+      сшито: diffPrepared(pair, { stitch: true }).changed,
+      какЕсть: diffPrepared(pair, { stitch: false }).changed,
     };
   });
 
@@ -404,12 +405,12 @@ test('сшивка, которая не помогла, отбрасываетс
   expect(answer.сшито).toBeLessThanOrEqual(answer.какЕсть);
 });
 
-test('в бете край, которого нет у одной из версий, не красится вовсе', async ({ page }) => {
+test('край, которого нет у одной из версий, не красится вовсе', async ({ page }) => {
   // Кадр стал короче — и недостающие строки, сравненные с пустотой, дают
   // сплошную полосу и десятки тысяч «изменившихся» пикселей. На настоящем
   // снимке это девять десятых всей находки: правка тонет в полосе, о которой
-  // и так сказано словами. Поправка пока под бетой, вместе со сшиванием:
-  // обе меняют само число в подписи.
+  // и так сказано словами. Поправка идёт вместе со сшиванием и выключается
+  // тем же переключателем: обе отвечают на один вопрос.
   await page.addScriptTag({
     path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
   });
@@ -440,7 +441,7 @@ test('в бете край, которого нет у одной из верс�
         dataAfter: fill(8),
         common: { width, height: 8 },
       },
-      { beta: true },
+      { stitch: true },
     );
 
     let painted = 0;

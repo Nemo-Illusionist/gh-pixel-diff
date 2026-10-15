@@ -40,7 +40,7 @@
       const result = diffPrepared(prepared, {
         threshold: data.threshold,
         colors: data.colors,
-        beta: data.beta,
+        stitch: data.stitch,
       });
       global.postMessage(
         {

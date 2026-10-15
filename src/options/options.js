@@ -115,20 +115,25 @@ document.querySelector('#colors-reset').addEventListener('click', () => {
   saveColors();
 });
 
-// Бета: сшивание сдвинутых строк и край, которого у одной из версий нет.
-// Обе поправки меняют само число в подписи, а на однообразном содержимом —
-// пустой список, ровные поля — сшивание к тому же садится мимо. Поэтому
-// включается руками и одним переключателем на обе.
-const beta = document.querySelector('#beta');
+// Сшивание сдвинутых строк и край, которого у одной из версий нет: обе
+// поправки отвечают на один вопрос — что переехало, а что изменилось, — и
+// выключаются одним переключателем. Здесь он задаёт умолчание для всех
+// картинок; у каждой панели есть свой, быстрый, в меню «⋯».
+//
+// Ключ читается и старый: до того, как сшивка стала обычным режимом, она
+// лежала под именем `beta`, и тот, кто её тогда выключил, сделал это нарочно.
+const stitch = document.querySelector('#stitch');
 
-Promise.resolve(api.storage.sync.get({ beta: false }))
-  .then(({ beta: value }) => {
-    beta.checked = value === true;
+Promise.resolve(api.storage.sync.get({ stitch: null, beta: null }))
+  .then((stored) => {
+    if (typeof stored?.stitch === 'boolean') stitch.checked = stored.stitch;
+    else if (typeof stored?.beta === 'boolean') stitch.checked = stored.beta;
+    else stitch.checked = true;
   })
   .catch(() => {});
 
-beta.addEventListener('change', () => {
-  Promise.resolve(api.storage.sync.set({ beta: beta.checked })).catch(() => {});
+stitch.addEventListener('change', () => {
+  Promise.resolve(api.storage.sync.set({ stitch: stitch.checked })).catch(() => {});
 });
 
 /**
