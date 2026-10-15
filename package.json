@@ -9,6 +9,7 @@
     "build:safari": "scripts/build-safari.sh",
     "build:site": "node scripts/build-site.mjs",
     "chrome:token": "node scripts/chrome-token.mjs",
+    "check:playwright": "node scripts/check-playwright.mjs",
     "icons": "scripts/icons.sh",
     "install:macos": "scripts/install-macos.sh",
     "install:ios": "scripts/install-ios.sh",
