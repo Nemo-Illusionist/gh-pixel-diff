@@ -22,11 +22,14 @@ fi
 TEAM="${DEVELOPMENT_TEAM:-$(security find-certificate -c "$IDENTITY" -p |
   openssl x509 -noout -subject | sed -n 's/.*OU=\([^,]*\).*/\1/p')}"
 
-# Настоящие устройства среди спаренных: симуляторы нам тут не нужны.
+# Настоящие устройства среди спаренных: симуляторы нам тут не нужны. Их выдаёт
+# слово simulated в последней колонке — у настоящих она пуста. Слова physical,
+# по которому мы отбирали раньше, в выводе devicectl больше нет.
 DEVICES=$(xcrun devicectl list devices 2>/dev/null |
   awk -v want="$WANTED" '
-    /physical/ && /available/ {
+    /available/ && !/simulated/ {
       match($0, /[0-9A-F]{8}-[0-9A-F]{16}/)
+      if (!RSTART) next
       id = substr($0, RSTART, RLENGTH)
       name = substr($0, 1, index($0, "  ") - 1)
       if (want == "" || index(tolower(name), tolower(want))) print id "\t" name

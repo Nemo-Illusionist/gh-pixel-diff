@@ -97,7 +97,7 @@ echo "=== $(date '+%Y-%m-%d %H:%M') ==="
 
 # Ни одного устройства под рукой — это не беда, а обычный день: молчим и
 # ждём следующего.
-if ! xcrun devicectl list devices 2>/dev/null | grep -q "available.*physical"; then
+if ! xcrun devicectl list devices 2>/dev/null | grep -v simulated | grep -q available; then
   echo "Устройств на связи нет — пропускаем."
   exit 0
 fi
