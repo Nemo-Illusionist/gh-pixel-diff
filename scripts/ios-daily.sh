@@ -82,6 +82,8 @@ RUNNER_BODY
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <!-- Без локали launchd отдаёт журналу вместо «iPad (Пётр)» — «iPad (????)». -->
+    <key>LANG</key><string>ru_RU.UTF-8</string>
   </dict>
   <key>StandardOutPath</key><string>$LOG</string>
   <key>StandardErrorPath</key><string>$LOG</string>
