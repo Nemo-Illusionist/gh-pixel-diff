@@ -381,6 +381,63 @@ test('в любой момент виден ровно один режим', asy
   expect(await visible()).toEqual(['view view-onion selected']);
 });
 
+test('кадр за экраном не считает, пока на него не посмотрят', async ({ page }) => {
+  // На пул-реквесте со снимками таких кадров бывает три десятка, и наш режим
+  // восстанавливается в каждом сам. Если каждый сразу распакует обе картинки,
+  // телефону не хватит памяти на страницу — Safari перезагружает вкладку.
+  await openFrame(page);
+  // Подменяем наблюдателя до расширения: наш кадр будто бы далеко внизу.
+  await page.evaluate(() => {
+    window.__ghpdShow = [];
+    window.IntersectionObserver = class {
+      constructor(callback, options) {
+        // Ближний наблюдатель заводится первым — его и держим наготове.
+        if (options?.rootMargin !== '3000px') window.__ghpdShow.push(callback);
+      }
+      observe() {}
+      disconnect() {}
+    };
+  });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+
+  // Режим выбран, панель открыта — но считать нечего: кадра не видно.
+  await expect(page.locator('.ghpd-view')).toBeVisible();
+  expect(await page.evaluate(() => document.querySelector('.ghpd-meta').textContent)).toBe('');
+
+  // Дошли до него прокруткой — вот теперь считаем.
+  await page.evaluate(() => {
+    for (const callback of window.__ghpdShow) callback([{ isIntersecting: true }]);
+  });
+  await waitForResult(page);
+});
+
+test('кадр, уехавший далеко, отпускает память', async ({ page }) => {
+  // Пока страница листается насквозь, посчитанные кадры копятся: каждый
+  // держит обе распакованные картинки. Уехал далеко — пусть отпустит.
+  await openFrame(page);
+  await page.evaluate(() => {
+    window.__ghpdGone = [];
+    const real = window.IntersectionObserver;
+    window.IntersectionObserver = class {
+      constructor(callback, options) {
+        if (options?.rootMargin === '3000px') window.__ghpdGone.push(callback);
+        else this.inner = new real(callback, options);
+      }
+      observe(node) { this.inner?.observe(node); }
+      disconnect() { this.inner?.disconnect(); }
+    };
+  });
+  await injectExtension(page);
+  await page.click('.ghpd-mode-item');
+  await waitForResult(page);
+
+  await page.evaluate(() => {
+    for (const callback of window.__ghpdGone) callback([{ isIntersecting: false }]);
+  });
+  expect(await page.evaluate(() => document.querySelector('.ghpd-meta').textContent)).toBe('');
+});
+
 test('не меняет высоту документа', async ({ page }) => {
   await openFrame(page);
   // GitHub меряет высоту документа во фрейме и задаёт её фрейму снаружи:
