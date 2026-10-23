@@ -262,6 +262,70 @@ test('выравнивание, промахнувшееся на пиксель
   expect(result).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 });
 
+test('место, пропадающее от сдвига на пиксель, правкой не считается', async ({ page }) => {
+  // Вёрстка кладёт соседние поля на разные пиксели: в одной строке одно
+  // съехало, другое нет. Сшивка двигает строку целиком и обоим угодить не
+  // может, поэтому остаются крошки в десяток пикселей. Беда не в них, а в
+  // том, что крошка объявлена местом изменений наравне с настоящей правкой и
+  // переходы водят по ней человека.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const result = await page.evaluate(() => {
+    const width = 24;
+    const height = 24;
+    // Пустой кадр с одним пятном: где оно лежит, задаётся снаружи.
+    const spot = (atX, atY, colour) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = 240;
+        data[i + 1] = 240;
+        data[i + 2] = 240;
+        data[i + 3] = 255;
+      }
+      for (let y = atY; y < atY + 4; y++) {
+        for (let x = atX; x < atX + 4; x++) {
+          const i = (y * width + x) * 4;
+          data[i] = colour[0];
+          data[i + 1] = colour[1];
+          data[i + 2] = colour[2];
+        }
+      }
+      return new ImageData(data, width, height);
+    };
+
+    const чёрное = [20, 20, 20];
+    const красное = [220, 30, 30];
+    const пара = (before, after) => ({ width, height, dataBefore: before, dataAfter: after });
+
+    return {
+      // Пятно переехало на пиксель вбок и осталось собой.
+      сдвиг: self.GhPixelDiff.diffPrepared(
+        пара(spot(8, 8, чёрное), spot(9, 8, чёрное)),
+        { stitch: true },
+      ).changed,
+      // Без сшивки обещано попиксельное сравнение — там сдвиг виден.
+      сдвигКакЕсть: self.GhPixelDiff.diffPrepared(
+        пара(spot(8, 8, чёрное), spot(9, 8, чёрное)),
+      ).changed,
+      // А это уже правка: пятно осталось на месте, но стало другим.
+      правка: self.GhPixelDiff.diffPrepared(
+        пара(spot(8, 8, чёрное), spot(8, 8, красное)),
+        { stitch: true },
+      ).changed,
+    };
+  });
+
+  // Переехавшее на пиксель — не правка: ни одного изменившегося пикселя.
+  expect(result.сдвиг).toBe(0);
+  // Без сшивки тот же сдвиг виден как изменение.
+  expect(result.сдвигКакЕсть).toBeGreaterThan(0);
+  // А настоящая правка на месте остаётся видна: она не сходится с собой ни
+  // при каком сдвиге.
+  expect(result.правка).toBeGreaterThan(0);
+});
+
 test('на непохожих картинках строки не сшиваются', async ({ page }) => {
   // Если совпавших строк почти нет, это не сдвиг, а другая картинка: сшивать
   // в ней нечего, и выдумывать соответствия хуже, чем не выдумывать.

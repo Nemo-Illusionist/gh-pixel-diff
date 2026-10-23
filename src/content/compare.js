@@ -784,6 +784,64 @@
    * мегапикселей — это тысячи клеток вместо миллионов точек, и обход её
    * стоит ничего.
    */
+  /**
+   * Куда заглядываем, проверяя место изменений на дрейф: на пиксель в любую
+   * сторону, включая углы. Дальше не ходим — всё, что больше пиксела, обязано
+   * объясняться выравниванием, а не этой поправкой.
+   */
+  const DRIFT = [
+    [0, 0],
+    [-1, 0], [1, 0], [0, -1], [0, 1],
+    [-1, -1], [-1, 1], [1, -1], [1, 1],
+  ];
+
+  /**
+   * Объясняется ли это место сдвигом на пиксель.
+   *
+   * Зачем. Вёрстка кладёт соседние поля на разные пиксели: в одной и той же
+   * строке «1d8» съехал на пиксель, а «e.g. piercing» рядом — нет. Сшивка
+   * двигает строку целиком и обоим угодить не может, поэтому в кадре остаются
+   * крошки в десяток пикселей. Беда не в них самих, а в том, что крошка
+   * объявлена местом изменений наравне с настоящей правкой и переходы водят
+   * по ней человека.
+   *
+   * Как. У места спрашивают по его собственному прямоугольнику: сходится ли
+   * он в ноль, если подвинуть на пиксель. Сравнение точное, без порога, —
+   * ищем ту же картинку, а не похожую. Проверка идёт по месту, а не по
+   * строке, и потому умеет то, чего не умеет сшивка: сказать «этот съехал, а
+   * сосед в той же строке — нет».
+   *
+   * Спрашивают у исходных картинок, а не у сшитой: «та же это картинка
+   * пикселем выше или нет» — свойство самой пары, а не нашего выравнивания.
+   * Нулевой сдвиг в списке не зря: место, сошедшееся с оригиналом без всякого
+   * сдвига, — целиком наших рук дело, это сшивка подвинула строку ради соседа
+   * и сломала то, что стояло ровно.
+   *
+   * Настоящая правка так не сходится никогда: текст, ставший другим, не
+   * совпадает с собой ни при каком сдвиге.
+   */
+  function driftOnly(before, after, width, height, box) {
+    for (const [dx, dy] of DRIFT) {
+      let same = true;
+      for (let y = box.y; y < box.y + box.height && same; y++) {
+        const from = y + dy;
+        if (from < 0 || from >= height) {
+          same = false;
+          break;
+        }
+        for (let x = box.x; x < box.x + box.width; x++) {
+          const at = x + dx;
+          if (at < 0 || at >= width || before[from * width + at] !== after[y * width + x]) {
+            same = false;
+            break;
+          }
+        }
+      }
+      if (same) return true;
+    }
+    return false;
+  }
+
   function findChanges(mask, width, height) {
     const cols = Math.max(1, Math.ceil(width / CLUSTER_CELL));
     const rows = Math.max(1, Math.ceil(height / CLUSTER_CELL));
@@ -1016,16 +1074,50 @@
       }
     }
 
-    const found = findChanges(mask.data, width, height);
+    let found = findChanges(mask.data, width, height);
+
+    // Места, объяснимые сдвигом на пиксель, местами изменений не считаются:
+    // ни в счёт, ни в переходы, ни на кадр. Стираем их прямо из маски — раз
+    // прямоугольник сошёлся в ноль целиком, то и все отметки в нём объяснены,
+    // чужой правке там взяться неоткуда.
+    //
+    // Только вместе со сшиванием: без неё обещано попиксельное сравнение, и
+    // тихо списывать пиксель нельзя.
+    let drifted = 0;
+    if (options.stitch && found.clusters.length) {
+      const was = new Uint32Array(
+        prepared.dataBefore.data.buffer,
+        prepared.dataBefore.data.byteOffset,
+      );
+      const now = new Uint32Array(
+        prepared.dataAfter.data.buffer,
+        prepared.dataAfter.data.byteOffset,
+      );
+      let cleared = false;
+      for (const box of found.clusters) {
+        if (!driftOnly(was, now, width, height, box)) continue;
+        for (let y = box.y; y < box.y + box.height; y++) {
+          for (let x = box.x; x < box.x + box.width; x++) {
+            const i = (y * width + x) * 4;
+            if (mask.data[i + 3] === 255) drifted++;
+            mask.data[i + 3] = 0;
+          }
+        }
+        cleared = true;
+      }
+      // Границы и места считаем заново: после стирания они другие.
+      if (cleared) found = findChanges(mask.data, width, height);
+    }
 
     return {
       width,
       height,
       scale: prepared.scale ?? 1,
-      changed: changed - outside,
+      changed: changed - outside - drifted,
       // Доля считается от общей части: делить на кадр, которого у одной из
       // версий нет, значит занижать долю тем сильнее, чем больше он вырос.
-      ratio: (changed - outside) / (common.width * common.height || width * height),
+      ratio:
+        (changed - outside - drifted) / (common.width * common.height || width * height),
       // Сколько строк прибавилось и убавилось: сдвиг стоит не только показать,
       // но и назвать — «весь кадр красный» и «вставлено 24 строки» это разные
       // ответы, даже когда картинка одна и та же.
