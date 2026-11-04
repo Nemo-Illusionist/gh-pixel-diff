@@ -4,6 +4,16 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.19.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.19.0...v0.19.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* compare the frame you are looking at, not all thirty of them ([#99](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/99)) ([2ba0fc6](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/2ba0fc6bbf5dd8896b69525ebf7ea091537e3063))
+* let the daily job's log keep device names ([#98](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/98)) ([6422b9c](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/6422b9cb44ec9c9e8ebef034b7f36fc8392590d2))
+* make the daily iOS reinstall actually run ([#96](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/96)) ([5b32da3](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/5b32da37f0721d14144ee4c35caf9a2d578b0c2b))
+* try the devices more than once a day, and stop once they are fresh ([#101](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/101)) ([8cea4f0](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/8cea4f0d010669aac6e5df6c01ebd36725dbd0de))
+
 ## [0.19.0](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.18.1...v0.19.0) (2026-10-15)
 
 
