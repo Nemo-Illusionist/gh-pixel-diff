@@ -6,9 +6,16 @@
 # этот срок нечем, зато можно перестать о нём помнить: пусть мак раз в день
 # сам переставляет, пока устройства под рукой.
 #
-# Каждый день, а не раз в неделю, нарочно: устройство бывает заперто, унесено
-# или просто не в сети, и промах не должен ничего стоить. Не вышло сегодня —
-# выйдет завтра, лишь бы хоть одна попытка за неделю удалась.
+# Несколько раз в день, а не раз в неделю и не раз в сутки, нарочно:
+# устройство бывает заперто, унесено или просто не в сети. Одной попытки в
+# день оказалось мало — планшет простоял запертым восемь дней подряд и успел
+# протухнуть, хотя лежал в двух метрах от мака. Чем чаще заходим, тем выше
+# шанс застать его разблокированным.
+#
+# Лишней работы это не прибавляет: устройство, обновлённое на днях, задание
+# пропускает и ничего не пересобирает. Считать свежим то, что моложе
+# REFRESH_DAYS, а не всю неделю, — запас на случай, если следующие заходы
+# будут промахиваться.
 #
 # Мака это не касается: там расширение живёт и после того, как подпись
 # протухла, и трогать его незачем.
@@ -20,7 +27,7 @@
 # код копия берёт с GitHub по HTTPS: ни ключей, ни доступа к чужим папкам.
 # Значит, ставится то, что в main, а не то, что сейчас у вас на руках.
 #
-#   scripts/ios-daily.sh on       — завести расписание
+#   scripts/ios-daily.sh on       — завести расписание (перезаводит и старое)
 #   scripts/ios-daily.sh off      — убрать
 #   scripts/ios-daily.sh status   — что сейчас и чем кончилась последняя попытка
 #   scripts/ios-daily.sh          — сама попытка, её и зовёт launchd
@@ -37,10 +44,16 @@ WORK="$HOME/Library/Application Support/ghpixeldiff"
 CLONE="$WORK/repo"
 RUNNER="$WORK/ios-daily-runner.sh"
 SOURCE="https://github.com/Nemo-Illusionist/gh-pixel-diff.git"
-# Час выбран дневной: ночью мак спит, а запертое с вечера устройство к утру
-# не разблокируется само.
-HOUR=14
+# Часы дневные: ночью мак спит, а запертое с вечера устройство к утру не
+# разблокируется само. Разнесены по дню, чтобы попасть и в утро, и в обед, и
+# в вечер — когда-нибудь да окажется в руках.
+HOURS="10 13 16 19 22"
 MINUTE=30
+# Когда установка считается свежей. Подписи живут семь дней; четыре оставляют
+# трое суток на промахи.
+REFRESH_DAYS=4
+# Кто и когда обновлялся: строки «идентификатор<TAB>время».
+STATE="$WORK/installed.tsv"
 
 case "${1:-run}" in
   on)
@@ -75,10 +88,10 @@ RUNNER_BODY
   </array>
   <key>WorkingDirectory</key><string>$WORK</string>
   <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key><integer>$HOUR</integer>
-    <key>Minute</key><integer>$MINUTE</integer>
-  </dict>
+  <array>$(for hour in $HOURS; do
+    printf '\n    <dict><key>Hour</key><integer>%s</integer><key>Minute</key><integer>%s</integer></dict>' "$hour" "$MINUTE"
+  done)
+  </array>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
@@ -94,7 +107,7 @@ PLIST_BODY
     # bootout перед bootstrap: иначе повторное «on» упрётся в уже заведённое.
     launchctl bootout "gui/$UID/$LABEL" 2>/dev/null
     launchctl bootstrap "gui/$UID" "$PLIST"
-    echo "Расписание заведено: каждый день в $HOUR:$MINUTE."
+    echo "Расписание заведено: каждый день в $(for hour in $HOURS; do printf '%s:%s ' "$hour" "$MINUTE"; done)"
     echo "Рабочая копия: $CLONE"
     echo "Журнал: $LOG"
     exit 0
@@ -109,7 +122,7 @@ PLIST_BODY
     ;;
   status)
     if launchctl print "gui/$UID/$LABEL" >/dev/null 2>&1; then
-      echo "Расписание заведено: каждый день в $HOUR:$MINUTE."
+      echo "Расписание заведено: каждый день в $(for hour in $HOURS; do printf '%s:%s ' "$hour" "$MINUTE"; done)"
     else
       echo "Расписания нет. Завести: scripts/ios-daily.sh on"
     fi
@@ -137,11 +150,32 @@ fi
 echo
 echo "=== $(date '+%Y-%m-%d %H:%M') ==="
 
-# Ни одного устройства под рукой — это не беда, а обычный день: молчим и
+# Ни одного устройства под рукой — это не беда, а обычный заход: молчим и
 # ждём следующего.
-if ! xcrun devicectl list devices 2>/dev/null | grep -v simulated | grep -q available; then
+DEVICES=$("$ROOT/scripts/ios-devices.sh" || true)
+if [ -z "$DEVICES" ]; then
   echo "Устройств на связи нет — пропускаем."
   exit 0
 fi
 
-"$ROOT/scripts/install-ios.sh"
+# Кому установка ещё впрок. Пять заходов в день имеют смысл, только если
+# четыре из них ничего не делают: собирать и подписывать заново ради
+# устройства, обновлённого утром, незачем.
+FRESH_AFTER=$(( $(date +%s) - REFRESH_DAYS * 86400 ))
+NEEDED=""
+while IFS=$'\t' read -r id name; do
+  [ -n "$id" ] || continue
+  WHEN=$(awk -F'\t' -v id="$id" '$1 == id { when = $2 } END { print when + 0 }' "$STATE" 2>/dev/null)
+  if [ "${WHEN:-0}" -gt "$FRESH_AFTER" ]; then continue; fi
+  NEEDED="$NEEDED$name"$'\n'
+done <<< "$DEVICES"
+
+if [ -z "$NEEDED" ]; then
+  echo "Всё свежее — пропускаем."
+  exit 0
+fi
+
+printf 'Пора обновить: %s\n' "$(printf '%s' "$NEEDED" | paste -sd', ' -)"
+# Сборка одна на всех, поэтому зовём установщик один раз: он сам обойдёт все
+# подключённые устройства, а свежим переустановка не повредит.
+GHPD_STATE="$STATE" "$ROOT/scripts/install-ios.sh"
