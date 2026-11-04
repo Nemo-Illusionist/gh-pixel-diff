@@ -3,7 +3,7 @@
 # от того, на чьей машине их обновляли.
 set -euo pipefail
 
-IMAGE="mcr.microsoft.com/playwright:v1.63.0-noble"
+IMAGE="mcr.microsoft.com/playwright:v1.64.1-noble"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 if ! docker info >/dev/null 2>&1; then
