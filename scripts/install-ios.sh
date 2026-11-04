@@ -44,6 +44,8 @@ xcodebuild -project "$PROJECT" \
   build >/dev/null
 
 APP="$DERIVED/Build/Products/Release-iphoneos/GitHub Pixel Diff.app"
+# Из чего собрано. Не из репозитория — ставим и так, просто без отметки.
+COMMIT=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo -)
 
 # Одно устройство не должно утаскивать за собой остальные: заперт телефон —
 # это повод не ставить на телефон, а не повод бросить планшет.
@@ -53,9 +55,11 @@ while IFS=$'\t' read -r id name; do
   echo "→ $name"
   if ERROR=$(xcrun devicectl device install app --device "$id" "$APP" 2>&1 >/dev/null); then
     echo "  поставлено"
-    # Кто и когда обновился — чтобы ежедневное задание не пересобирало то,
-    # что и так свежее некуда. Пишем, только если нас об этом попросили.
-    [ -z "${GHPD_STATE:-}" ] || printf '%s\t%s\n' "$id" "$(date +%s)" >> "$GHPD_STATE"
+    # Кто, когда и что получил — чтобы ежедневное задание не пересобирало то,
+    # что и так свежее некуда, но и не ждало неделю с новой версией в руках.
+    # Пишем, только если нас об этом попросили.
+    [ -z "${GHPD_STATE:-}" ] ||
+      printf '%s\t%s\t%s\n' "$id" "$(date +%s)" "$COMMIT" >> "$GHPD_STATE"
   else
     FAILED=1
     # Из простыни Apple вытаскиваем ту строку, по которой понятно, что делать.
