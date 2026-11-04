@@ -22,18 +22,8 @@ fi
 TEAM="${DEVELOPMENT_TEAM:-$(security find-certificate -c "$IDENTITY" -p |
   openssl x509 -noout -subject | sed -n 's/.*OU=\([^,]*\).*/\1/p')}"
 
-# Настоящие устройства среди спаренных: симуляторы нам тут не нужны. Их выдаёт
-# слово simulated в последней колонке — у настоящих она пуста. Слова physical,
-# по которому мы отбирали раньше, в выводе devicectl больше нет.
-DEVICES=$(xcrun devicectl list devices 2>/dev/null |
-  awk -v want="$WANTED" '
-    /available/ && !/simulated/ {
-      match($0, /[0-9A-F]{8}-[0-9A-F]{16}/)
-      if (!RSTART) next
-      id = substr($0, RSTART, RLENGTH)
-      name = substr($0, 1, index($0, "  ") - 1)
-      if (want == "" || index(tolower(name), tolower(want))) print id "\t" name
-    }')
+# Список устройств читает отдельный скрипт: его же читает ежедневное задание.
+DEVICES=$("$ROOT/scripts/ios-devices.sh" "$WANTED")
 
 if [ -z "$DEVICES" ]; then
   echo "Не вижу подключённых устройств${WANTED:+ по имени «$WANTED»}." >&2
@@ -63,6 +53,9 @@ while IFS=$'\t' read -r id name; do
   echo "→ $name"
   if ERROR=$(xcrun devicectl device install app --device "$id" "$APP" 2>&1 >/dev/null); then
     echo "  поставлено"
+    # Кто и когда обновился — чтобы ежедневное задание не пересобирало то,
+    # что и так свежее некуда. Пишем, только если нас об этом попросили.
+    [ -z "${GHPD_STATE:-}" ] || printf '%s\t%s\n' "$id" "$(date +%s)" >> "$GHPD_STATE"
   else
     FAILED=1
     # Из простыни Apple вытаскиваем ту строку, по которой понятно, что делать.
