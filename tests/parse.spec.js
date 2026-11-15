@@ -757,3 +757,110 @@ test('совпавшие пиксели в маске прозрачны', async
 
   expect(pixel).toEqual({ alpha: 0, changed: 0 });
 });
+
+test('вставку находит и в кадре, который весь перерисовался', async ({ page }) => {
+  // Длинный снимок страницы приходит перерисованным целиком: строки, на
+  // которых глазом ничего не изменилось, расходятся на единицу в канале —
+  // там скругление легло иначе, тут сглаживание буквы. Сравнению эта рябь
+  // безразлична, а вот выравниванию по точным совпадениям — смертельна:
+  // якорей не остаётся, и сшивка объявляет переехавшим не то, что переехало.
+  //
+  // На снимке лендинга в 4900 строк это выглядело так: вставлен один блок в
+  // 58 строк, а в ответе «строк +390 −390» и место изменений в 19 тысяч
+  // пикселей там, где не менялось ничего.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/content/compare.js', import.meta.url)),
+  });
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/vendor/pixelmatch.js', import.meta.url)),
+  });
+
+  const answer = await page.evaluate(() => {
+    const width = 32;
+    const height = 200;
+    const CUT = 80;
+    const BAND = 20;
+    /** Содержимое строки: узор, по которому строку можно узнать. */
+    const paint = (data, y, source, noise) => {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        // Рябь перерисовки: единица в канале, не больше. Порогу она не видна.
+        const drift = noise ? ((source * 7 + x * 5) % 3) - 1 : 0;
+        data[i] = (source * 13 + x * 5) % 251 + drift;
+        data[i + 1] = (source * 29 + x * 11) % 239 + drift;
+        data[i + 2] = (source * 53 + x * 17) % 241;
+        data[i + 3] = 255;
+      }
+    };
+    const before = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++) paint(before, y, y, false);
+    // «После»: тот же кадр, перерисованный, со вставленной полосой.
+    const after = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      if (y < CUT) paint(after, y, y, true);
+      else if (y < CUT + BAND) paint(after, y, 1000 + y, false);
+      else paint(after, y, y - BAND, true);
+    }
+    // И настоящая правка ниже вставки: кусок содержимого стал другим. Без
+    // неё задача слишком проста — одну-единственную вставку разбирал и
+    // общий сдвиг.
+    for (let y = 130; y < 150; y++) paint(after, y, 2000 + y, false);
+
+    const pair = {
+      width,
+      height,
+      dataBefore: new ImageData(before, width, height),
+      dataAfter: new ImageData(after, width, height),
+      common: { width, height },
+    };
+    const result = self.GhPixelDiff.diffPrepared(pair, { stitch: true });
+    return {
+      вставлено: result.inserted,
+      изменилось: result.changed,
+      мест: result.clusters.length,
+      низ: result.bounds ? result.bounds.y + result.bounds.height : 0,
+    };
+  });
+
+  // Нашли ровно вставку, а не «весь кадр ниже неё».
+  expect(answer.вставлено).toBe(20);
+  // Изменились две полосы по двадцать строк: сама вставка и правка под ней.
+  // Всё остальное — рябь перерисовки, и её в ответе быть не должно.
+  expect(answer.изменилось).toBeLessThanOrEqual(40 * 32);
+  // Ниже правки кадр чист: без сшивки он краснел до самого низа.
+  expect(answer.низ).toBeLessThanOrEqual(150);
+});
+
+test('построчный дифф не берётся за кадр, в котором не осталось ничего общего', async ({
+  page,
+}) => {
+  // Цена поиска растёт вместе с числом непарных строк, и кадр, в котором
+  // разошлось всё, обошёлся бы дороже всего сравнения. Такой паре дифф
+  // отвечает «не знаю» — и остаются прежние способы.
+  await page.addScriptTag({
+    path: fileURLToPath(new URL('../src/content/compare.js', import.meta.url)),
+  });
+
+  const answer = await page.evaluate(() => {
+    const width = 8;
+    const height = 1200;
+    const fill = (seed) => {
+      const data = new Uint8ClampedArray(width * height * 4);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          data[i] = (y * seed + x) % 256;
+          data[i + 1] = (y * seed * 3 + x) % 256;
+          data[i + 2] = (y * seed * 7 + x) % 256;
+          data[i + 3] = 255;
+        }
+      }
+      return data;
+    };
+    const started = performance.now();
+    const aligned = self.GhPixelDiff.alignDiff(fill(11), fill(29), width, height);
+    return { aligned, мс: performance.now() - started };
+  });
+
+  expect(answer.aligned).toBeNull();
+});
