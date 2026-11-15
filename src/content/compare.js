@@ -548,6 +548,208 @@
     return believable(map, orphan, orphan, common);
   }
 
+
+  /**
+   * Ширина блока, которым строка сворачивается в грубую подпись, и сколько
+   * младших битов цвета при этом отбрасывается.
+   *
+   * Зачем грубая. Якоря и общий сдвиг ищут строку, совпавшую до единого
+   * пикселя, — и на снимке целой страницы не находят почти ничего. Браузер
+   * перерисовывает её заново, и строки, на которых глазом не видно ни одной
+   * правки, расходятся на единицу в канале: там скругление легло иначе, тут
+   * сглаживание буквы. Для сравнения такая рябь ничего не значит — порог её
+   * и не считает изменением, — но для поиска пары она смертельна: строка,
+   * разошедшаяся на единицу, перестаёт быть якорем, якорей остаётся
+   * горстка, и выравнивание садится мимо.
+   *
+   * Восемь пикселей в блоке и три отброшенных бита: рябь в единицу-другую
+   * тонет в среднем по блоку, а настоящая правка — буква, значок, полоса —
+   * сдвигает среднее заметно больше и подпись меняет.
+   */
+  const LOOSE_BLOCK = 8;
+  const LOOSE_BITS = 3;
+
+  /**
+   * Подпись строки, терпимая к ряби: средний цвет по блокам, огрублённый.
+   */
+  function looseHashes(data, width, height, from = 0, to = width) {
+    const hashes = new Uint32Array(height);
+    for (let y = 0; y < height; y++) {
+      let hash = 0x811c9dc5;
+      const row = y * width * 4;
+      for (let x = from; x < to; x += LOOSE_BLOCK) {
+        const last = Math.min(x + LOOSE_BLOCK, to);
+        let red = 0;
+        let green = 0;
+        let blue = 0;
+        for (let i = x; i < last; i++) {
+          const at = row + i * 4;
+          red += data[at];
+          green += data[at + 1];
+          blue += data[at + 2];
+        }
+        const count = last - x;
+        const block =
+          (((red / count) >> LOOSE_BITS) << 16) |
+          (((green / count) >> LOOSE_BITS) << 8) |
+          ((blue / count) >> LOOSE_BITS);
+        hash = Math.imul(hash ^ block, 0x01000193);
+      }
+      hashes[y] = hash >>> 0;
+    }
+    return hashes;
+  }
+
+  /**
+   * Сколько правок готов разобрать построчный дифф, прежде чем сдаться.
+   *
+   * Цена поиска растёт вместе с числом непарных строк, а польза падает:
+   * кадр, в котором разошлась тысяча строк, — это не «добавили блок», а
+   * другая картинка, и объяснять там нечего. Тысяча строк — это и предел
+   * пользы, и предел цены: до него поиск укладывается в десяток миллисекунд.
+   */
+  const TRACE_MAX = 1024;
+
+  /**
+   * Построчный дифф: какая строка «после» какой строке «до» отвечает.
+   *
+   * Тот самый алгоритм, которым текстовые диффы ищут кратчайший путь правок
+   * (Myers), только строками здесь служат подписи строк пикселей. Он даёт
+   * ровно то, чего не умеют якоря: разбирается с повторяющимися строками —
+   * однотонный фон, одинаковые разделители, — потому что ищет не совпадения
+   * поодиночке, а самую длинную общую последовательность целиком.
+   *
+   * @returns {Int32Array|null} для каждой строки «после» её строка в «до»
+   *          или -1; null — правок больше, чем мы беремся разбирать
+   */
+  function traceRows(before, after) {
+    const n = before.length;
+    const m = after.length;
+    const max = Math.min(TRACE_MAX, n + m);
+    const front = new Int32Array(2 * max + 2);
+    const trace = [];
+
+    let steps = -1;
+    for (let d = 0; d <= max; d++) {
+      trace.push(front.slice());
+      for (let k = -d; k <= d; k += 2) {
+        const at = k + max;
+        let x = k === -d || (k !== d && front[at - 1] < front[at + 1]) ? front[at + 1] : front[at - 1] + 1;
+        let y = x - k;
+        while (x < n && y < m && before[x] === after[y]) {
+          x++;
+          y++;
+        }
+        front[at] = x;
+        if (x >= n && y >= m) {
+          steps = d;
+          break;
+        }
+      }
+      if (steps >= 0) break;
+    }
+    if (steps < 0) return null;
+
+    const map = new Int32Array(m).fill(-1);
+    let x = n;
+    let y = m;
+    for (let d = steps; d > 0; d--) {
+      const path = trace[d];
+      const k = x - y;
+      const previous =
+        k === -d || (k !== d && path[k - 1 + max] < path[k + 1 + max]) ? k + 1 : k - 1;
+      const wasX = path[previous + max];
+      const wasY = wasX - previous;
+      while (x > wasX && y > wasY) map[--y] = --x;
+      if (x > wasX) x--;
+      else y--;
+    }
+    while (x > 0 && y > 0) map[--y] = --x;
+    return map;
+  }
+
+  /**
+   * Сколько строк подряд должны ехать вместе, чтобы им поверили.
+   *
+   * Построчный дифф честно разбирает каждую строку, и в месте настоящей
+   * правки — там, где кадр и должен покраснеть, — он находит десятки мелких
+   * вставок и удалений вперемешку. Беда в том, что сдвиг от них гуляет
+   * туда-сюда, и ниже правки кадр собирается из кусков, съехавших каждый
+   * по-своему. Поэтому сдвигу верят только там, где он держится полтора
+   * десятка строк кряду; всё, что мельче, — рябь внутри правки, а не переезд.
+   */
+  const STEADY_RUN = 16;
+
+  /**
+   * Третий способ выровнять: построчный дифф с огрублёнными подписями.
+   *
+   * Зачем. Длинный снимок страницы — худший случай для двух прежних
+   * способов. Якорям нужны строки, совпавшие до пикселя, а их после
+   * перерисовки почти не остаётся; общему сдвигу нужно, чтобы вставка была
+   * одна на весь кадр, а их обычно несколько. На снимке лендинга в 4900
+   * строк оба промахивались: вместо «вставили 58 строк» получалось
+   * «+390 −390», и ниже вставки загоралось место в 19 тысяч пикселей,
+   * которого там нет вовсе.
+   *
+   * Как. Подписи строк берутся грубые — рябь перерисовки в них тонет, —
+   * и по ним строится обычный построчный дифф. Из него остаются только
+   * сдвиги, продержавшиеся STEADY_RUN строк подряд; промежутки между ними
+   * отдаются соседям пополам, а разница сдвигов и есть то, что вставили
+   * или убрали.
+   */
+  function alignDiff(dataBefore, dataAfter, width, height, from = 0, to = width, common = height) {
+    const before = looseHashes(dataBefore, width, height, from, to);
+    const after = looseHashes(dataAfter, width, height, from, to);
+    const traced = traceRows(before, after);
+    if (!traced) return null;
+
+    // Участки, которые едут вместе: подряд идущие строки с одним сдвигом.
+    const steady = [];
+    let start = -1;
+    let offset = null;
+    for (let y = 0; y <= height; y++) {
+      const now = y < height && traced[y] >= 0 ? traced[y] - y : null;
+      if (now !== null && now === offset) continue;
+      if (offset !== null && start >= 0 && y - start >= STEADY_RUN) {
+        steady.push({ from: start, to: y - 1, offset });
+      }
+      offset = now;
+      start = now === null ? -1 : y;
+    }
+    if (!steady.length) return null;
+
+    const map = new Int32Array(height).fill(-1);
+    let inserted = 0;
+    let removed = 0;
+    const take = (y, shift) => {
+      const source = y + shift;
+      map[y] = source >= 0 && source < height ? source : -1;
+    };
+
+    let previous = null;
+    for (const run of steady) {
+      if (previous === null) {
+        for (let y = 0; y < run.from; y++) take(y, run.offset);
+      } else {
+        // Промежуток между участками делится пополам: где именно сменился
+        // сдвиг, построчный дифф не знает — там лежит сама правка.
+        const middle = (previous.to + run.from) / 2;
+        for (let y = previous.to + 1; y < run.from; y++) {
+          take(y, y <= middle ? previous.offset : run.offset);
+        }
+        const step = run.offset - previous.offset;
+        if (step < 0) inserted += -step;
+        else removed += step;
+      }
+      for (let y = run.from; y <= run.to; y++) map[y] = traced[y];
+      previous = run;
+    }
+    for (let y = previous.to + 1; y < height; y++) take(y, previous.offset);
+
+    if (!inserted && !removed) return null;
+    return believable(map, inserted, removed, common);
+  }
+
   /**
    * Ширина полосы, которой кадр делится вдоль, в пикселях.
    *
@@ -1185,6 +1387,7 @@
       alignBands(dataBefore, dataAfter, width, height, alignRows, common),
       alignPrefix(dataBefore, dataAfter, width, height, 0, width, common),
       alignBands(dataBefore, dataAfter, width, height, alignPrefix, common),
+      alignDiff(dataBefore, dataAfter, width, height, 0, width, common),
     ];
     for (const aligned of guesses) {
       if (!aligned || !(aligned.inserted || aligned.removed)) continue;
@@ -1214,6 +1417,7 @@
     findChanges,
     alignRows,
     alignPrefix,
+    alignDiff,
     snapRows,
     rasterScale,
   };
