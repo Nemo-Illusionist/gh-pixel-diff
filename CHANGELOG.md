@@ -4,6 +4,14 @@ Up to 0.9.0 this file was written by hand. From 0.10.0 on it is assembled by
 release-please from commit subjects, which is why the style changes partway
 down. The project follows [semantic versioning](https://semver.org/).
 
+## [0.19.2](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.19.1...v0.19.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* find the insert in a page that was redrawn from top to bottom ([#104](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/104)) ([b7dca60](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/b7dca60237fb5cfd5251a65817c041fda95fdf11))
+* reinstall when the code changed, not only when the signature is old ([#102](https://github.com/Nemo-Illusionist/gh-pixel-diff/issues/102)) ([523538a](https://github.com/Nemo-Illusionist/gh-pixel-diff/commit/523538a45030ae7a2c7e8d76c43fe34ad76d1ecc))
+
 ## [0.19.1](https://github.com/Nemo-Illusionist/gh-pixel-diff/compare/v0.19.0...v0.19.1) (2026-11-04)
 
 
